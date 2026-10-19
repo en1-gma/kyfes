@@ -1,0 +1,7 @@
+interface:
+  display_name: "kyfes init"
+  short_description: "Set up kyfes in this frontend project"
+  brand_color: "#14B8A6"
+  default_prompt: "Use $kyfes-init to set up kyfes in this project."
+policy:
+  allow_implicit_invocation: false

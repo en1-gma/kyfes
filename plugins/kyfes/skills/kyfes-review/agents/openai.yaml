@@ -1,0 +1,7 @@
+interface:
+  display_name: "kyfes review"
+  short_description: "Independent review of frontend changes against kyfes"
+  brand_color: "#14B8A6"
+  default_prompt: "Use $kyfes-review to review my frontend changes."
+policy:
+  allow_implicit_invocation: true

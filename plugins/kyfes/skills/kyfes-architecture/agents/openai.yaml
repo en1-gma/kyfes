@@ -1,0 +1,5 @@
+interface:
+  display_name: "kyfes architecture"
+  short_description: "Binding frontend rules: layout, security, RBAC, data, i18n"
+  brand_color: "#14B8A6"
+  default_prompt: "Use $kyfes-architecture to check how this feature must be structured."

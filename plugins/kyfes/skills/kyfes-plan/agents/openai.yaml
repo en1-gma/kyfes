@@ -1,0 +1,5 @@
+interface:
+  display_name: "kyfes plan"
+  short_description: "Plan a frontend feature with RBAC, queries and i18n"
+  brand_color: "#14B8A6"
+  default_prompt: "Use $kyfes-plan to plan this frontend feature."
