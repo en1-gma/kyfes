@@ -7,14 +7,9 @@ import { toTypedSchema } from '@/shared/lib'
 import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ErrorState } from '@/shared/ui'
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations'
-import {
-  DEFAULT_ORDER_STATUS,
-  ORDER_STATUSES,
-  OrderInputSchema,
-  type Order,
-  type OrderInput,
-} from '../model/orders.schema'
-import { ORDER_FIELD, ORDER_FIELDS, ORDER_SUBJECT, orderSubject, type OrderField } from '../permissions'
+import { DEFAULT_ORDER_STATUS, ORDER_FIELD, ORDER_FIELDS, ORDER_SUBJECT, type OrderField } from '../constants'
+import { ORDER_STATUSES, OrderInputSchema, type Order, type OrderInput } from '../model/orders.schema'
+import { orderSubject } from '../permissions'
 
 const props = defineProps<{ order?: Order }>()
 const emit = defineEmits<{ saved: [order: Order]; cancel: [] }>()

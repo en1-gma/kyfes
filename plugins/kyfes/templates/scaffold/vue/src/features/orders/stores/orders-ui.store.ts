@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { DEFAULT_ORDER_SORT, ORDER_SORT, type OrderSort, type OrderStatus } from '../model/orders.schema'
+import { DEFAULT_ORDER_SORT, ORDER_SORT, type OrderSort } from '../constants'
+import type { OrderStatus } from '../model/orders.schema'
 
 /** UI-only state (filters, sort). Server data lives in TanStack Query, never here. */
 export const useOrdersUiStore = defineStore('orders-ui', () => {

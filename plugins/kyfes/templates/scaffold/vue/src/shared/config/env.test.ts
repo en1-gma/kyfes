@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_API_BASE_URL } from './constants'
 import { parseEnv } from './env'
 
 describe('parseEnv', () => {
   it('defaults API_BASE_URL to the same-origin /api', () => {
-    expect(parseEnv({}).API_BASE_URL).toBe('/api')
+    expect(parseEnv({}).API_BASE_URL).toBe(DEFAULT_API_BASE_URL)
     expect(parseEnv({ VITE_API_BASE_URL: '/bff/api' }).API_BASE_URL).toBe('/bff/api')
   })
 

@@ -1,10 +1,10 @@
 import { createI18n, useI18n } from 'vue-i18n'
-import { env, SUPPORTED_LOCALES, type Locale } from '@/shared/config/env'
+import { COMMON_NS, FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/shared/config/constants'
+import { env } from '@/shared/config/env'
 import commonIt from './locales/it.json'
 import commonEn from './locales/en.json'
 
-/** Namespace of the shared messages (`common.*` keys), bundled with the app. */
-export const COMMON_NS = 'common'
+export { COMMON_NS } from '@/shared/config/constants'
 
 type Messages = Record<string, unknown>
 export type NamespaceLoaders = Record<Locale, () => Promise<{ default: Messages }>>
@@ -19,7 +19,7 @@ declare module 'vue-router' {
 export const i18n = createI18n({
   legacy: false,
   locale: env.DEFAULT_LOCALE,
-  fallbackLocale: SUPPORTED_LOCALES[0],
+  fallbackLocale: FALLBACK_LOCALE,
   // `common` is small and always needed: bundled. Feature namespaces are lazy.
   messages: { it: { [COMMON_NS]: commonIt }, en: { [COMMON_NS]: commonEn } },
   missingWarn: import.meta.env.DEV,

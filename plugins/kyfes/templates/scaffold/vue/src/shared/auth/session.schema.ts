@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { SUPPORTED_LOCALES } from '@/shared/config/env'
+import { SUPPORTED_LOCALES } from '@/shared/config/constants'
 
 /**
  * CASL raw rule as sent by the server (packed rules are unpacked server side). Actions and subjects

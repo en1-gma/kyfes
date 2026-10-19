@@ -1,18 +1,14 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import type { z } from 'zod'
+import {
+  AUTH_ENDPOINTS,
+  CORRELATION_HEADER,
+  XSRF_COOKIE_NAME,
+  XSRF_HEADER_NAME,
+} from '@/shared/config/constants'
 import { env } from '@/shared/config/env'
 import { toApiError } from './api-error'
 
-export const XSRF_COOKIE_NAME = 'XSRF-TOKEN'
-export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN'
-export const CORRELATION_HEADER = 'x-correlation-id'
-/** BFF authentication endpoints (relative to API_BASE_URL). */
-export const AUTH_ENDPOINTS = {
-  me: '/auth/me',
-  login: '/auth/login',
-  logout: '/auth/logout',
-  refresh: '/auth/refresh',
-} as const
 /** Calls that must never trigger the refresh/401 flow themselves. */
 const AUTH_URLS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout]
 

@@ -4,7 +4,7 @@ import { DEFAULT_PAGE_SIZE } from '@/shared/api'
 import { formatMonth } from '@/shared/i18n'
 import type { OrderFilters } from '../model/orders.schema'
 import { ordersApi } from './orders.api'
-import { ORDERS_FEATURE } from '../model/orders.feature'
+import { ORDERS_FEATURE } from '../constants'
 
 export type OrderListParams = OrderFilters & { limit?: number }
 

@@ -1,16 +1,17 @@
 import { http, HttpResponse } from 'msw/http'
-import { AUTH_ENDPOINTS } from '@/shared/api'
+import { AUTH_ENDPOINTS, DEFAULT_API_BASE_URL } from '@/shared/config/constants'
 import {
   DEFAULT_ORDER_STATUS,
   ORDER_SORT,
   ORDER_STATUS,
   ORDERS_ENDPOINT,
+  ORDERS_STATS_ENDPOINT,
   OrderInputSchema,
   type Order,
 } from '@/features/orders'
 import { BROKEN_ORDER_ID, createDb, FORBIDDEN_ORDER_ID, sessions, type MockDb, type MockUser } from './data'
 
-export const API = '/api'
+export const API = DEFAULT_API_BASE_URL
 
 export function errorBody(status: number) {
   const codes: Record<number, string> = {
@@ -51,7 +52,7 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
     http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
     http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () => errorBody(401)),
 
-    http.get(`${API}${ORDERS_ENDPOINT}/stats`, () => {
+    http.get(`${API}${ORDERS_STATS_ENDPOINT}`, () => {
       const byMonth = new Map<string, number>()
       for (const o of db.orders) {
         const month = o.createdAt.slice(0, 7)

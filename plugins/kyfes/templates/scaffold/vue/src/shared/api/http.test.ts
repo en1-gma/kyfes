@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { server } from '@/mocks/node'
 import { ApiError } from './api-error'
-import { configureHttp, http, isApiOriginUrl, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from './http'
+import { DEFAULT_API_BASE_URL, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from '@/shared/config/constants'
+import { configureHttp, http, isApiOriginUrl } from './http'
 import { shouldRetry } from './query-client'
 
 afterEach(() => configureHttp({ onUnauthorized: undefined, refresh: false }))
@@ -14,7 +15,7 @@ describe('http client', () => {
     expect(http.defaults.withCredentials).toBe(true)
     expect(http.defaults.xsrfCookieName).toBe(XSRF_COOKIE_NAME)
     expect(http.defaults.xsrfHeaderName).toBe(XSRF_HEADER_NAME)
-    expect(http.defaults.baseURL).toBe('/api')
+    expect(http.defaults.baseURL).toBe(DEFAULT_API_BASE_URL)
     expect(http.defaults.headers.Accept).toBe('application/json')
   })
 

@@ -1,24 +1,9 @@
 import { createMongoAbility, type ForcedSubject, type MongoAbility, type RawRuleOf } from '@casl/ability'
 import type { RawRule } from '@/shared/auth'
+import type { Actions, SubjectName } from '@/shared/config/constants'
 
-/** CASL actions: always referenced as `ACTION.update`, never written as string literals. */
-export const ACTION = {
-  create: 'create',
-  read: 'read',
-  update: 'update',
-  delete: 'delete',
-  manage: 'manage',
-} as const
-export type Actions = (typeof ACTION)[keyof typeof ACTION]
-export const ACTIONS: readonly Actions[] = Object.values(ACTION)
-
-/**
- * Subject registry: one singular PascalCase noun per feature (re-exported by features/<f>/permissions.ts).
- * Adding a feature = adding its subject name here.
- */
-export const SUBJECT = { Order: 'Order' } as const
-export type SubjectName = (typeof SUBJECT)[keyof typeof SUBJECT]
-export const SUBJECTS: readonly SubjectName[] = Object.values(SUBJECT)
+/** Actions and the subject registry live in shared/config/constants.ts. */
+export { ACTION, ACTIONS, SUBJECT, SUBJECTS, type Actions, type SubjectName } from '@/shared/config/constants'
 
 /** A subject name, a record tagged with `subject(SUBJECT.Order, order)`, or 'all'. */
 export type Subjects = SubjectName | ForcedSubject<SubjectName> | 'all'

@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY } from '@/shared/config/constants'
 import { currentLocale } from './i18n'
 
 /** Reads the reactive locale: formatted values re-render when the language changes. */
@@ -12,7 +13,7 @@ export function formatNumber(value: number, options: Intl.NumberFormatOptions = 
 
 export function formatCurrency(
   value: number,
-  currency = 'EUR',
+  currency: string = DEFAULT_CURRENCY,
   options: Intl.NumberFormatOptions = {},
 ): string {
   return new Intl.NumberFormat(currentLocale(), { style: 'currency', currency, ...options }).format(value)

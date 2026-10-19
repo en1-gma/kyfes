@@ -4,8 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useT } from '@/shared/i18n'
 import { ACTION, useAbility } from '@/shared/rbac'
 import { ForbiddenState, QueryState } from '@/shared/ui'
-import { OrderForm, orderSubject, useOrder, type Order } from '@/features/orders'
-import { ROUTES } from './route-names'
+import { ORDER_ROUTE, OrderForm, orderSubject, useOrder, type Order } from '@/features/orders'
 
 const props = defineProps<{ id: string }>()
 const { t } = useT()
@@ -17,7 +16,7 @@ const { data: order, isPending, error, refetch } = useOrder(() => props.id)
 const canUpdate = computed(() => !!order.value && ability.can(ACTION.update, orderSubject(order.value)))
 
 const toDetail = (saved?: Order) =>
-  router.push({ name: ROUTES.orderDetail, params: { id: saved?.id ?? props.id } })
+  router.push({ name: ORDER_ROUTE.detail, params: { id: saved?.id ?? props.id } })
 </script>
 
 <template>
@@ -29,7 +28,7 @@ const toDetail = (saved?: Order) =>
           <OrderForm :key="order.id" :order="order" @saved="toDetail" @cancel="toDetail()" />
         </template>
         <ForbiddenState v-else>
-          <RouterLink :to="{ name: ROUTES.orderDetail, params: { id: order.id } }">
+          <RouterLink :to="{ name: ORDER_ROUTE.detail, params: { id: order.id } }">
             {{ t('common.actions.back') }}
           </RouterLink>
         </ForbiddenState>

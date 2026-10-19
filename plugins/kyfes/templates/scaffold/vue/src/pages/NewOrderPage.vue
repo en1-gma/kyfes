@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useT } from '@/shared/i18n'
-import { OrderForm, type Order } from '@/features/orders'
-import { ROUTES } from './route-names'
+import { ORDER_ROUTE, OrderForm, type Order } from '@/features/orders'
 
 const { t } = useT()
 const router = useRouter()
-const onSaved = (order: Order) => router.push({ name: ROUTES.orderDetail, params: { id: order.id } })
-const onCancel = () => router.push({ name: ROUTES.orders })
+const onSaved = (order: Order) => router.push({ name: ORDER_ROUTE.detail, params: { id: order.id } })
+const onCancel = () => router.push({ name: ORDER_ROUTE.list })
 </script>
 
 <template>

@@ -1,12 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
-import { ACTION, FORBIDDEN_ROUTE } from '@/shared/rbac'
-import { ORDER_SUBJECT, ORDERS_FEATURE, ORDERS_NAMESPACE } from '@/features/orders'
+import { CATCH_ALL_PATH, FORBIDDEN_ROUTE, ROUTE_NAME } from '@/shared/config/constants'
+import { ACTION } from '@/shared/rbac'
+import { ORDER_ROUTE, ORDER_ROUTE_PATH, ORDER_SUBJECT, ORDERS_NAMESPACE } from '@/features/orders'
 import MainLayout from '@/pages/MainLayout.vue'
-import { ROUTES } from '@/pages/route-names'
 
 const ordersMeta = { namespaces: [ORDERS_NAMESPACE], titleKey: 'orders.title' }
-/** 404 and 403 share the catch-all pattern (see below). */
-const CATCH_ALL_PATH = ':pathMatch(.*)*'
 
 /** Every page is lazy (code splitting per route). Permissions live in `meta.permission`. */
 export const routes: RouteRecordRaw[] = [
@@ -14,29 +12,29 @@ export const routes: RouteRecordRaw[] = [
     path: '/',
     component: MainLayout,
     children: [
-      { path: '', redirect: { name: ROUTES.orders } },
+      { path: '', redirect: { name: ORDER_ROUTE.list } },
       {
-        path: ORDERS_FEATURE,
-        name: ROUTES.orders,
+        path: ORDER_ROUTE_PATH.list,
+        name: ORDER_ROUTE.list,
         component: () => import('@/pages/OrdersPage.vue'),
         meta: { ...ordersMeta, permission: { action: ACTION.read, subject: ORDER_SUBJECT } },
       },
       {
-        path: 'orders/new',
-        name: ROUTES.orderNew,
+        path: ORDER_ROUTE_PATH.create,
+        name: ORDER_ROUTE.create,
         component: () => import('@/pages/NewOrderPage.vue'),
         meta: { ...ordersMeta, permission: { action: ACTION.create, subject: ORDER_SUBJECT } },
       },
       {
-        path: 'orders/:id',
-        name: ROUTES.orderDetail,
+        path: ORDER_ROUTE_PATH.detail,
+        name: ORDER_ROUTE.detail,
         component: () => import('@/pages/OrderDetailPage.vue'),
         props: true,
         meta: { ...ordersMeta, permission: { action: ACTION.read, subject: ORDER_SUBJECT } },
       },
       {
-        path: 'orders/:id/edit',
-        name: ROUTES.orderEdit,
+        path: ORDER_ROUTE_PATH.edit,
+        name: ORDER_ROUTE.edit,
         component: () => import('@/pages/OrderEditPage.vue'),
         props: true,
         // Type-level check only: OrderEditPage checks the loaded record (conditions, e.g. status).
@@ -46,7 +44,7 @@ export const routes: RouteRecordRaw[] = [
       // (permission guard), so the requested URL stays in the address bar.
       {
         path: CATCH_ALL_PATH,
-        name: ROUTES.notFound,
+        name: ROUTE_NAME.notFound,
         component: () => import('@/pages/NotFoundPage.vue'),
         meta: { titleKey: 'common.errors.notFoundTitle' },
       },

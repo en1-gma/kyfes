@@ -5,7 +5,7 @@ import { createDb, sessions } from '@/mocks/data'
 import { createHandlers } from '@/mocks/handlers'
 import { server } from '@/mocks/node'
 import { renderWithProviders } from '@/test/render'
-import { ORDER_STATUS } from '../model/orders.schema'
+import { ORDER_STATUS } from '../constants'
 import OrderForm from './OrderForm.vue'
 
 /** Records the JSON bodies the form sends. */

@@ -4,6 +4,7 @@ import { sessionHandler } from '@/mocks/handlers'
 import { server } from '@/mocks/node'
 import { sessionKeys } from '@/shared/auth'
 import { FORBIDDEN_ROUTE } from '@/shared/rbac'
+import { ORDER_ROUTE } from '@/features/orders'
 import { createTestQueryClient } from '@/test/render'
 import { createAppRouter } from './index'
 
@@ -14,7 +15,7 @@ describe('route guards (meta.permission)', () => {
     const router = createAppRouter(queryClient)
 
     await router.push('/orders')
-    expect(router.currentRoute.value.name).toBe('orders')
+    expect(router.currentRoute.value.name).toBe(ORDER_ROUTE.list)
 
     await router.push('/orders/new')
     expect(router.currentRoute.value.name).toBe(FORBIDDEN_ROUTE)
@@ -26,7 +27,7 @@ describe('route guards (meta.permission)', () => {
     queryClient.setQueryData(sessionKeys.me(), sessions.manager)
     const router = createAppRouter(queryClient)
     await router.push('/orders/new')
-    expect(router.currentRoute.value.name).toBe('order-new')
+    expect(router.currentRoute.value.name).toBe(ORDER_ROUTE.create)
   })
 
   it('after a 403 invalidates the session, the guard decides on fresh permissions', async () => {
@@ -36,7 +37,7 @@ describe('route guards (meta.permission)', () => {
     // The server now grants more (default mock user: manager).
     const router = createAppRouter(queryClient)
     await router.push('/orders/new')
-    expect(router.currentRoute.value.name).toBe('order-new')
+    expect(router.currentRoute.value.name).toBe(ORDER_ROUTE.create)
   })
 
   it('without a session the auth guard starts the BFF login with returnTo', async () => {

@@ -1,16 +1,20 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { formatCurrency, formatNumber } from '@/shared/i18n'
-import { CHART_KIND, CHART_VALUE_FORMAT, type ChartKind, type ChartProps } from './types'
-
-const PALETTE_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
-const PRIMARY_FALLBACK = '#2563eb'
-const FALLBACK = [PRIMARY_FALLBACK, '#16a34a', '#d97706', '#9333ea', '#dc2626']
+import {
+  CHART_FALLBACK_COLORS,
+  CHART_KIND,
+  CHART_PALETTE_VARS,
+  CHART_PRIMARY_FALLBACK,
+  CHART_VALUE_FORMAT,
+  type ChartKind,
+} from '@/shared/config/constants'
+import type { ChartProps } from './types'
 
 /** Palette from the design tokens (CSS variables on :root). */
 export function readPalette(): string[] {
   const style = typeof window === 'undefined' ? undefined : getComputedStyle(document.documentElement)
-  return PALETTE_VARS.map(
-    (name, i) => style?.getPropertyValue(name).trim() || FALLBACK[i] || PRIMARY_FALLBACK,
+  return CHART_PALETTE_VARS.map(
+    (name, i) => style?.getPropertyValue(name).trim() || CHART_FALLBACK_COLORS[i] || CHART_PRIMARY_FALLBACK,
   )
 }
 

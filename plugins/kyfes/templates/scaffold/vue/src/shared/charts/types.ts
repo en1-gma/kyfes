@@ -1,12 +1,14 @@
+import type { ChartValueFormat } from '@/shared/config/constants'
+
 export type ChartSeries = { name: string; data: number[] }
 
-/** Series types the wrappers render (ECharts `series.type`). */
-export const CHART_KIND = { bar: 'bar', line: 'line' } as const
-export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND]
-
-/** How values are formatted in tooltip and axis. */
-export const CHART_VALUE_FORMAT = { number: 'number', currency: 'currency' } as const
-export type ChartValueFormat = (typeof CHART_VALUE_FORMAT)[keyof typeof CHART_VALUE_FORMAT]
+/** Chart kinds and value formats live in shared/config/constants.ts. */
+export {
+  CHART_KIND,
+  CHART_VALUE_FORMAT,
+  type ChartKind,
+  type ChartValueFormat,
+} from '@/shared/config/constants'
 
 export type ChartProps = {
   /** Accessible name (already translated): describes what the chart shows. */

@@ -7,10 +7,9 @@ import {
   type OrderInput,
   type OrderStats,
 } from '../model/orders.schema'
+import { ORDERS_ENDPOINT, ORDERS_STATS_ENDPOINT } from '../constants'
 
 export const OrderPageSchema = pageSchema(OrderSchema)
-
-export const ORDERS_ENDPOINT = '/orders'
 
 export const ordersApi = {
   list(params: PageParams & OrderFilters, signal?: AbortSignal) {
@@ -31,6 +30,6 @@ export const ordersApi = {
     return deleteRequest(`${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`)
   },
   stats(signal?: AbortSignal): Promise<OrderStats> {
-    return getParsed(`${ORDERS_ENDPOINT}/stats`, OrderStatsSchema, { signal })
+    return getParsed(ORDERS_STATS_ENDPOINT, OrderStatsSchema, { signal })
   },
 }

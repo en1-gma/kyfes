@@ -7,8 +7,9 @@ import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '@/shared/ui'
 import { useDeleteOrder } from '../api/orders.mutations'
 import { useOrdersInfinite } from '../api/orders.queries'
-import { ORDER_SORT, ORDER_STATUSES, type Order } from '../model/orders.schema'
-import { ORDER_SUBJECT, orderSubject } from '../permissions'
+import { ORDER_SORT, ORDER_SUBJECT } from '../constants'
+import { ORDER_STATUSES, type Order } from '../model/orders.schema'
+import { orderSubject } from '../permissions'
 import { useOrdersUiStore } from '../stores/orders-ui.store'
 
 const props = defineProps<{

@@ -1,27 +1,23 @@
 import { z } from 'zod'
+import { DEFAULT_API_BASE_URL, ENV_FLAG, FALLBACK_LOCALE, SUPPORTED_LOCALES } from './constants'
 
-/** Supported UI languages. The first one is the fallback. */
-export const SUPPORTED_LOCALES = ['it', 'en'] as const
-export type Locale = (typeof SUPPORTED_LOCALES)[number]
-
-/** Boolean flags arrive from Vite as strings. */
-const FLAG = { on: 'true', off: 'false' } as const
+export { SUPPORTED_LOCALES, type Locale } from './constants'
 
 const EnvSchema = z.object({
   API_BASE_URL: z
     .string()
-    .default('/api')
+    .default(DEFAULT_API_BASE_URL)
     // Same-origin path only: the CSP (deploy/security-headers.conf) allows `connect-src 'self'` and the
     // session cookie is first-party. Cross-origin APIs go behind the reverse proxy, never in the bundle.
     .refine(
       (v) => v.startsWith('/') && !v.startsWith('//') && !v.includes('\\'),
       'API_BASE_URL must be a same-origin path starting with "/" (e.g. /api)',
     ),
-  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default(SUPPORTED_LOCALES[0]),
+  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default(FALLBACK_LOCALE),
   API_MOCKS: z
-    .enum([FLAG.on, FLAG.off])
-    .default(FLAG.off)
-    .transform((v) => v === FLAG.on),
+    .enum([ENV_FLAG.on, ENV_FLAG.off])
+    .default(ENV_FLAG.off)
+    .transform((v) => v === ENV_FLAG.on),
 })
 
 export type Env = z.infer<typeof EnvSchema>

@@ -11,4 +11,4 @@ export {
   type NamespaceLoaders,
 } from './i18n'
 export { formatDate, formatNumber, formatCurrency, formatMonth } from './format'
-export { SUPPORTED_LOCALES, type Locale } from '@/shared/config/env'
+export { SUPPORTED_LOCALES, type Locale } from '@/shared/config/constants'

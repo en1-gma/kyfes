@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/vue-query'
 import type { NavigationGuard, RouteLocationRaw } from 'vue-router'
 import { ensureSession } from '@/shared/auth'
+import { FORBIDDEN_ROUTE } from '@/shared/config/constants'
 import { buildAbility, type Actions, type SubjectName } from './ability'
 
 export type RoutePermission = { action: Actions; subject: SubjectName }
@@ -12,8 +13,7 @@ declare module 'vue-router' {
   }
 }
 
-/** Name of the route that renders the 403 page while keeping the requested URL. */
-export const FORBIDDEN_ROUTE = 'forbidden'
+export { FORBIDDEN_ROUTE } from '@/shared/config/constants'
 
 /**
  * "Requires permission": reads `meta.permission` (on every matched record) and, if denied,

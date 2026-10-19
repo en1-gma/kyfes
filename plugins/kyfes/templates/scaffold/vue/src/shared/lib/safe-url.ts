@@ -1,4 +1,6 @@
-const ALLOWED_PROTOCOLS = new Set(['https:', 'mailto:', 'tel:'])
+import { SAFE_URL_PROTOCOLS } from '@/shared/config/constants'
+
+const ALLOWED_PROTOCOLS = new Set(SAFE_URL_PROTOCOLS)
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/
 

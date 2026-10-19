@@ -4,8 +4,7 @@ import { useLogout, useSession } from '@/shared/auth'
 import { currentLocale, isLocale, setLocale, SUPPORTED_LOCALES, useT } from '@/shared/i18n'
 import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ErrorBoundary } from '@/shared/ui'
-import { ORDER_SUBJECT } from '@/features/orders'
-import { ROUTES } from './route-names'
+import { ORDER_ROUTE, ORDER_SUBJECT } from '@/features/orders'
 
 const { t } = useT()
 const route = useRoute()
@@ -26,7 +25,7 @@ function onLocaleChange(event: Event) {
     <nav :aria-label="t('common.app.mainNav')">
       <ul>
         <li v-if="ability.can(ACTION.read, ORDER_SUBJECT)">
-          <RouterLink :to="{ name: ROUTES.orders }">{{ t('common.nav.orders') }}</RouterLink>
+          <RouterLink :to="{ name: ORDER_ROUTE.list }">{{ t('common.nav.orders') }}</RouterLink>
         </li>
       </ul>
     </nav>
