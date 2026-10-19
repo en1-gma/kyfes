@@ -1,16 +1,29 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/session_start.py\"", "timeout": 30 }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|apply_patch",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|apply_patch",
         "hooks": [
           { "type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/pre_write.py\"", "timeout": 30, "statusMessage": "kyfes: checking frontend rules" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/bash_guard.py\"", "timeout": 30 }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|apply_patch",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|apply_patch",
         "hooks": [
           { "type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/post_edit.py\"", "timeout": 60 }
         ]

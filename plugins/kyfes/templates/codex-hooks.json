@@ -1,10 +1,23 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/session_start.py\"", "timeout": 30 }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "apply_patch|Write|Edit",
         "hooks": [
           { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/pre_write.py\"", "timeout": 30, "statusMessage": "kyfes: checking frontend rules" }
+        ]
+      },
+      {
+        "matcher": "Bash|shell|exec_command|local_shell",
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/bash_guard.py\"", "timeout": 30 }
         ]
       }
     ],
