@@ -417,6 +417,159 @@ class ConfigOptions(unittest.TestCase):
         self.assertEqual(rule("const u = 'http://evil.com/api'"), ["insecure-url"])
 
 
+class ConstantReuse(unittest.TestCase):
+    """Guardrail misurabile: al massimo il 10% dei valori letterali di dominio può essere duplicato."""
+
+    def project_with(self, files: dict, **cfg) -> Path:
+        proj = project("react")
+        conf = json.loads((proj / ".kyfes/config.json").read_text())
+        conf.update(cfg)
+        (proj / ".kyfes/config.json").write_text(json.dumps(conf))
+        for rel, text in files.items():
+            (proj / rel).parent.mkdir(parents=True, exist_ok=True)
+            (proj / rel).write_text(text)
+        return proj
+
+    def values(self, n: int, prefix: str) -> str:
+        return "\n".join(f"export const {prefix.upper()}_{i} = '{prefix}{i}'" for i in range(n))
+
+    def metric(self, proj: Path):
+        import arch_check
+        return arch_check.run_with_metrics(proj, rules.load_config(proj))
+
+    def test_extraction_skips_non_domain_literals(self):
+        rel = "src/features/orders/components/X.tsx"
+        src = ("'use client'\nimport { a } from '@/shared/ui'\nconst s = t('orders:list.title')\n"
+               "if (typeof v === 'string') x()\n<Button variant=\"primary\" className=\"btn\" type=\"button\" />\n"
+               "const msg = 'Una frase con spazi'\ncan('update', ORDER)\nconst k = ['orders', 'list']\n")
+        self.assertEqual([v for v, _ in rules.literal_values(rel, src)], ["update", "orders", "list"])
+
+    def test_template_literals_do_not_hide_strings(self):
+        src = ("const a = `/orders/${encodeURIComponent(id)}/edit`\nregister('customerName')\n"
+               "const b = `${x ? 'yes' : `n${'o'}`}`\nconst c = `plain`\nconst r = /['`]/g; can('read', S)\n")
+        self.assertEqual([v for v, _ in rules.literal_values("src/features/a/components/X.tsx", src)],
+                         ["customerName", "yes", "plain", "read"])
+
+    def test_bound_template_attributes_are_expressions(self):
+        src = ('<template>\n<Foo :error="error" v-if="isPending" @click="emit(\'cancel\')" '
+               ':kind="\'currency\'" name="status" />\n</template>\n')
+        self.assertEqual(sorted(v for v, _ in rules.literal_values("src/shared/ui/X.vue", src)),
+                         ["cancel", "currency", "status"])
+
+    def test_metric_blocks_above_threshold(self):
+        dup = "\n".join(f"can('action{i}', S)" for i in range(4))
+        files = {"src/features/orders/index.ts": "export {}\n",
+                 "src/features/orders/permissions.ts": self.values(16, "v") + "\n" + dup,
+                 "src/features/orders/api/a.ts": dup}
+        proj = self.project_with(files)
+        try:
+            findings, metrics = self.metric(proj)
+            m = metrics["constant_reuse"]
+            self.assertEqual((m["values"], m["duplicated"]), (20, 4))
+            reuse = [f for f in findings if f.rule == "constant-reuse"]
+            self.assertEqual(len(reuse), 1)
+            self.assertEqual(reuse[0].severity, "block")
+            self.assertIn("20.0%", reuse[0].message)
+            self.assertIn("'action0' ×2", reuse[0].message)
+        finally:
+            shutil.rmtree(proj)
+
+    def test_metric_passes_at_threshold_and_with_references(self):
+        # 2 duplicati su 20 = 10%: consentito (soglia inclusa)
+        files = {"src/features/orders/index.ts": "export {}\n",
+                 "src/features/orders/permissions.ts": self.values(18, "v") + "\ncan('read', S)\ncan('update', S)",
+                 "src/features/orders/api/a.ts": "can('read', S)\ncan('update', S)\n"
+                                                 "import { V_1 } from '../permissions'\ncan(V_1, S)\ncan(V_1, S)"}
+        proj = self.project_with(files)
+        try:
+            findings, metrics = self.metric(proj)
+            self.assertEqual(metrics["constant_reuse"]["ratio"], 0.1)
+            self.assertFalse([f for f in findings if f.rule == "constant-reuse"])
+        finally:
+            shutil.rmtree(proj)
+
+    def test_threshold_is_configurable_and_tests_do_not_count(self):
+        files = {"src/features/orders/index.ts": "export {}\n",
+                 "src/features/orders/permissions.ts": self.values(19, "v") + "\ncan('read', S)\ncan('read', S)",
+                 "src/features/orders/api/a.test.ts": self.values(19, "v")}
+        proj = self.project_with(files, constant_reuse={"max_duplicate_ratio": 0.0})
+        try:
+            findings, metrics = self.metric(proj)
+            self.assertEqual(metrics["constant_reuse"]["duplicated"], 1)
+            self.assertTrue([f for f in findings if f.rule == "constant-reuse"])
+        finally:
+            shutil.rmtree(proj)
+
+    def test_stop_gate_blocks_and_post_edit_points_to_existing_value(self):
+        dup = "\n".join(f"can('action{i}', S)" for i in range(5))
+        files = {"src/features/orders/index.ts": "export {}\n",
+                 "src/features/orders/permissions.ts": self.values(15, "v") + "\n" + dup,
+                 "src/features/orders/api/a.ts": dup}
+        proj = self.project_with(files)
+        try:
+            out = run_hook("stop_gate.py", {"cwd": str(proj), "hook_event_name": "Stop", "session_id": f"r-{proj.name}"})
+            self.assertEqual(out.get("decision"), "block")
+            self.assertIn("[constant-reuse]", out["reason"])
+            post = run_hook("post_edit.py", {"cwd": str(proj), "tool_name": "Write", "tool_input": {
+                "file_path": str(proj / "src/features/orders/api/a.ts"), "content": dup}})
+            ctx = post["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("'action0': src/features/orders/permissions.ts:", ctx)
+        finally:
+            shutil.rmtree(proj)
+
+
+class ConstantReuseAtWriteTime(unittest.TestCase):
+    """Sviluppi futuri: un letterale che esiste già come costante esportata si importa, non si riscrive."""
+
+    def setUp(self):
+        self.proj = project("react")
+        files = {
+            "src/shared/rbac/ability.ts": "export const ACTIONS = { read: 'read', update: 'update' } as const\n",
+            "src/features/orders/permissions.ts": "export const ORDER_SUBJECT = 'Order' as const\n",
+            "src/features/orders/model/orders.schema.ts": "export const ORDER_STATUSES = ['draft', 'shipped'] as const\n",
+            "src/features/orders/index.ts": "export {}\n",
+        }
+        for rel, text in files.items():
+            (self.proj / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.proj / rel).write_text(text)
+        self.rel = "src/features/customers/components/CustomersTable.tsx"
+
+    def tearDown(self):
+        shutil.rmtree(self.proj)
+
+    def test_new_code_must_reference_existing_constants(self):
+        out = write(self.proj, self.rel, "const ok = can('update', record)")
+        self.assertIn("[constant-reuse]", reason(out))
+        self.assertIn("ACTIONS.update (src/shared/rbac/ability.ts:1)", reason(out))
+        self.assertIn("ORDER_STATUSES[1]", reason(write(self.proj, "src/features/orders/components/OrdersTable.tsx",
+                                                        "if (s === 'shipped') x()")))
+        self.assertFalse(denied(write(self.proj, self.rel, "const ok = can(ACTIONS.update, record)")))
+
+    def test_other_features_constants_are_homonyms_not_reuse(self):
+        out = write(self.proj, "src/features/customers/model/customers.schema.ts",
+                    "export const CUSTOMER_STATUS = { draft: 'draft', active: 'active' } as const")
+        self.assertFalse(denied(out), reason(out))
+        # una pagina compone le feature: lì la costante della feature si importa
+        self.assertIn("ORDER_STATUSES[0]", reason(write(self.proj, "src/pages/OrdersPage.tsx", "if (s === 'draft') x()")))
+
+    def test_duplicate_constant_definitions_are_denied(self):
+        out = write(self.proj, "src/features/customers/permissions.ts", "export const EDIT = 'update' as const")
+        self.assertIn("ACTIONS.update", reason(out))
+        self.assertFalse(denied(write(self.proj, "src/features/customers/permissions.ts",
+                                      "export const CUSTOMER_SUBJECT = 'Customer' as const")))
+
+    def test_existing_literals_tests_and_ignored_values_do_not_block(self):
+        legacy = "src/features/orders/components/Legacy.tsx"
+        (self.proj / legacy).parent.mkdir(parents=True, exist_ok=True)
+        (self.proj / legacy).write_text("const a = can('read', x)\nconst b = 1\n")
+        self.assertFalse(denied(edit(self.proj, legacy, "const b = 1", "const b = 2")))
+        self.assertFalse(denied(write(self.proj, "src/features/customers/components/X.test.tsx", "can('update', r)")))
+        conf = json.loads((self.proj / ".kyfes/config.json").read_text())
+        conf["constant_reuse"] = {"ignore_values": ["update"]}
+        (self.proj / ".kyfes/config.json").write_text(json.dumps(conf))
+        self.assertFalse(denied(write(self.proj, self.rel, "const ok = can('update', record)")))
+
+
 class CommentStripping(unittest.TestCase):
     def test_keeps_lines_and_strings(self):
         src = "const a = '/* not a comment */'\n/* block\n eval(1) */ const b = 1\nconst c = 'https://x' // eval(2)\n"
