@@ -1,7 +1,11 @@
 import type { EChartsCoreOption } from 'echarts/core';
 
-export type ChartKind = 'bar' | 'line';
-export type ChartValueFormat = 'number' | 'currency';
+export const CHART_KIND = { bar: 'bar', line: 'line' } as const;
+export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND];
+
+/** Formato dei valori (assi, tooltip, tabella alternativa). */
+export const CHART_VALUE_FORMAT = { number: 'number', currency: 'currency' } as const;
+export type ChartValueFormat = (typeof CHART_VALUE_FORMAT)[keyof typeof CHART_VALUE_FORMAT];
 
 export interface ChartSeries {
   /** Nome già tradotto (legenda/tooltip). */
@@ -95,7 +99,7 @@ export function buildCartesianOptions(
       type: kind,
       name: s.name,
       data: s.values,
-      ...(kind === 'line' ? { smooth: true, showSymbol: true } : { barMaxWidth: 48 }),
+      ...(kind === CHART_KIND.line ? { smooth: true, showSymbol: true } : { barMaxWidth: 48 }),
     })),
   };
 }

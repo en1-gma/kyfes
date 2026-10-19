@@ -11,6 +11,12 @@ const ErrorBodySchema = z.object({
 
 export type FieldErrors = Record<string, string[]>;
 
+/** Codici di errore generati dal client (gli altri arrivano dal backend o sono `HTTP_<status>`). */
+export const API_ERROR_CODE = {
+  network: 'NETWORK_ERROR',
+  invalidResponse: 'INVALID_RESPONSE',
+} as const;
+
 /** Unico tipo di errore che i componenti vedono: mai `HttpErrorResponse`. */
 export class ApiError extends Error {
   override readonly name = 'ApiError';
@@ -42,12 +48,12 @@ export class ApiError extends Error {
         body.fieldErrors ?? null,
       );
     }
-    const code = error.status === 0 ? 'NETWORK_ERROR' : `HTTP_${error.status}`;
+    const code = error.status === 0 ? API_ERROR_CODE.network : `HTTP_${error.status}`;
     return new ApiError(error.status, code, error.statusText || code, headerId);
   }
 
   static invalidResponse(): ApiError {
-    return new ApiError(0, 'INVALID_RESPONSE', 'Invalid response payload');
+    return new ApiError(0, API_ERROR_CODE.invalidResponse, 'Invalid response payload');
   }
 }
 

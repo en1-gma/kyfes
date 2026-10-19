@@ -9,6 +9,9 @@ import {
 } from '@angular/core';
 import { TranslocoPipe } from '@shared/i18n';
 
+/** Attributo HTML del `<dialog>` aperto (fallback senza `showModal`/`close`). */
+const OPEN_ATTRIBUTE = 'open';
+
 /** Dialog modale nativo (focus trap e Esc del browser). Testi già tradotti in input. */
 @Component({
   selector: 'app-confirm-dialog',
@@ -44,10 +47,10 @@ export class ConfirmDialogComponent {
       const el = this.dialog().nativeElement;
       if (this.open() && !el.open) {
         if (typeof el.showModal === 'function') el.showModal();
-        else el.setAttribute('open', '');
+        else el.setAttribute(OPEN_ATTRIBUTE, '');
       } else if (!this.open() && el.open) {
         if (typeof el.close === 'function') el.close();
-        else el.removeAttribute('open');
+        else el.removeAttribute(OPEN_ATTRIBUTE);
       }
     });
   }

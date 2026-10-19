@@ -1,7 +1,8 @@
 import * as z from 'zod';
+import { DEFAULT_ORDER_STATUS, ORDER_STATUS } from './orders.constants';
 
-export const ORDER_STATUSES = ['draft', 'confirmed', 'shipped', 'cancelled'] as const;
-export const OrderStatusSchema = z.enum(ORDER_STATUSES);
+export const OrderStatusSchema = z.enum(ORDER_STATUS);
+export const ORDER_STATUSES = OrderStatusSchema.options;
 
 export const OrderSchema = z.object({
   id: z.uuid(),
@@ -26,14 +27,12 @@ export const OrderInputSchema = z.object({
 });
 
 /** Create: solo i campi scrivibili; senza permesso su `status` il server usa `draft`. */
-export const OrderCreateSchema = OrderInputSchema.extend({ status: OrderStatusSchema.default('draft') });
+export const OrderCreateSchema = OrderInputSchema.extend({
+  status: OrderStatusSchema.default(DEFAULT_ORDER_STATUS),
+});
 
 /** Update parziale (PATCH): ogni campo è facoltativo, si inviano solo quelli scrivibili. */
 export const OrderPatchSchema = OrderInputSchema.partial();
-
-/** Campi del form (e del corpo) soggetti ai permessi per campo CASL. */
-export const ORDER_INPUT_FIELDS = ['customerName', 'total', 'status'] as const;
-export type OrderInputField = (typeof ORDER_INPUT_FIELDS)[number];
 
 export const OrderStatsSchema = z.object({
   months: z.array(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/), total: z.number() })),

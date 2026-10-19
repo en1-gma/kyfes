@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LocaleCurrencyPipe, LocaleDatePipe, TranslocoPipe } from '@shared/i18n';
-import { injectCan } from '@shared/rbac';
+import { Action, injectCan } from '@shared/rbac';
 import {
   ButtonComponent,
   ConfirmDeleteDialogComponent,
@@ -13,6 +13,7 @@ import { injectDeleteOrder } from '../../api/orders.mutations';
 import { injectOrdersList } from '../../api/orders.queries';
 import type { Order } from '../../model/orders.schema';
 import { ORDER_SUBJECT, orderSubject } from '../../permissions';
+import { orderPaths } from '../../routes';
 
 @Component({
   selector: 'app-orders-table',
@@ -35,11 +36,13 @@ export class OrdersTableComponent {
   protected readonly deleteOrder = injectDeleteOrder();
   protected readonly can = injectCan();
   protected readonly orderSubject = orderSubject;
+  protected readonly Action = Action;
+  protected readonly paths = orderPaths;
 
   protected readonly rows = computed(() => this.orders.data()?.pages.flatMap((page) => page.items) ?? []);
   /** La colonna azioni esiste solo se l'utente può modificare o eliminare almeno un ordine. */
   protected readonly showActions = computed(
-    () => this.can('update', ORDER_SUBJECT) || this.can('delete', ORDER_SUBJECT),
+    () => this.can(Action.Update, ORDER_SUBJECT) || this.can(Action.Delete, ORDER_SUBJECT),
   );
   protected readonly pendingDelete = signal<Order | null>(null);
 }

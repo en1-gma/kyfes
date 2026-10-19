@@ -1,6 +1,6 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { injectQuery, queryOptions } from '@tanstack/angular-query-experimental';
-import { ApiClient } from '@shared/api';
+import { AUTH_ENDPOINTS, ApiClient } from '@shared/api';
 import { SessionSchema } from './session.schema';
 
 export const sessionKeys = {
@@ -12,7 +12,7 @@ export const sessionKeys = {
 export function sessionQueryOptions(api: ApiClient) {
   return queryOptions({
     queryKey: sessionKeys.me(),
-    queryFn: ({ signal }) => api.get('/auth/me', SessionSchema, undefined, { signal }),
+    queryFn: ({ signal }) => api.get(AUTH_ENDPOINTS.me, SessionSchema, undefined, { signal }),
     staleTime: 5 * 60_000,
   });
 }

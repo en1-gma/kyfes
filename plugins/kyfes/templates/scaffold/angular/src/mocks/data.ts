@@ -1,45 +1,61 @@
-import type { Order, OrderStatus } from '@features/orders';
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELDS,
+  ORDER_STATUS,
+  ORDER_STATUSES,
+  ORDER_SUBJECT,
+  type Order,
+} from '@features/orders';
 import type { Session } from '@shared/auth';
+import { LOCALE } from '@shared/config/env';
+import { Action } from '@shared/rbac';
 
 type MockSession = Session;
 
 export type MockUserKey = 'manager' | 'operator' | 'viewer';
 export const MOCK_USER_KEYS: readonly MockUserKey[] = ['manager', 'operator', 'viewer'];
 
+/** Campi scrivibili dall'operatore (gli altri restano in sola lettura). */
+const OPERATOR_FIELDS = [ORDER_FIELDS.customerName, ORDER_FIELDS.total];
+
 /** Utenti di prova: le regole CASL arrivano "dal server" come in produzione. */
 export const MOCK_SESSIONS: Record<MockUserKey, MockSession> = {
   manager: {
     user: { id: 'u-manager', name: 'Maria Manager', email: 'maria.manager@example.com' },
-    locale: 'it',
+    locale: LOCALE.it,
     rules: [
-      { action: 'manage', subject: 'Order' },
+      { action: Action.Manage, subject: ORDER_SUBJECT },
       // Condizione sul record: gli ordini spediti non si eliminano.
-      { action: 'delete', subject: 'Order', conditions: { status: 'shipped' }, inverted: true },
+      {
+        action: Action.Delete,
+        subject: ORDER_SUBJECT,
+        conditions: { [ORDER_FIELDS.status]: ORDER_STATUS.shipped },
+        inverted: true,
+      },
     ],
   },
   // Permessi per campo e sul record: crea/modifica solo cliente e totale, e solo gli ordini in bozza.
   operator: {
     user: { id: 'u-operator', name: 'Oscar Operator', email: 'oscar.operator@example.com' },
-    locale: 'it',
+    locale: LOCALE.it,
     rules: [
-      { action: 'read', subject: 'Order' },
-      { action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+      { action: Action.Read, subject: ORDER_SUBJECT },
+      { action: Action.Create, subject: ORDER_SUBJECT, fields: OPERATOR_FIELDS },
       {
-        action: 'update',
-        subject: 'Order',
-        fields: ['customerName', 'total'],
-        conditions: { status: 'draft' },
+        action: Action.Update,
+        subject: ORDER_SUBJECT,
+        fields: OPERATOR_FIELDS,
+        conditions: { [ORDER_FIELDS.status]: ORDER_STATUS.draft },
       },
     ],
   },
   viewer: {
     user: { id: 'u-viewer', name: 'Vittorio Viewer', email: 'vittorio.viewer@example.com' },
-    locale: 'it',
-    rules: [{ action: 'read', subject: 'Order' }],
+    locale: LOCALE.it,
+    rules: [{ action: Action.Read, subject: ORDER_SUBJECT }],
   },
 };
 
-const STATUSES: OrderStatus[] = ['draft', 'confirmed', 'shipped', 'cancelled'];
 const CUSTOMERS = ['Rossi S.r.l.', 'Bianchi S.p.A.', 'Verdi & Figli', 'Neri Logistica', 'Gallo Food'];
 
 function seedOrder(i: number): Order {
@@ -49,7 +65,7 @@ function seedOrder(i: number): Order {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     number: `ORD-${String(i).padStart(4, '0')}`,
     customerName: CUSTOMERS[i % CUSTOMERS.length] ?? 'Cliente',
-    status: STATUSES[i % STATUSES.length] ?? 'draft',
+    status: ORDER_STATUSES[i % ORDER_STATUSES.length] ?? DEFAULT_ORDER_STATUS,
     total: Math.round((100 + i * 37.5) * 100) / 100,
     createdAt: new Date(Date.UTC(2026, month - 1, day, 9, 0, 0)).toISOString(),
   };

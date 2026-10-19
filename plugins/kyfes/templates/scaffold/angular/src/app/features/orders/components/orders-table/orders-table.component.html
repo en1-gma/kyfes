@@ -31,7 +31,7 @@
             <tr>
               <td>
                 <a
-                  [routerLink]="['/orders', order.id]"
+                  [routerLink]="paths.detail(order.id)"
                   [attr.aria-label]="'orders.actions.view' | transloco: { number: order.number }"
                   >{{ order.number }}</a
                 >
@@ -46,16 +46,16 @@
               <td>{{ order.createdAt | localeDate }}</td>
               @if (showActions()) {
                 <td class="actions">
-                  @if (can('update', orderSubject(order))) {
+                  @if (can(Action.Update, orderSubject(order))) {
                     <a
                       appButton
                       variant="ghost"
-                      [routerLink]="['/orders', order.id, 'edit']"
+                      [routerLink]="paths.edit(order.id)"
                       [attr.aria-label]="'orders.actions.editAria' | transloco: { number: order.number }"
                       >{{ 'orders.actions.edit' | transloco }}</a
                     >
                   }
-                  @if (can('delete', orderSubject(order))) {
+                  @if (can(Action.Delete, orderSubject(order))) {
                     <button
                       appButton
                       type="button"

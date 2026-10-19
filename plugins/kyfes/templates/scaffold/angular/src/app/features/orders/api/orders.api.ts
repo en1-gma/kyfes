@@ -10,6 +10,10 @@ import {
 
 const OrderPageSchema = pageSchema(OrderSchema);
 
+/** Risorsa REST della feature (relativa a `API_BASE_URL`). */
+export const ORDERS_ENDPOINT = '/orders';
+const orderEndpoint = (id: string) => `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`;
+
 export interface OrderListParams extends PageParams {
   status?: OrderStatus;
 }
@@ -20,28 +24,28 @@ export class OrdersApi {
   private readonly api = inject(ApiClient);
 
   list(params: OrderListParams, options?: RequestOptions) {
-    return this.api.get('/orders', OrderPageSchema, { ...params }, options);
+    return this.api.get(ORDERS_ENDPOINT, OrderPageSchema, { ...params }, options);
   }
 
   get(id: string, options?: RequestOptions) {
-    return this.api.get(`/orders/${encodeURIComponent(id)}`, OrderSchema, undefined, options);
+    return this.api.get(orderEndpoint(id), OrderSchema, undefined, options);
   }
 
   /** Solo i campi che l'utente può scrivere (`status` omesso → `draft`); il server valida il resto. */
   create(input: OrderPatch): Promise<Order> {
-    return this.api.post('/orders', input, OrderSchema);
+    return this.api.post(ORDERS_ENDPOINT, input, OrderSchema);
   }
 
   /** Aggiornamento parziale (PATCH): si inviano solo i campi scrivibili dall'utente. */
   update(id: string, input: OrderPatch): Promise<Order> {
-    return this.api.patch(`/orders/${encodeURIComponent(id)}`, input, OrderSchema);
+    return this.api.patch(orderEndpoint(id), input, OrderSchema);
   }
 
   remove(id: string): Promise<void> {
-    return this.api.delete(`/orders/${encodeURIComponent(id)}`);
+    return this.api.delete(orderEndpoint(id));
   }
 
   stats(options?: RequestOptions) {
-    return this.api.get('/orders/stats', OrderStatsSchema, undefined, options);
+    return this.api.get(`${ORDERS_ENDPOINT}/stats`, OrderStatsSchema, undefined, options);
   }
 }

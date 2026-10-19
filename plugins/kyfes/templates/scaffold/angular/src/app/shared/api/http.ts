@@ -25,6 +25,17 @@ export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
 export const DEFAULT_TIMEOUT_MS = 15_000;
 
+/** Endpoint di sessione del BFF (relativi a `API_BASE_URL`). */
+export const AUTH_ENDPOINTS = {
+  me: '/auth/me',
+  login: '/auth/login',
+  logout: '/auth/logout',
+  refresh: '/auth/refresh',
+} as const;
+
+/** Opzioni per le risposte senza corpo JSON significativo (204, logout, refresh). */
+export const TEXT_RESPONSE = { responseType: 'text' } as const;
+
 export interface ApiOptions {
   /** Base delle chiamate (default da env: "/api", stessa origine). */
   baseUrl: string;
@@ -86,9 +97,9 @@ export class SessionRefresher {
 
   refresh(): Observable<void> {
     this.inFlight ??= this.http
-      .post(`${this.options.baseUrl}/auth/refresh`, null, {
+      .post(`${this.options.baseUrl}${AUTH_ENDPOINTS.refresh}`, null, {
+        ...TEXT_RESPONSE,
         context: new HttpContext().set(SKIP_AUTH_HANDLING, true),
-        responseType: 'text',
       })
       .pipe(
         map(() => {

@@ -6,19 +6,22 @@ import {
   queryOptions,
 } from '@tanstack/angular-query-experimental';
 import { DEFAULT_PAGE_SIZE } from '@shared/api';
+import { DEFAULT_ORDER_SORT, ORDERS_FEATURE } from '../model/orders.constants';
 import type { OrderListFilters, OrderStats } from '../model/orders.schema';
 import { OrdersApi } from './orders.api';
 
-export const DEFAULT_ORDER_FILTERS: OrderListFilters = { limit: DEFAULT_PAGE_SIZE, sort: '-createdAt' };
+export const DEFAULT_ORDER_FILTERS: OrderListFilters = { limit: DEFAULT_PAGE_SIZE, sort: DEFAULT_ORDER_SORT };
 
 /** Factory delle chiavi: mai chiavi scritte a mano nei componenti. */
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_FEATURE] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (filters: OrderListFilters) => [...orderKeys.lists(), filters] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  /** Mutation di eliminazione (per contare quelle in volo con `isMutating`). */
+  removals: () => [...orderKeys.all, 'remove'] as const,
 };
 
 export function ordersInfiniteQueryOptions(

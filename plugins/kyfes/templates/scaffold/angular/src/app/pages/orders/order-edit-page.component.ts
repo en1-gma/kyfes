@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { type Order, OrderFormComponent } from '@features/orders';
+import { type Order, OrderFormComponent, orderPaths } from '@features/orders';
 import { TranslocoPipe } from '@shared/i18n';
 
 @Component({
@@ -11,9 +11,10 @@ import { TranslocoPipe } from '@shared/i18n';
 })
 export class OrderEditPageComponent {
   private readonly router = inject(Router);
+  protected readonly paths = orderPaths;
   readonly id = input.required<string>();
 
   protected onSaved(order: Order): void {
-    void this.router.navigate(['/orders', order.id]);
+    void this.router.navigate(orderPaths.detail(order.id));
   }
 }

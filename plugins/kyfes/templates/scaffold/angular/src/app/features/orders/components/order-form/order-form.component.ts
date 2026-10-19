@@ -11,28 +11,32 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { isApiError } from '@shared/api';
 import { TranslocoPipe } from '@shared/i18n';
-import { zodValidator } from '@shared/lib';
-import { injectCan } from '@shared/rbac';
+import { GENERIC_FIELD_ERROR, zodValidator } from '@shared/lib';
+import { Action, injectCan } from '@shared/rbac';
 import { ButtonComponent, ErrorStateComponent, ForbiddenStateComponent, SpinnerComponent } from '@shared/ui';
 import { injectCreateOrder, injectUpdateOrder } from '../../api/orders.mutations';
 import { injectOrder } from '../../api/orders.queries';
+import { DEFAULT_ORDER_STATUS } from '../../model/orders.constants';
 import {
-  ORDER_INPUT_FIELDS,
   ORDER_STATUSES,
   type Order,
   type OrderInput,
-  type OrderInputField,
   OrderInputSchema,
   type OrderPatch,
   type OrderStatus,
 } from '../../model/orders.schema';
-import { ORDER_SUBJECT, orderSubject } from '../../permissions';
+import {
+  ORDER_FIELDS,
+  ORDER_INPUT_FIELDS,
+  ORDER_SUBJECT,
+  type OrderInputField,
+  orderSubject,
+} from '../../permissions';
 
 type WritableFields = Record<OrderInputField, boolean>;
 
 /** I messaggi di campo del backend sono chiavi i18n della feature; gli altri diventano generici. */
 const SERVER_FIELD_ERROR_PREFIX = 'orders.form.errors.';
-const GENERIC_FIELD_ERROR = 'common.validation.invalid';
 
 function isOrderInputField(field: string): field is OrderInputField {
   return (ORDER_INPUT_FIELDS as readonly string[]).includes(field);
@@ -74,25 +78,32 @@ export class OrderFormComponent {
   protected readonly createOrder = injectCreateOrder();
   protected readonly updateOrder = injectUpdateOrder();
   protected readonly statuses = ORDER_STATUSES;
+  protected readonly fields = ORDER_FIELDS;
 
   protected readonly form = this.fb.group({
     customerName: ['', zodValidator(OrderInputSchema.shape.customerName)],
     total: [0 as number | null, zodValidator(OrderInputSchema.shape.total)],
-    status: ['draft' as OrderStatus, zodValidator(OrderInputSchema.shape.status)],
+    status: [DEFAULT_ORDER_STATUS as OrderStatus, zodValidator(OrderInputSchema.shape.status)],
   });
 
   protected readonly isEdit = computed(() => !!this.orderId());
   /** Modifica: `update` sul record caricato (condizioni CASL), non solo sul tipo come la rotta. */
   protected readonly canUpdateRecord = computed(() => {
     const order = this.order.data();
-    return order ? this.can('update', orderSubject(order)) : true;
+    return order ? this.can(Action.Update, orderSubject(order)) : true;
   });
   /** Permessi per campo: in creazione sul tipo, in modifica sul record. */
   protected readonly writable = computed<WritableFields>(() => {
     const order = this.order.data();
     const allowed = (field: OrderInputField) =>
-      order ? this.can('update', orderSubject(order), field) : this.can('create', ORDER_SUBJECT, field);
-    return { customerName: allowed('customerName'), total: allowed('total'), status: allowed('status') };
+      order
+        ? this.can(Action.Update, orderSubject(order), field)
+        : this.can(Action.Create, ORDER_SUBJECT, field);
+    return {
+      customerName: allowed(ORDER_FIELDS.customerName),
+      total: allowed(ORDER_FIELDS.total),
+      status: allowed(ORDER_FIELDS.status),
+    };
   });
   protected readonly saving = computed(() => this.createOrder.isPending() || this.updateOrder.isPending());
   /** Errore di salvataggio da mostrare in alto: assente se tutti i fieldErrors sono finiti sui campi. */

@@ -1,4 +1,4 @@
-export { ButtonComponent, type ButtonVariant } from './button.component';
+export { BUTTON_VARIANT, ButtonComponent, type ButtonVariant } from './button.component';
 export { ConfirmDeleteDialogComponent, type ConfirmDeleteLabels } from './confirm-delete-dialog.component';
 export { ConfirmDialogComponent } from './confirm-dialog.component';
 export { EmptyStateComponent } from './empty-state.component';

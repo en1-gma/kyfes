@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { ApiError } from './api-error';
+import { API_ERROR_CODE, ApiError } from './api-error';
 
 const MAX_RETRIES = 2;
 
@@ -8,7 +8,7 @@ const MAX_RETRIES = 2;
  * che non rispettano lo schema (INVALID_RESPONSE), sugli errori Zod né su altri errori non HTTP.
  */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (!(error instanceof ApiError) || error.code === 'INVALID_RESPONSE') return false;
+  if (!(error instanceof ApiError) || error.code === API_ERROR_CODE.invalidResponse) return false;
   const transient = error.status === 0 || error.status >= 500;
   return transient && failureCount < MAX_RETRIES;
 }

@@ -1,5 +1,6 @@
 export { TranslocoDirective, TranslocoPipe, translateSignal } from '@jsverse/transloco';
 export {
+  DEFAULT_CURRENCY,
   formatCurrency,
   formatDate,
   formatNumber,

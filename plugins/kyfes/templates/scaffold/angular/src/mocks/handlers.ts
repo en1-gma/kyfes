@@ -1,7 +1,15 @@
 import { HttpResponse, http } from 'msw';
 import * as z from 'zod';
-import { type Order, OrderCreateSchema, OrderPatchSchema, orderSubject } from '@features/orders';
-import { type AppSubject, buildAbility } from '@shared/rbac';
+import {
+  ORDERS_ENDPOINT,
+  ORDER_SUBJECT,
+  type Order,
+  OrderCreateSchema,
+  OrderPatchSchema,
+  orderSubject,
+} from '@features/orders';
+import { AUTH_ENDPOINTS } from '@shared/api';
+import { Action, type Actions, type AppSubject, buildAbility } from '@shared/rbac';
 import { MOCK_SESSIONS, type MockUserKey, seedOrders } from './data';
 
 const API = '/api';
@@ -31,7 +39,7 @@ export function errorResponse(status: number, code: string, message: string, ext
 }
 
 /** Il mock applica le stesse regole CASL della sessione, campo per campo, come farebbe il backend. */
-function can(action: 'create' | 'update' | 'delete', subject: AppSubject, body: object = {}): boolean {
+function can(action: Actions, subject: AppSubject, body: object = {}): boolean {
   const ability = buildAbility(MOCK_SESSIONS[currentUser].rules);
   const fields = Object.keys(body);
   if (fields.length === 0) return ability.can(action, subject);
@@ -50,11 +58,11 @@ async function readBody(request: Request): Promise<object> {
 }
 
 export const handlers = [
-  http.get(`${API}/auth/me`, () => HttpResponse.json(MOCK_SESSIONS[currentUser])),
-  http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
-  http.post(`${API}/auth/refresh`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${API}${AUTH_ENDPOINTS.me}`, () => HttpResponse.json(MOCK_SESSIONS[currentUser])),
+  http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () => new HttpResponse(null, { status: 204 })),
 
-  http.get(`${API}/orders/stats`, () => {
+  http.get(`${API}${ORDERS_ENDPOINT}/stats`, () => {
     const byMonth = new Map<string, number>();
     for (const order of orders) {
       const month = order.createdAt.slice(0, 7);
@@ -66,7 +74,7 @@ export const handlers = [
     return HttpResponse.json({ months });
   }),
 
-  http.get(`${API}/orders`, ({ request }) => {
+  http.get(`${API}${ORDERS_ENDPOINT}`, ({ request }) => {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get('limit') ?? 20) || 20, 100);
     const offset = Number(url.searchParams.get('cursor') ?? 0) || 0;
@@ -77,14 +85,14 @@ export const handlers = [
     return HttpResponse.json({ items, nextCursor: next < filtered.length ? String(next) : null, limit });
   }),
 
-  http.get(`${API}/orders/:id`, ({ params }) => {
+  http.get(`${API}${ORDERS_ENDPOINT}/:id`, ({ params }) => {
     const order = orders.find((o) => o.id === params['id']);
     return order ? HttpResponse.json(order) : errorResponse(404, 'NOT_FOUND', 'Order not found');
   }),
 
-  http.post(`${API}/orders`, async ({ request }) => {
+  http.post(`${API}${ORDERS_ENDPOINT}`, async ({ request }) => {
     const body = await readBody(request);
-    if (!can('create', 'Order', body)) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
+    if (!can(Action.Create, ORDER_SUBJECT, body)) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
     const parsed = OrderCreateSchema.safeParse(body);
     if (!parsed.success) return validationError(parsed.error);
     const order: Order = {
@@ -97,11 +105,12 @@ export const handlers = [
     return HttpResponse.json(order, { status: 201 });
   }),
 
-  http.patch(`${API}/orders/:id`, async ({ params, request }) => {
+  http.patch(`${API}${ORDERS_ENDPOINT}/:id`, async ({ params, request }) => {
     const current = orders.find((o) => o.id === params['id']);
     if (!current) return errorResponse(404, 'NOT_FOUND', 'Order not found');
     const body = await readBody(request);
-    if (!can('update', orderSubject(current), body)) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
+    if (!can(Action.Update, orderSubject(current), body))
+      return errorResponse(403, 'FORBIDDEN', 'Not allowed');
     const parsed = OrderPatchSchema.safeParse(body);
     if (!parsed.success) return validationError(parsed.error);
     const updated: Order = { ...current, ...parsed.data };
@@ -109,11 +118,11 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
-  http.delete(`${API}/orders/:id`, ({ params }) => {
+  http.delete(`${API}${ORDERS_ENDPOINT}/:id`, ({ params }) => {
     const order = orders.find((o) => o.id === params['id']);
     if (!order) return errorResponse(404, 'NOT_FOUND', 'Order not found');
     // Regola invertita del manager: gli ordini spediti non si eliminano.
-    if (!can('delete', orderSubject(order))) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
+    if (!can(Action.Delete, orderSubject(order))) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
     orders = orders.filter((o) => o.id !== order.id);
     return new HttpResponse(null, { status: 204 });
   }),
@@ -121,7 +130,9 @@ export const handlers = [
 
 /** Override pronti per i test degli stati di errore (`server.use(...)`). */
 export const errorHandlers = {
-  ordersServerError: http.get(`${API}/orders`, () => errorResponse(500, 'INTERNAL', 'Boom')),
-  ordersForbidden: http.get(`${API}/orders`, () => errorResponse(403, 'FORBIDDEN', 'Not allowed')),
-  unauthenticated: http.get(`${API}/auth/me`, () => errorResponse(401, 'UNAUTHENTICATED', 'Login required')),
+  ordersServerError: http.get(`${API}${ORDERS_ENDPOINT}`, () => errorResponse(500, 'INTERNAL', 'Boom')),
+  ordersForbidden: http.get(`${API}${ORDERS_ENDPOINT}`, () => errorResponse(403, 'FORBIDDEN', 'Not allowed')),
+  unauthenticated: http.get(`${API}${AUTH_ENDPOINTS.me}`, () =>
+    errorResponse(401, 'UNAUTHENTICATED', 'Login required'),
+  ),
 };

@@ -23,13 +23,13 @@
         type="text"
         formControlName="customerName"
         autocomplete="organization"
-        [attr.aria-invalid]="errorKey('customerName') !== null"
-        [attr.aria-describedby]="errorKey('customerName') ? 'order-customer-error' : null"
+        [attr.aria-invalid]="errorKey(fields.customerName) !== null"
+        [attr.aria-describedby]="errorKey(fields.customerName) ? 'order-customer-error' : null"
       />
       @if (!writable().customerName) {
         <p class="field__hint">{{ 'orders.form.fieldReadonly' | transloco }}</p>
       }
-      @if (errorKey('customerName'); as key) {
+      @if (errorKey(fields.customerName); as key) {
         <p id="order-customer-error" class="field__error">{{ key | transloco }}</p>
       }
     </div>
@@ -43,13 +43,13 @@
         step="0.01"
         inputmode="decimal"
         formControlName="total"
-        [attr.aria-invalid]="errorKey('total') !== null"
-        [attr.aria-describedby]="errorKey('total') ? 'order-total-error' : null"
+        [attr.aria-invalid]="errorKey(fields.total) !== null"
+        [attr.aria-describedby]="errorKey(fields.total) ? 'order-total-error' : null"
       />
       @if (!writable().total) {
         <p class="field__hint">{{ 'orders.form.fieldReadonly' | transloco }}</p>
       }
-      @if (errorKey('total'); as key) {
+      @if (errorKey(fields.total); as key) {
         <p id="order-total-error" class="field__error">{{ key | transloco }}</p>
       }
     </div>

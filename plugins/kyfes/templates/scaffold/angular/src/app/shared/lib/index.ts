@@ -1,4 +1,4 @@
 export { sanitizeHtml } from './sanitize';
 export { safeRedirect } from './safe-redirect';
 export { safeUrl } from './safe-url';
-export { zodValidator } from './zod-validator';
+export { GENERIC_FIELD_ERROR, zodValidator } from './zod-validator';

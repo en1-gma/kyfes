@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { isApiError } from '@shared/api';
+import { API_ERROR_CODE, isApiError } from '@shared/api';
 import { TranslocoPipe } from '@shared/i18n';
 
 /** Messaggio generico (mai il dettaglio tecnico) + correlationId per il supporto. */
@@ -28,10 +28,11 @@ export class ErrorStateComponent {
 
   protected readonly messageKey = computed(() => {
     const error = this.error();
-    if (!isApiError(error)) return 'common.errors.generic';
-    if (error.code === 'NETWORK_ERROR') return 'common.errors.network';
-    if (error.status === 403) return 'common.errors.forbidden';
-    if (error.status === 404) return 'common.errors.notFound';
+    if (isApiError(error)) {
+      if (error.code === API_ERROR_CODE.network) return 'common.errors.network';
+      if (error.status === 403) return 'common.errors.forbidden';
+      if (error.status === 404) return 'common.errors.notFound';
+    }
     return 'common.errors.generic';
   });
 

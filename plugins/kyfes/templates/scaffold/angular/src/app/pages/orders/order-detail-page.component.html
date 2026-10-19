@@ -1,3 +1,3 @@
-<a class="back-link" routerLink="/orders">{{ 'common.actions.back' | transloco }}</a>
+<a class="back-link" [routerLink]="paths.list">{{ 'common.actions.back' | transloco }}</a>
 <h1>{{ 'orders.page.detailTitle' | transloco }}</h1>
 <app-order-detail [orderId]="id()" />

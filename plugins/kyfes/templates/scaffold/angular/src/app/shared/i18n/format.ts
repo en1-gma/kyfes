@@ -3,6 +3,9 @@ import { I18nService } from './i18n';
 
 export type DateInput = string | number | Date;
 
+/** Valuta di default degli importi (ISO 4217). */
+export const DEFAULT_CURRENCY = 'EUR';
+
 /** Formattazioni solo con Intl e la lingua corrente: mai a mano. */
 export function formatDate(
   value: DateInput,
@@ -16,7 +19,7 @@ export function formatNumber(value: number, locale: string, options: Intl.Number
   return new Intl.NumberFormat(locale, options).format(value);
 }
 
-export function formatCurrency(value: number, locale: string, currency = 'EUR'): string {
+export function formatCurrency(value: number, locale: string, currency = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
 }
 
@@ -40,7 +43,7 @@ export class LocaleNumberPipe implements PipeTransform {
 @Pipe({ name: 'localeCurrency', pure: false })
 export class LocaleCurrencyPipe implements PipeTransform {
   private readonly i18n = inject(I18nService);
-  transform(value: number, currency = 'EUR'): string {
+  transform(value: number, currency = DEFAULT_CURRENCY): string {
     return formatCurrency(value, this.i18n.lang(), currency);
   }
 }

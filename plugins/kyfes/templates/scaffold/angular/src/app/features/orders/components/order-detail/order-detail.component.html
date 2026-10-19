@@ -14,8 +14,8 @@
           <dt>{{ 'orders.columns.createdAt' | transloco }}</dt>
           <dd>{{ o.createdAt | localeDate: { dateStyle: 'long', timeStyle: 'short' } }}</dd>
         </dl>
-        @if (can('update', orderSubject(o))) {
-          <a appButton variant="primary" [routerLink]="['/orders', o.id, 'edit']">{{
+        @if (can(Action.Update, orderSubject(o))) {
+          <a appButton variant="primary" [routerLink]="paths.edit(o.id)">{{
             'orders.actions.edit' | transloco
           }}</a>
         }

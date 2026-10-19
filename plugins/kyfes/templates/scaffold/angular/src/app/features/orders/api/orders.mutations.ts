@@ -8,7 +8,7 @@ import { orderKeys } from './orders.queries';
 type OrderPages = InfiniteData<Page<Order>, string | undefined>;
 
 /** Chiave delle delete: serve a contare quelle in volo (`isMutating`). */
-export const DELETE_ORDER_MUTATION_KEY = [...orderKeys.all, 'delete'] as const;
+export const DELETE_ORDER_MUTATION_KEY = orderKeys.removals();
 
 function invalidateListsAndStats(queryClient: QueryClient) {
   return Promise.all([

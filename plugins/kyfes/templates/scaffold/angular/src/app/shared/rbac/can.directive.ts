@@ -4,7 +4,7 @@ import type { Actions, AppSubject } from './subjects';
 
 /**
  * Mostra il contenuto solo se l'utente ha il permesso.
- * `<button *appCan="'create'; on: 'Order'">…` · `*appCan="'update'; on: orderSubject(o); field: 'status'"`
+ * `<button *appCan="Action.Create; on: ORDER_SUBJECT">…` · `*appCan="Action.Update; on: orderSubject(o); field: ORDER_FIELDS.status"`
  */
 @Directive({ selector: '[appCan]' })
 export class CanDirective {

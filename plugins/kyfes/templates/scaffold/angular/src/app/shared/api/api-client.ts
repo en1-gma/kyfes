@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { type Observable, firstValueFrom } from 'rxjs';
 import type * as z from 'zod';
 import { ApiError } from './api-error';
-import { API_OPTIONS } from './http';
+import { API_OPTIONS, TEXT_RESPONSE } from './http';
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
@@ -31,6 +31,8 @@ export interface RequestOptions {
  * (la fetch viene interrotta), quindi su `abort` ci si disiscrive e si rigetta con `signal.reason`
  * così com'è, mai con un ApiError `NETWORK_ERROR`. TanStack Query la riconosce come CancelledError.
  */
+const ABORT_EVENT = 'abort';
+
 function toPromise<T>(source: Observable<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return firstValueFrom(source);
   return new Promise<T>((resolve, reject) => {
@@ -42,7 +44,7 @@ function toPromise<T>(source: Observable<T>, signal?: AbortSignal): Promise<T> {
       subscription.unsubscribe();
       reject(signal.reason);
     };
-    const done = () => signal.removeEventListener('abort', onAbort);
+    const done = () => signal.removeEventListener(ABORT_EVENT, onAbort);
     const subscription = source.subscribe({
       next: (value) => {
         done();
@@ -53,7 +55,7 @@ function toPromise<T>(source: Observable<T>, signal?: AbortSignal): Promise<T> {
         reject(error);
       },
     });
-    if (!subscription.closed) signal.addEventListener('abort', onAbort, { once: true });
+    if (!subscription.closed) signal.addEventListener(ABORT_EVENT, onAbort, { once: true });
   });
 }
 
@@ -97,10 +99,10 @@ export class ApiClient {
 
   /** POST senza corpo di risposta significativo (es. logout). */
   async send(path: string, body: unknown = null): Promise<void> {
-    await firstValueFrom(this.http.post(this.url(path), body, { responseType: 'text' }));
+    await firstValueFrom(this.http.post(this.url(path), body, TEXT_RESPONSE));
   }
 
   async delete(path: string): Promise<void> {
-    await firstValueFrom(this.http.delete(this.url(path), { responseType: 'text' }));
+    await firstValueFrom(this.http.delete(this.url(path), TEXT_RESPONSE));
   }
 }

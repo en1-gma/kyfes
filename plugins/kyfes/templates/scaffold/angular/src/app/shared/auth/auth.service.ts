@@ -1,6 +1,6 @@
 import { DOCUMENT, Injectable, inject } from '@angular/core';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { API_OPTIONS, ApiClient } from '@shared/api';
+import { API_OPTIONS, AUTH_ENDPOINTS, ApiClient } from '@shared/api';
 import { safeRedirect } from '@shared/lib';
 import type { Session } from './session.schema';
 import { sessionQueryOptions } from './session';
@@ -34,12 +34,12 @@ export class AuthService {
     if (this.redirecting) return;
     this.redirecting = true;
     const target = encodeURIComponent(safeRedirect(returnTo));
-    this.location.assign(`${this.baseUrl}/auth/login?returnTo=${target}`);
+    this.location.assign(`${this.baseUrl}${AUTH_ENDPOINTS.login}?returnTo=${target}`);
   }
 
   async logout(): Promise<void> {
     try {
-      await this.api.send('/auth/logout');
+      await this.api.send(AUTH_ENDPOINTS.logout);
     } finally {
       this.queryClient.clear();
       this.location.assign('/');

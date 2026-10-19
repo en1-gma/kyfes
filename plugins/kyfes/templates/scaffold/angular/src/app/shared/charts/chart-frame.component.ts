@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input } from '@angular/core';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
-import { I18nService, TranslocoPipe, formatCurrency, formatNumber } from '@shared/i18n';
+import { DEFAULT_CURRENCY, I18nService, TranslocoPipe, formatCurrency, formatNumber } from '@shared/i18n';
 import {
+  CHART_VALUE_FORMAT,
   type ChartKind,
   type ChartSeries,
   type ChartValueFormat,
@@ -64,14 +65,14 @@ export class ChartFrameComponent {
   readonly title = input.required<string>();
   readonly categories = input.required<string[]>();
   readonly series = input.required<ChartSeries[]>();
-  readonly valueFormat = input<ChartValueFormat>('number');
-  readonly currency = input('EUR');
+  readonly valueFormat = input<ChartValueFormat>(CHART_VALUE_FORMAT.number);
+  readonly currency = input(DEFAULT_CURRENCY);
 
   private readonly i18n = inject(I18nService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly format = (value: number): string =>
-    this.valueFormat() === 'currency'
+    this.valueFormat() === CHART_VALUE_FORMAT.currency
       ? formatCurrency(value, this.i18n.lang(), this.currency())
       : formatNumber(value, this.i18n.lang());
 

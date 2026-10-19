@@ -3,8 +3,8 @@
   <a class="topbar__brand" routerLink="/">{{ 'common.app.name' | transloco }}</a>
   <nav class="topbar__nav" [attr.aria-label]="'common.nav.main' | transloco">
     <ul>
-      <li *appCan="'read'; on: 'Order'">
-        <a routerLink="/orders" routerLinkActive="is-active" ariaCurrentWhenActive="page">{{
+      <li *appCan="Action.Read; on: orderSubject">
+        <a [routerLink]="orderPaths.list" routerLinkActive="is-active" ariaCurrentWhenActive="page">{{
           'common.nav.orders' | transloco
         }}</a>
       </li>
