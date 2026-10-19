@@ -16,7 +16,8 @@
     "edit": "Modifica",
     "retry": "Riprova",
     "logout": "Esci",
-    "back": "Indietro"
+    "back": "Indietro",
+    "loadMore": "Carica altri"
   },
   "language": {
     "label": "Lingua",
@@ -28,7 +29,11 @@
   },
   "states": {
     "loading": "Caricamento in corso…",
-    "empty": "Nessun elemento da mostrare"
+    "empty": "Nessun elemento da mostrare",
+    "forbidden": {
+      "title": "Accesso negato",
+      "message": "Non hai i permessi per accedere a questo elemento."
+    }
   },
   "errors": {
     "generic": "Si è verificato un errore. Riprova più tardi.",

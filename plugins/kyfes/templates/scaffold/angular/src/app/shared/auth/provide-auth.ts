@@ -22,9 +22,17 @@ export function provideAuth(): EnvironmentProviders {
       const auth = inject(AuthService);
       const router = inject(Router);
       events.onUnauthorized(() => {
-        queryClient.removeQueries({ queryKey: sessionKeys.all });
-        // Alla prima navigazione decide authGuard (conosce l'URL richiesto).
-        if (router.navigated) auth.login(router.url);
+        // Non si cancella una lettura di /auth/me in corso (es. quella di authGuard): fallirà con il 401.
+        if (queryClient.isFetching({ queryKey: sessionKeys.all }) === 0) {
+          queryClient.removeQueries({ queryKey: sessionKeys.all });
+        }
+        // returnTo = destinazione della navigazione in corso (es. authGuard alla prima navigazione),
+        // altrimenti la rotta corrente. AuthService.login fa un solo location.assign.
+        const navigation = router.currentNavigation();
+        const returnTo = navigation
+          ? router.serializeUrl(navigation.finalUrl ?? navigation.extractedUrl)
+          : router.url;
+        auth.login(returnTo);
       });
       events.onForbidden(() => {
         void queryClient.invalidateQueries({ queryKey: sessionKeys.all });

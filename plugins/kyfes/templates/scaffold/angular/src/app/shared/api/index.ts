@@ -1,4 +1,4 @@
-export { ApiClient, type QueryParams } from './api-client';
+export { ApiClient, type QueryParams, type RequestOptions } from './api-client';
 export { ApiError, isApiError, type FieldErrors } from './api-error';
 export { ApiEvents } from './api-events';
 export {

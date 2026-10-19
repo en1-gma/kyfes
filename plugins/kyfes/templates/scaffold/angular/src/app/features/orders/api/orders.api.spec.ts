@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { delay, http } from 'msw';
 import { QueryClient } from '@tanstack/angular-query-experimental';
+import { server } from '../../../../mocks/node';
 import { createTestQueryClient, provideTestApp } from '../../../../testing/providers';
 import { injectCreateOrder, injectDeleteOrder } from './orders.mutations';
 import { OrdersApi } from './orders.api';
@@ -63,5 +65,51 @@ describe('orders queries e mutations (MSW)', () => {
     type Pages = typeof data;
     const after = queryClient.getQueryData<Pages>(listKey);
     expect(after?.pages[0]?.items.some((o) => o.id === shipped?.id)).toBe(true);
+  });
+
+  it('delete concorrenti: se la prima fallisce la seconda riga NON riappare', async () => {
+    const { queryClient, api } = setup();
+    const listKey = orderKeys.list({ limit: 20 });
+    const data = await queryClient.fetchInfiniteQuery(ordersInfiniteQueryOptions(api, { limit: 20 }));
+    const items = data.pages[0]?.items ?? [];
+    const shipped = items.find((o) => o.status === 'shipped');
+    const draft = items.find((o) => o.status === 'draft');
+    expect(shipped && draft).toBeTruthy();
+    // La seconda delete resta in volo finché la prima (403) non è fallita.
+    server.use(
+      http.delete(`/api/orders/${draft?.id ?? ''}`, async () => {
+        await delay(50);
+      }),
+    );
+
+    const first = TestBed.runInInjectionContext(() => injectDeleteOrder());
+    const second = TestBed.runInInjectionContext(() => injectDeleteOrder());
+    const failing = first.mutateAsync(shipped?.id ?? '');
+    const succeeding = second.mutateAsync(draft?.id ?? '');
+    await expect(failing).rejects.toMatchObject({ status: 403 });
+
+    type Pages = typeof data;
+    const ids = () =>
+      queryClient.getQueryData<Pages>(listKey)?.pages.flatMap((p) => p.items.map((o) => o.id));
+    expect(ids()).not.toContain(draft?.id);
+    await succeeding;
+    expect(ids()).not.toContain(draft?.id);
+  });
+
+  it('delete: la cache del dettaglio resta se il server rifiuta, si rimuove se conferma', async () => {
+    const { queryClient, api } = setup();
+    const data = await queryClient.fetchInfiniteQuery(ordersInfiniteQueryOptions(api, { limit: 20 }));
+    const items = data.pages[0]?.items ?? [];
+    const shipped = items.find((o) => o.status === 'shipped');
+    const draft = items.find((o) => o.status === 'draft');
+    if (!shipped || !draft) throw new Error('seed senza ordini spediti/bozza');
+    queryClient.setQueryData(orderKeys.detail(shipped.id), shipped);
+    queryClient.setQueryData(orderKeys.detail(draft.id), draft);
+
+    const remove = TestBed.runInInjectionContext(() => injectDeleteOrder());
+    await expect(remove.mutateAsync(shipped.id)).rejects.toMatchObject({ status: 403 });
+    expect(queryClient.getQueryData(orderKeys.detail(shipped.id))).toEqual(shipped);
+    await remove.mutateAsync(draft.id);
+    expect(queryClient.getQueryData(orderKeys.detail(draft.id))).toBeUndefined();
   });
 });

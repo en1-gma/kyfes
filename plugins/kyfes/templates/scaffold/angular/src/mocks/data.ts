@@ -3,7 +3,8 @@ import type { Session } from '@shared/auth';
 
 type MockSession = Session;
 
-export type MockUserKey = 'manager' | 'viewer';
+export type MockUserKey = 'manager' | 'operator' | 'viewer';
+export const MOCK_USER_KEYS: readonly MockUserKey[] = ['manager', 'operator', 'viewer'];
 
 /** Utenti di prova: le regole CASL arrivano "dal server" come in produzione. */
 export const MOCK_SESSIONS: Record<MockUserKey, MockSession> = {
@@ -14,6 +15,21 @@ export const MOCK_SESSIONS: Record<MockUserKey, MockSession> = {
       { action: 'manage', subject: 'Order' },
       // Condizione sul record: gli ordini spediti non si eliminano.
       { action: 'delete', subject: 'Order', conditions: { status: 'shipped' }, inverted: true },
+    ],
+  },
+  // Permessi per campo e sul record: crea/modifica solo cliente e totale, e solo gli ordini in bozza.
+  operator: {
+    user: { id: 'u-operator', name: 'Oscar Operator', email: 'oscar.operator@example.com' },
+    locale: 'it',
+    rules: [
+      { action: 'read', subject: 'Order' },
+      { action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+      {
+        action: 'update',
+        subject: 'Order',
+        fields: ['customerName', 'total'],
+        conditions: { status: 'draft' },
+      },
     ],
   },
   viewer: {

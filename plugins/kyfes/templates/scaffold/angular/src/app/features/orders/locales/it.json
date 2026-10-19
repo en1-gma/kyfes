@@ -9,7 +9,8 @@
   "list": {
     "caption": "Elenco ordini",
     "empty": "Non ci sono ordini.",
-    "loadMore": "Carica altri ordini"
+    "loadMore": "Carica altri ordini",
+    "loaded": "Ordini caricati: {{count}}"
   },
   "columns": {
     "number": "Numero",
@@ -50,7 +51,8 @@
       "customerTooLong": "Il nome del cliente è troppo lungo.",
       "totalInvalid": "Inserisci un importo valido.",
       "totalNegative": "Il totale non può essere negativo."
-    }
+    },
+    "fieldReadonly": "Non hai il permesso di modificare questo campo."
   },
   "chart": {
     "title": "Totale ordini per mese",

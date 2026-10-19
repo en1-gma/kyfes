@@ -1,8 +1,13 @@
 import * as z from 'zod';
+import { SUPPORTED_LOCALES } from '@shared/config/env';
 
 const StringOrList = z.union([z.string(), z.array(z.string())]);
 
-/** Regola CASL "impacchettata" così come arriva dal server (trasformata in Ability da shared/rbac). */
+/**
+ * Regola CASL "impacchettata" così come arriva dal server (trasformata in Ability da shared/rbac).
+ * Azioni e soggetti restano stringhe libere: una regola per un soggetto/azione che il client non
+ * conosce (es. `approve Invoice`) non fa fallire la sessione, semplicemente non fa match.
+ */
 export const RawRuleSchema = z.object({
   action: StringOrList,
   subject: StringOrList.optional(),
@@ -19,7 +24,8 @@ export const SessionSchema = z.object({
     email: z.email(),
   }),
   rules: z.array(RawRuleSchema),
-  locale: z.string(),
+  /** Lingua non supportata, `null` o assente → `undefined` (vale la lingua corrente). */
+  locale: z.enum(SUPPORTED_LOCALES).optional().catch(undefined),
 });
 
 export type RawRule = z.infer<typeof RawRuleSchema>;

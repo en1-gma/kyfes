@@ -1,5 +1,7 @@
 import { HttpResponse, http } from 'msw';
-import { type Order, OrderInputSchema } from '@features/orders';
+import * as z from 'zod';
+import { type Order, OrderCreateSchema, OrderPatchSchema, orderSubject } from '@features/orders';
+import { type AppSubject, buildAbility } from '@shared/rbac';
 import { MOCK_SESSIONS, type MockUserKey, seedOrders } from './data';
 
 const API = '/api';
@@ -28,8 +30,23 @@ export function errorResponse(status: number, code: string, message: string, ext
   );
 }
 
-function canWrite(): boolean {
-  return currentUser === 'manager';
+/** Il mock applica le stesse regole CASL della sessione, campo per campo, come farebbe il backend. */
+function can(action: 'create' | 'update' | 'delete', subject: AppSubject, body: object = {}): boolean {
+  const ability = buildAbility(MOCK_SESSIONS[currentUser].rules);
+  const fields = Object.keys(body);
+  if (fields.length === 0) return ability.can(action, subject);
+  return fields.every((field) => ability.can(action, subject, field));
+}
+
+function validationError(error: z.ZodError) {
+  return errorResponse(400, 'VALIDATION_ERROR', 'Invalid input', {
+    fieldErrors: z.flattenError(error).fieldErrors,
+  });
+}
+
+async function readBody(request: Request): Promise<object> {
+  const body: unknown = await request.json().catch(() => null);
+  return typeof body === 'object' && body !== null ? body : {};
 }
 
 export const handlers = [
@@ -66,13 +83,10 @@ export const handlers = [
   }),
 
   http.post(`${API}/orders`, async ({ request }) => {
-    if (!canWrite()) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
-    const parsed = OrderInputSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return errorResponse(400, 'VALIDATION_ERROR', 'Invalid input', {
-        fieldErrors: parsed.error.flatten().fieldErrors,
-      });
-    }
+    const body = await readBody(request);
+    if (!can('create', 'Order', body)) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
+    const parsed = OrderCreateSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
     const order: Order = {
       ...parsed.data,
       id: crypto.randomUUID(),
@@ -83,24 +97,23 @@ export const handlers = [
     return HttpResponse.json(order, { status: 201 });
   }),
 
-  http.put(`${API}/orders/:id`, async ({ params, request }) => {
-    if (!canWrite()) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
-    const index = orders.findIndex((o) => o.id === params['id']);
-    const current = orders[index];
+  http.patch(`${API}/orders/:id`, async ({ params, request }) => {
+    const current = orders.find((o) => o.id === params['id']);
     if (!current) return errorResponse(404, 'NOT_FOUND', 'Order not found');
-    const parsed = OrderInputSchema.safeParse(await request.json());
-    if (!parsed.success) return errorResponse(400, 'VALIDATION_ERROR', 'Invalid input');
+    const body = await readBody(request);
+    if (!can('update', orderSubject(current), body)) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
+    const parsed = OrderPatchSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
     const updated: Order = { ...current, ...parsed.data };
     orders = orders.map((o) => (o.id === updated.id ? updated : o));
     return HttpResponse.json(updated);
   }),
 
   http.delete(`${API}/orders/:id`, ({ params }) => {
-    if (!canWrite()) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
     const order = orders.find((o) => o.id === params['id']);
     if (!order) return errorResponse(404, 'NOT_FOUND', 'Order not found');
-    if (order.status === 'shipped')
-      return errorResponse(403, 'FORBIDDEN', 'Shipped orders cannot be deleted');
+    // Regola invertita del manager: gli ordini spediti non si eliminano.
+    if (!can('delete', orderSubject(order))) return errorResponse(403, 'FORBIDDEN', 'Not allowed');
     orders = orders.filter((o) => o.id !== order.id);
     return new HttpResponse(null, { status: 204 });
   }),

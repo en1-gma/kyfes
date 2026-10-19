@@ -17,5 +17,5 @@ export {
   provideI18nNamespace,
   type Locale,
 } from './i18n';
-export { flattenKeys } from './locale-keys';
+export { flattenKeys, parityKeys } from './locale-keys';
 export { I18nTitleStrategy } from './title-strategy';

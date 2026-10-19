@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LocaleCurrencyPipe, LocaleDatePipe, TranslocoPipe } from '@shared/i18n';
 import { injectCan } from '@shared/rbac';
-import { ButtonComponent, ErrorStateComponent, SpinnerComponent } from '@shared/ui';
+import { ButtonComponent, QueryStateComponent } from '@shared/ui';
 import { injectOrder } from '../../api/orders.queries';
 import { orderSubject } from '../../permissions';
 
@@ -14,8 +14,7 @@ import { orderSubject } from '../../permissions';
     LocaleDatePipe,
     LocaleCurrencyPipe,
     ButtonComponent,
-    ErrorStateComponent,
-    SpinnerComponent,
+    QueryStateComponent,
   ],
   templateUrl: './order-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

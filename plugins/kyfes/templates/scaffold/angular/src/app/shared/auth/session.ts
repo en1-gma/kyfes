@@ -12,7 +12,7 @@ export const sessionKeys = {
 export function sessionQueryOptions(api: ApiClient) {
   return queryOptions({
     queryKey: sessionKeys.me(),
-    queryFn: () => api.get('/auth/me', SessionSchema),
+    queryFn: ({ signal }) => api.get('/auth/me', SessionSchema, undefined, { signal }),
     staleTime: 5 * 60_000,
   });
 }

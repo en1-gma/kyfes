@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { ApiClient, type PageParams, pageSchema } from '@shared/api';
+import { ApiClient, type PageParams, type RequestOptions, pageSchema } from '@shared/api';
 import {
   type Order,
-  type OrderInput,
+  type OrderPatch,
   type OrderStatus,
   OrderSchema,
   OrderStatsSchema,
@@ -19,27 +19,29 @@ export interface OrderListParams extends PageParams {
 export class OrdersApi {
   private readonly api = inject(ApiClient);
 
-  list(params: OrderListParams) {
-    return this.api.get('/orders', OrderPageSchema, { ...params });
+  list(params: OrderListParams, options?: RequestOptions) {
+    return this.api.get('/orders', OrderPageSchema, { ...params }, options);
   }
 
-  get(id: string) {
-    return this.api.get(`/orders/${encodeURIComponent(id)}`, OrderSchema);
+  get(id: string, options?: RequestOptions) {
+    return this.api.get(`/orders/${encodeURIComponent(id)}`, OrderSchema, undefined, options);
   }
 
-  create(input: OrderInput): Promise<Order> {
+  /** Solo i campi che l'utente può scrivere (`status` omesso → `draft`); il server valida il resto. */
+  create(input: OrderPatch): Promise<Order> {
     return this.api.post('/orders', input, OrderSchema);
   }
 
-  update(id: string, input: OrderInput): Promise<Order> {
-    return this.api.put(`/orders/${encodeURIComponent(id)}`, input, OrderSchema);
+  /** Aggiornamento parziale (PATCH): si inviano solo i campi scrivibili dall'utente. */
+  update(id: string, input: OrderPatch): Promise<Order> {
+    return this.api.patch(`/orders/${encodeURIComponent(id)}`, input, OrderSchema);
   }
 
   remove(id: string): Promise<void> {
     return this.api.delete(`/orders/${encodeURIComponent(id)}`);
   }
 
-  stats() {
-    return this.api.get('/orders/stats', OrderStatsSchema);
+  stats(options?: RequestOptions) {
+    return this.api.get('/orders/stats', OrderStatsSchema, undefined, options);
   }
 }

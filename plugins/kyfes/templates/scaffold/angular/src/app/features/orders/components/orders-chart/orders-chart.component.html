@@ -1,21 +1,21 @@
 <section class="card" aria-labelledby="orders-chart-title">
   <h2 id="orders-chart-title">{{ 'orders.chart.title' | transloco }}</h2>
-  @if (stats.isPending()) {
-    <app-spinner />
-  } @else if (stats.isError()) {
-    <app-error-state [error]="stats.error()" />
-  } @else if (categories().length === 0) {
-    <app-empty-state [message]="'orders.chart.empty' | transloco" />
-  } @else {
-    @defer (on idle) {
-      <app-bar-chart
-        [title]="'orders.chart.title' | transloco"
-        [categories]="categories()"
-        [series]="[{ name: 'orders.chart.series' | transloco, values: values() }]"
-        valueFormat="currency"
-      />
-    } @placeholder {
-      <app-spinner />
-    }
-  }
+  <app-query-state
+    [query]="stats"
+    [empty]="categories().length === 0"
+    [emptyMessage]="'orders.chart.empty' | transloco"
+  >
+    <ng-template>
+      @defer (on idle) {
+        <app-bar-chart
+          [title]="'orders.chart.title' | transloco"
+          [categories]="categories()"
+          [series]="[{ name: 'orders.chart.series' | transloco, values: values() }]"
+          valueFormat="currency"
+        />
+      } @placeholder {
+        <app-spinner />
+      }
+    </ng-template>
+  </app-query-state>
 </section>

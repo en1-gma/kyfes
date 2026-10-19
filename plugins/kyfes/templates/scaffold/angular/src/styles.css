@@ -303,3 +303,47 @@ a {
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+/* Tooltip dei grafici: solo classi (la CSP blocca gli attributi style inline di ECharts). */
+.chart-tooltip__title {
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.chart-tooltip__marker {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+.chart-tooltip__marker--1 {
+  background: var(--chart-1);
+}
+.chart-tooltip__marker--2 {
+  background: var(--chart-2);
+}
+.chart-tooltip__marker--3 {
+  background: var(--chart-3);
+}
+.chart-tooltip__marker--4 {
+  background: var(--chart-4);
+}
+.chart-tooltip__marker--5 {
+  background: var(--chart-5);
+}
+.chart-tooltip__marker--6 {
+  background: var(--chart-6);
+}
+.chart-tooltip__value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.state__title {
+  font-weight: 600;
+  margin: 0;
+}

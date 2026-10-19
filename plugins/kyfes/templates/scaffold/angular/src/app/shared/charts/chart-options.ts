@@ -23,7 +23,54 @@ export function readPalette(element: Element | null): string[] {
   return FALLBACK_PALETTE.map((fallback, i) => style.getPropertyValue(`--chart-${i + 1}`).trim() || fallback);
 }
 
-/** Opzioni ECharts pure (testabili senza DOM). */
+/** Parametri del formatter del tooltip ECharts (trigger `axis`) usati qui. */
+export interface TooltipParam {
+  seriesIndex?: number;
+  seriesName?: string;
+  axisValueLabel?: string;
+  name?: string;
+  value?: unknown;
+}
+
+function element(tag: string, className: string, text?: string): HTMLElement {
+  const el = document.createElement(tag);
+  el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+/**
+ * Contenuto del tooltip costruito con il DOM e classi CSS (styles.css), mai HTML con `style=`
+ * inline: la CSP (`style-src 'self' 'nonce-…'`) bloccherebbe gli attributi `style` del markup
+ * di default di ECharts. Il colore del marker viene dalla classe `--N` (token `--chart-N`).
+ */
+export function buildTooltipContent(
+  params: TooltipParam | TooltipParam[],
+  formatValue: (value: number) => string,
+  paletteSize = FALLBACK_PALETTE.length,
+): HTMLElement {
+  const items = Array.isArray(params) ? params : [params];
+  const root = element('div', 'chart-tooltip__content');
+  const first = items[0];
+  root.append(element('div', 'chart-tooltip__title', first?.axisValueLabel ?? first?.name ?? ''));
+  for (const item of items) {
+    const row = element('div', 'chart-tooltip__row');
+    const index = ((item.seriesIndex ?? 0) % paletteSize) + 1;
+    row.append(
+      element('span', `chart-tooltip__marker chart-tooltip__marker--${index}`),
+      element('span', 'chart-tooltip__name', item.seriesName ?? ''),
+      element(
+        'span',
+        'chart-tooltip__value',
+        typeof item.value === 'number' ? formatValue(item.value) : String(item.value ?? ''),
+      ),
+    );
+    root.append(row);
+  }
+  return root;
+}
+
+/** Opzioni ECharts pure (testabili senza DOM; il DOM serve solo al formatter del tooltip). */
 export function buildCartesianOptions(
   kind: ChartKind,
   data: CartesianChartData,
@@ -37,7 +84,10 @@ export function buildCartesianOptions(
     grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'axis',
-      valueFormatter: (value: unknown) => (typeof value === 'number' ? formatValue(value) : String(value)),
+      renderMode: 'html',
+      className: 'chart-tooltip',
+      formatter: (params: TooltipParam | TooltipParam[]) =>
+        buildTooltipContent(params, formatValue, palette.length || FALLBACK_PALETTE.length),
     },
     xAxis: { type: 'category', data: data.categories },
     yAxis: { type: 'value', axisLabel: { formatter: (value: number) => formatValue(value) } },

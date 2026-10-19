@@ -3,12 +3,14 @@ import { ApiError } from './api-error';
 
 const MAX_RETRIES = 2;
 
-/** Nessun retry sui 4xx (incl. errori di validazione della risposta); al massimo 2 su 5xx/rete. */
+/**
+ * Retry (al massimo 2) solo per ApiError di rete/timeout (status 0) o 5xx. Mai sui 4xx, sulle risposte
+ * che non rispettano lo schema (INVALID_RESPONSE), sugli errori Zod né su altri errori non HTTP.
+ */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && (error.isClientError || error.code === 'INVALID_RESPONSE')) {
-    return false;
-  }
-  return failureCount < MAX_RETRIES;
+  if (!(error instanceof ApiError) || error.code === 'INVALID_RESPONSE') return false;
+  const transient = error.status === 0 || error.status >= 500;
+  return transient && failureCount < MAX_RETRIES;
 }
 
 export function createQueryClient(): QueryClient {

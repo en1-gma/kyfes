@@ -9,7 +9,8 @@
   "list": {
     "caption": "Order list",
     "empty": "There are no orders.",
-    "loadMore": "Load more orders"
+    "loadMore": "Load more orders",
+    "loaded": "Orders loaded: {{count}}"
   },
   "columns": {
     "number": "Number",
@@ -50,7 +51,8 @@
       "customerTooLong": "Customer name is too long.",
       "totalInvalid": "Enter a valid amount.",
       "totalNegative": "Total cannot be negative."
-    }
+    },
+    "fieldReadonly": "You are not allowed to change this field."
   },
   "chart": {
     "title": "Order totals by month",

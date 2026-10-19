@@ -4,10 +4,10 @@ import { LocaleCurrencyPipe, LocaleDatePipe, TranslocoPipe } from '@shared/i18n'
 import { injectCan } from '@shared/rbac';
 import {
   ButtonComponent,
-  ConfirmDialogComponent,
-  EmptyStateComponent,
+  ConfirmDeleteDialogComponent,
   ErrorStateComponent,
-  SpinnerComponent,
+  LoadMoreComponent,
+  QueryStateComponent,
 } from '@shared/ui';
 import { injectDeleteOrder } from '../../api/orders.mutations';
 import { injectOrdersList } from '../../api/orders.queries';
@@ -22,10 +22,10 @@ import { ORDER_SUBJECT, orderSubject } from '../../permissions';
     LocaleDatePipe,
     LocaleCurrencyPipe,
     ButtonComponent,
-    ConfirmDialogComponent,
-    EmptyStateComponent,
+    ConfirmDeleteDialogComponent,
     ErrorStateComponent,
-    SpinnerComponent,
+    LoadMoreComponent,
+    QueryStateComponent,
   ],
   templateUrl: './orders-table.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,10 +42,4 @@ export class OrdersTableComponent {
     () => this.can('update', ORDER_SUBJECT) || this.can('delete', ORDER_SUBJECT),
   );
   protected readonly pendingDelete = signal<Order | null>(null);
-
-  protected confirmDelete(): void {
-    const order = this.pendingDelete();
-    if (order) this.deleteOrder.mutate(order.id);
-    this.pendingDelete.set(null);
-  }
 }

@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { ApiClient } from './api-client';
 import { ApiError } from './api-error';
 import { ApiEvents } from './api-events';
-import { provideApi } from './http';
+import { API_OPTIONS, provideApi } from './http';
 
 function setup(options: Parameters<typeof provideApi>[0] = {}) {
   TestBed.configureTestingModule({ providers: [provideApi(options), provideHttpClientTesting()] });
@@ -80,8 +80,13 @@ describe('client HTTP (shared/api)', () => {
     await expect(promise).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
   });
 
-  it('su 401 chiama la callback onUnauthorized', async () => {
-    const { api, events, backend } = setup();
+  it('il refresh della sessione è attivo di default', () => {
+    setup();
+    expect(TestBed.inject(API_OPTIONS).refreshSession).toBe(true);
+  });
+
+  it('senza refreshSession: su 401 chiama la callback onUnauthorized', async () => {
+    const { api, events, backend } = setup({ refreshSession: false });
     const onUnauthorized = vi.fn();
     events.onUnauthorized(onUnauthorized);
     const promise = api.get('/orders', Item);
@@ -117,5 +122,81 @@ describe('client HTTP (shared/api)', () => {
       .flush({ code: 'FORBIDDEN', message: 'x' }, { status: 403, statusText: 'Forbidden' });
     await expect(promise).rejects.toBeInstanceOf(ApiError);
     expect(onForbidden).toHaveBeenCalledTimes(1);
+  });
+
+  it('refresh fallito (404: endpoint assente): onUnauthorized una sola volta per più 401', async () => {
+    const { api, events, backend } = setup();
+    const onUnauthorized = vi.fn();
+    events.onUnauthorized(onUnauthorized);
+    const a = api.get('/a', Item);
+    const b = api.get('/b', Item);
+    backend.expectOne('/api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/b').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/auth/refresh').flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(a).rejects.toMatchObject({ status: 401 });
+    await expect(b).rejects.toMatchObject({ status: 401 });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    backend.verify();
+  });
+
+  it('una richiesta lenta partita prima di un refresh già concluso viene ripetuta senza un nuovo refresh', async () => {
+    const { api, events, backend } = setup();
+    const onUnauthorized = vi.fn();
+    events.onUnauthorized(onUnauthorized);
+    let refreshCalls = 0;
+    const slow = api.get('/slow', Item);
+    const fast = api.get('/fast', Item);
+    backend.expectOne('/api/fast').flush(null, { status: 401, statusText: 'Unauthorized' });
+    refreshCalls += backend.match('/api/auth/refresh').map((req) => req.flush('')).length;
+    backend.expectOne('/api/fast').flush({ id: 'fast' });
+    await expect(fast).resolves.toEqual({ id: 'fast' });
+
+    // Il 401 della richiesta lenta arriva quando il refresh è già terminato.
+    backend.expectOne('/api/slow').flush(null, { status: 401, statusText: 'Unauthorized' });
+    refreshCalls += backend.match('/api/auth/refresh').map((req) => req.flush('')).length;
+    backend.expectOne('/api/slow').flush({ id: 'slow' });
+    await expect(slow).resolves.toEqual({ id: 'slow' });
+    expect(refreshCalls).toBe(1);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it('un 403 sulla richiesta ripetuta dopo il refresh emette onForbidden', async () => {
+    const { api, events, backend } = setup();
+    const onForbidden = vi.fn();
+    events.onForbidden(onForbidden);
+    const promise = api.get('/orders', Item);
+    backend.expectOne('/api/orders').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/auth/refresh').flush('');
+    backend
+      .expectOne('/api/orders')
+      .flush({ code: 'FORBIDDEN', message: 'x' }, { status: 403, statusText: 'Forbidden' });
+    await expect(promise).rejects.toMatchObject({ status: 403 });
+    expect(onForbidden).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['/auth/logout', '/auth/login', '/auth/refresh'])(
+    '%s non innesca refresh né onUnauthorized',
+    async (path) => {
+      const { http, events, backend } = setup();
+      const onUnauthorized = vi.fn();
+      events.onUnauthorized(onUnauthorized);
+      const promise = firstValueFrom(http.post(`/api${path}`, null));
+      backend.expectOne(`/api${path}`).flush(null, { status: 401, statusText: 'Unauthorized' });
+      await expect(promise).rejects.toMatchObject({ status: 401 });
+      backend.verify();
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    },
+  );
+
+  it('una cancellazione (AbortSignal) interrompe la richiesta e non diventa un ApiError di rete', async () => {
+    const { api, backend } = setup();
+    const controller = new AbortController();
+    const promise = api.get('/orders', Item, undefined, { signal: controller.signal });
+    const req = backend.expectOne('/api/orders');
+    controller.abort();
+    const error = await promise.catch((e: unknown) => e);
+    expect(req.cancelled).toBe(true);
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ name: 'AbortError' });
   });
 });

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { type Observable, firstValueFrom } from 'rxjs';
 import type * as z from 'zod';
 import { ApiError } from './api-error';
 import { API_OPTIONS } from './http';
@@ -21,6 +21,42 @@ function parse<S extends z.ZodType>(schema: S, data: unknown): z.output<S> {
   return result.data;
 }
 
+/** Opzioni per richiesta: `signal` è quello che TanStack Query passa a `queryFn`. */
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * Una cancellazione NON è un errore di rete: HttpClient non emette errori quando ci si disiscrive
+ * (la fetch viene interrotta), quindi su `abort` ci si disiscrive e si rigetta con `signal.reason`
+ * così com'è, mai con un ApiError `NETWORK_ERROR`. TanStack Query la riconosce come CancelledError.
+ */
+function toPromise<T>(source: Observable<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return firstValueFrom(source);
+  return new Promise<T>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      subscription.unsubscribe();
+      reject(signal.reason);
+    };
+    const done = () => signal.removeEventListener('abort', onAbort);
+    const subscription = source.subscribe({
+      next: (value) => {
+        done();
+        resolve(value);
+      },
+      error: (error: unknown) => {
+        done();
+        reject(error);
+      },
+    });
+    if (!subscription.closed) signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 /**
  * Unico client HTTP usato dalle feature (in `features/<f>/api`). Ogni risposta è validata
  * con lo schema Zod passato; ogni errore è un ApiError.
@@ -34,8 +70,16 @@ export class ApiClient {
     return `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
-  async get<S extends z.ZodType>(path: string, schema: S, params?: QueryParams): Promise<z.output<S>> {
-    const data = await firstValueFrom(this.http.get<unknown>(this.url(path), { params: toParams(params) }));
+  async get<S extends z.ZodType>(
+    path: string,
+    schema: S,
+    params?: QueryParams,
+    options: RequestOptions = {},
+  ): Promise<z.output<S>> {
+    const data = await toPromise(
+      this.http.get<unknown>(this.url(path), { params: toParams(params) }),
+      options.signal,
+    );
     return parse(schema, data);
   }
 

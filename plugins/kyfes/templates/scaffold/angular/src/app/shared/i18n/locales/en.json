@@ -16,7 +16,8 @@
     "edit": "Edit",
     "retry": "Retry",
     "logout": "Sign out",
-    "back": "Back"
+    "back": "Back",
+    "loadMore": "Load more"
   },
   "language": {
     "label": "Language",
@@ -28,7 +29,11 @@
   },
   "states": {
     "loading": "Loading…",
-    "empty": "Nothing to show"
+    "empty": "Nothing to show",
+    "forbidden": {
+      "title": "Access denied",
+      "message": "You are not allowed to access this item."
+    }
   },
   "errors": {
     "generic": "Something went wrong. Please try again later.",

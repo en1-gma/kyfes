@@ -27,7 +27,7 @@ export function ordersInfiniteQueryOptions(
 ) {
   return infiniteQueryOptions({
     queryKey: orderKeys.list(filters),
-    queryFn: ({ pageParam }) => api.list({ ...filters, cursor: pageParam }),
+    queryFn: ({ pageParam, signal }) => api.list({ ...filters, cursor: pageParam }, { signal }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -36,7 +36,7 @@ export function ordersInfiniteQueryOptions(
 export function orderQueryOptions(api: OrdersApi, id: string) {
   return queryOptions({
     queryKey: orderKeys.detail(id),
-    queryFn: () => api.get(id),
+    queryFn: ({ signal }) => api.get(id, { signal }),
   });
 }
 
@@ -56,7 +56,7 @@ export function toMonthlyTotals(stats: OrderStats): MonthlyTotals {
 export function orderStatsQueryOptions(api: OrdersApi) {
   return queryOptions({
     queryKey: orderKeys.stats(),
-    queryFn: () => api.stats(),
+    queryFn: ({ signal }) => api.stats({ signal }),
     select: toMonthlyTotals,
   });
 }
