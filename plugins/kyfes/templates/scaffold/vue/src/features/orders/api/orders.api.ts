@@ -10,27 +10,27 @@ import {
 
 export const OrderPageSchema = pageSchema(OrderSchema)
 
-const BASE = '/orders'
+export const ORDERS_ENDPOINT = '/orders'
 
 export const ordersApi = {
   list(params: PageParams & OrderFilters, signal?: AbortSignal) {
     const query = { ...toPageQuery(params), ...(params.status ? { status: params.status } : {}) }
-    return getParsed(BASE, OrderPageSchema, { params: query, signal })
+    return getParsed(ORDERS_ENDPOINT, OrderPageSchema, { params: query, signal })
   },
   get(id: string, signal?: AbortSignal): Promise<Order> {
-    return getParsed(`${BASE}/${encodeURIComponent(id)}`, OrderSchema, { signal })
+    return getParsed(`${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`, OrderSchema, { signal })
   },
   /** Only the fields the user may write (field-level permissions): the server fills the rest. */
   create(input: Partial<OrderInput>): Promise<Order> {
-    return sendParsed('post', BASE, input, OrderSchema)
+    return sendParsed('post', ORDERS_ENDPOINT, input, OrderSchema)
   },
   update(id: string, input: Partial<OrderInput>): Promise<Order> {
-    return sendParsed('patch', `${BASE}/${encodeURIComponent(id)}`, input, OrderSchema)
+    return sendParsed('patch', `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`, input, OrderSchema)
   },
   remove(id: string): Promise<void> {
-    return deleteRequest(`${BASE}/${encodeURIComponent(id)}`)
+    return deleteRequest(`${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`)
   },
   stats(signal?: AbortSignal): Promise<OrderStats> {
-    return getParsed(`${BASE}/stats`, OrderStatsSchema, { signal })
+    return getParsed(`${ORDERS_ENDPOINT}/stats`, OrderStatsSchema, { signal })
   },
 }

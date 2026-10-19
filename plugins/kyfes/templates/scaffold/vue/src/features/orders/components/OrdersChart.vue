@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BarChart } from '@/shared/charts'
+import { BarChart, CHART_VALUE_FORMAT } from '@/shared/charts'
 import { useT } from '@/shared/i18n'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui'
 import { useOrderStatsChart } from '../api/orders.queries'
@@ -21,7 +21,7 @@ const series = computed(() => [{ name: t('orders.chart.series'), data: chart.val
       :label="t('orders.chart.title')"
       :categories="chart.categories"
       :series="series"
-      value-format="currency"
+      :value-format="CHART_VALUE_FORMAT.currency"
     />
   </section>
 </template>

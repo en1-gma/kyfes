@@ -2,7 +2,7 @@
 import { useRoute, RouterLink, RouterView } from 'vue-router'
 import { useLogout, useSession } from '@/shared/auth'
 import { currentLocale, isLocale, setLocale, SUPPORTED_LOCALES, useT } from '@/shared/i18n'
-import { useAbility } from '@/shared/rbac'
+import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ErrorBoundary } from '@/shared/ui'
 import { ORDER_SUBJECT } from '@/features/orders'
 import { ROUTES } from './route-names'
@@ -25,7 +25,7 @@ function onLocaleChange(event: Event) {
     <span class="app-header__brand">{{ t('common.app.name') }}</span>
     <nav :aria-label="t('common.app.mainNav')">
       <ul>
-        <li v-if="ability.can('read', ORDER_SUBJECT)">
+        <li v-if="ability.can(ACTION.read, ORDER_SUBJECT)">
           <RouterLink :to="{ name: ROUTES.orders }">{{ t('common.nav.orders') }}</RouterLink>
         </li>
       </ul>

@@ -29,7 +29,7 @@ export function createRbacPlugin(queryClient: QueryClient): RbacPlugin {
   }
 }
 
-/** Reactive ability for components: `const ability = useAbility(); ability.can('update', subject('Order', o))`. */
+/** Reactive ability for components: `const ability = useAbility(); ability.can(ACTION.update, orderSubject(o))`. */
 export function useAbility(): AppAbility {
   return useCaslAbility<AppAbility>()
 }

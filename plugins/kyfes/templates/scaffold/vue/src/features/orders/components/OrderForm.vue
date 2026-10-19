@@ -4,11 +4,17 @@ import { computed, useId } from 'vue'
 import { isApiError } from '@/shared/api'
 import { useT } from '@/shared/i18n'
 import { toTypedSchema } from '@/shared/lib'
-import { useAbility } from '@/shared/rbac'
+import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ErrorState } from '@/shared/ui'
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations'
-import { ORDER_STATUSES, OrderInputSchema, type Order, type OrderInput } from '../model/orders.schema'
-import { ORDER_FIELDS, ORDER_SUBJECT, orderSubject, type OrderField } from '../permissions'
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_STATUSES,
+  OrderInputSchema,
+  type Order,
+  type OrderInput,
+} from '../model/orders.schema'
+import { ORDER_FIELD, ORDER_FIELDS, ORDER_SUBJECT, orderSubject, type OrderField } from '../permissions'
 
 const props = defineProps<{ order?: Order }>()
 const emit = defineEmits<{ saved: [order: Order]; cancel: [] }>()
@@ -29,11 +35,13 @@ const ids = {
 const writable = computed(() => {
   const order = props.order
   const can = (field: OrderField) =>
-    order ? ability.can('update', orderSubject(order), field) : ability.can('create', ORDER_SUBJECT, field)
+    order
+      ? ability.can(ACTION.update, orderSubject(order), field)
+      : ability.can(ACTION.create, ORDER_SUBJECT, field)
   return new Set(ORDER_FIELDS.filter(can))
 })
 const readOnly = (field: OrderField) => !writable.value.has(field)
-const statusReadOnly = computed(() => readOnly('status'))
+const statusReadOnly = computed(() => readOnly(ORDER_FIELD.status))
 
 /** Payload with only the writable fields (create and PATCH alike). */
 function writablePayload(values: OrderInput): Partial<OrderInput> {
@@ -44,13 +52,13 @@ const { defineField, handleSubmit, errors, setErrors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(OrderInputSchema),
   initialValues: {
     customerName: props.order?.customerName ?? '',
-    status: props.order?.status ?? 'draft',
+    status: props.order?.status ?? DEFAULT_ORDER_STATUS,
     total: props.order?.total ?? 0,
   },
 })
-const [customerName, customerNameAttrs] = defineField('customerName')
-const [status, statusAttrs] = defineField('status')
-const [total, totalAttrs] = defineField('total')
+const [customerName, customerNameAttrs] = defineField(ORDER_FIELD.customerName)
+const [status, statusAttrs] = defineField(ORDER_FIELD.status)
+const [total, totalAttrs] = defineField(ORDER_FIELD.total)
 
 const isFormField = (key: string): key is OrderField => (ORDER_FIELDS as readonly string[]).includes(key)
 
@@ -93,12 +101,12 @@ const onSubmit = handleSubmit(async (values: OrderInput) => {
         v-bind="customerNameAttrs"
         type="text"
         autocomplete="off"
-        :readonly="readOnly('customerName')"
+        :readonly="readOnly(ORDER_FIELD.customerName)"
         :aria-invalid="!!errors.customerName"
         :aria-describedby="
           errors.customerName
             ? `${ids.customerName}-error`
-            : readOnly('customerName')
+            : readOnly(ORDER_FIELD.customerName)
               ? ids.readOnlyHint
               : undefined
         "
@@ -140,16 +148,20 @@ const onSubmit = handleSubmit(async (values: OrderInput) => {
         min="0"
         step="0.01"
         inputmode="decimal"
-        :readonly="readOnly('total')"
+        :readonly="readOnly(ORDER_FIELD.total)"
         :aria-invalid="!!errors.total"
         :aria-describedby="
-          errors.total ? `${ids.total}-error` : readOnly('total') ? ids.readOnlyHint : undefined
+          errors.total ? `${ids.total}-error` : readOnly(ORDER_FIELD.total) ? ids.readOnlyHint : undefined
         "
       />
       <p v-if="errors.total" :id="`${ids.total}-error`" class="field__error">{{ message(errors.total) }}</p>
     </div>
 
-    <p v-if="readOnly('customerName') || readOnly('total')" :id="ids.readOnlyHint" class="field__hint">
+    <p
+      v-if="readOnly(ORDER_FIELD.customerName) || readOnly(ORDER_FIELD.total)"
+      :id="ids.readOnlyHint"
+      class="field__hint"
+    >
       {{ t('orders.form.fieldReadOnly') }}
     </p>
 

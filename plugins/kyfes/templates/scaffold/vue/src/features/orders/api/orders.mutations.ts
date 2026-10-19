@@ -36,9 +36,6 @@ export function useUpdateOrder() {
 
 type OrdersPages = InfiniteData<Page<Order>, string | undefined>
 
-/** Shared by every delete: lets a failing delete know whether others are still in flight. */
-export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const
-
 /**
  * Optimistic delete: the row disappears at once. On error the snapshot is restored only if no other
  * delete is in flight (it would bring their rows back); otherwise the lists are just invalidated and
@@ -46,9 +43,9 @@ export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const
  */
 export function useDeleteOrder() {
   const queryClient = useQueryClient()
-  const othersInFlight = () => queryClient.isMutating({ mutationKey: deleteOrderMutationKey }) > 1
+  const othersInFlight = () => queryClient.isMutating({ mutationKey: orderKeys.removals() }) > 1
   return useMutation({
-    mutationKey: deleteOrderMutationKey,
+    mutationKey: orderKeys.removals(),
     mutationFn: (id: string) => ordersApi.remove(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: orderKeys.lists() })

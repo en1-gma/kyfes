@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useT } from '@/shared/i18n'
-import { useAbility } from '@/shared/rbac'
+import { ACTION, useAbility } from '@/shared/rbac'
 import { ForbiddenState, QueryState } from '@/shared/ui'
 import { OrderForm, orderSubject, useOrder, type Order } from '@/features/orders'
 import { ROUTES } from './route-names'
@@ -14,7 +14,7 @@ const ability = useAbility()
 const { data: order, isPending, error, refetch } = useOrder(() => props.id)
 
 /** The route checks only the type (`update Order`); here the loaded record is checked (e.g. shipped orders). */
-const canUpdate = computed(() => !!order.value && ability.can('update', orderSubject(order.value)))
+const canUpdate = computed(() => !!order.value && ability.can(ACTION.update, orderSubject(order.value)))
 
 const toDetail = (saved?: Order) =>
   router.push({ name: ROUTES.orderDetail, params: { id: saved?.id ?? props.id } })

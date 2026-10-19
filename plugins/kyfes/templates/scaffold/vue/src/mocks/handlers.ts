@@ -1,5 +1,13 @@
 import { http, HttpResponse } from 'msw/http'
-import { OrderInputSchema, type Order } from '@/features/orders'
+import { AUTH_ENDPOINTS } from '@/shared/api'
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_SORT,
+  ORDER_STATUS,
+  ORDERS_ENDPOINT,
+  OrderInputSchema,
+  type Order,
+} from '@/features/orders'
 import { BROKEN_ORDER_ID, createDb, FORBIDDEN_ORDER_ID, sessions, type MockDb, type MockUser } from './data'
 
 export const API = '/api'
@@ -18,12 +26,14 @@ export function errorBody(status: number) {
 }
 
 function compare(sort: string | null) {
-  const desc = sort !== 'createdAt'
+  const desc = sort !== ORDER_SORT.createdAtAsc
   return (a: Order, b: Order) => (desc ? -1 : 1) * a.createdAt.localeCompare(b.createdAt)
 }
 
 export function sessionHandler(user: MockUser | null) {
-  return http.get(`${API}/auth/me`, () => (user ? HttpResponse.json(sessions[user]) : errorBody(401)))
+  return http.get(`${API}${AUTH_ENDPOINTS.me}`, () =>
+    user ? HttpResponse.json(sessions[user]) : errorBody(401),
+  )
 }
 
 /** Status is optional on create (operator cannot write it): drafts by default. */
@@ -38,10 +48,10 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
 
   return [
     sessionHandler(user),
-    http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
-    http.post(`${API}/auth/refresh`, () => errorBody(401)),
+    http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
+    http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () => errorBody(401)),
 
-    http.get(`${API}/orders/stats`, () => {
+    http.get(`${API}${ORDERS_ENDPOINT}/stats`, () => {
       const byMonth = new Map<string, number>()
       for (const o of db.orders) {
         const month = o.createdAt.slice(0, 7)
@@ -53,7 +63,7 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
       return HttpResponse.json({ months })
     }),
 
-    http.get(`${API}/orders`, ({ request }) => {
+    http.get(`${API}${ORDERS_ENDPOINT}`, ({ request }) => {
       const url = new URL(request.url)
       const limit = Number(url.searchParams.get('limit') ?? 20)
       const offset = Number(url.searchParams.get('cursor') ?? 0)
@@ -66,21 +76,21 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
       return HttpResponse.json({ items, nextCursor: next, limit })
     }),
 
-    http.get(`${API}/orders/:id`, ({ params }) => {
+    http.get(`${API}${ORDERS_ENDPOINT}/:id`, ({ params }) => {
       if (params.id === FORBIDDEN_ORDER_ID) return errorBody(403)
       if (params.id === BROKEN_ORDER_ID) return errorBody(500)
       const order = find(params.id)
       return order ? HttpResponse.json(order) : errorBody(404)
     }),
 
-    http.post(`${API}/orders`, async ({ request }) => {
+    http.post(`${API}${ORDERS_ENDPOINT}`, async ({ request }) => {
       if (user === 'viewer') return errorBody(403)
       const parsed = CreateBodySchema.safeParse(await request.json())
       if (!parsed.success) return errorBody(400)
       if (user === 'operator' && parsed.data.status !== undefined) return errorBody(403)
       const order: Order = {
         ...parsed.data,
-        status: parsed.data.status ?? 'draft',
+        status: parsed.data.status ?? DEFAULT_ORDER_STATUS,
         id: crypto.randomUUID(),
         number: `ORD-${1000 + db.orders.length}`,
         createdAt: new Date().toISOString(),
@@ -89,23 +99,23 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
       return HttpResponse.json(order, { status: 201 })
     }),
 
-    http.patch(`${API}/orders/:id`, async ({ params, request }) => {
+    http.patch(`${API}${ORDERS_ENDPOINT}/:id`, async ({ params, request }) => {
       const order = find(params.id)
       if (!order) return errorBody(404)
-      if (user === 'viewer' || order.status === 'shipped') return errorBody(403)
+      if (user === 'viewer' || order.status === ORDER_STATUS.shipped) return errorBody(403)
       const parsed = OrderInputSchema.partial().safeParse(await request.json())
       if (!parsed.success) return errorBody(400)
-      if (user === 'operator' && (order.status !== 'draft' || parsed.data.status !== undefined)) {
+      if (user === 'operator' && (order.status !== ORDER_STATUS.draft || parsed.data.status !== undefined)) {
         return errorBody(403)
       }
       Object.assign(order, parsed.data)
       return HttpResponse.json(order)
     }),
 
-    http.delete(`${API}/orders/:id`, ({ params }) => {
+    http.delete(`${API}${ORDERS_ENDPOINT}/:id`, ({ params }) => {
       const order = find(params.id)
       if (!order) return errorBody(404)
-      if (user !== 'manager' || order.status === 'shipped') return errorBody(403)
+      if (user !== 'manager' || order.status === ORDER_STATUS.shipped) return errorBody(403)
       db.orders.splice(db.orders.indexOf(order), 1)
       return new HttpResponse(null, { status: 204 })
     }),

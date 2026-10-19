@@ -1,5 +1,6 @@
 export {
   i18n,
+  COMMON_NS,
   useT,
   setLocale,
   loadNamespaces,

@@ -3,6 +3,9 @@ import { env, SUPPORTED_LOCALES, type Locale } from '@/shared/config/env'
 import commonIt from './locales/it.json'
 import commonEn from './locales/en.json'
 
+/** Namespace of the shared messages (`common.*` keys), bundled with the app. */
+export const COMMON_NS = 'common'
+
 type Messages = Record<string, unknown>
 export type NamespaceLoaders = Record<Locale, () => Promise<{ default: Messages }>>
 
@@ -18,7 +21,7 @@ export const i18n = createI18n({
   locale: env.DEFAULT_LOCALE,
   fallbackLocale: SUPPORTED_LOCALES[0],
   // `common` is small and always needed: bundled. Feature namespaces are lazy.
-  messages: { it: { common: commonIt }, en: { common: commonEn } },
+  messages: { it: { [COMMON_NS]: commonIt }, en: { [COMMON_NS]: commonEn } },
   missingWarn: import.meta.env.DEV,
   fallbackWarn: false,
 })

@@ -1,7 +1,7 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/vue-query'
 import { computed } from 'vue'
 import { env } from '@/shared/config/env'
-import { getParsed, http } from '@/shared/api'
+import { AUTH_ENDPOINTS, getParsed, http } from '@/shared/api'
 import { safeRedirect } from '@/shared/lib/safe-redirect'
 import { SessionSchema, type Session } from './session.schema'
 
@@ -14,7 +14,7 @@ export const sessionKeys = {
 export function sessionQueryOptions() {
   return queryOptions({
     queryKey: sessionKeys.me(),
-    queryFn: ({ signal }) => getParsed('/auth/me', SessionSchema, { signal }),
+    queryFn: ({ signal }) => getParsed(AUTH_ENDPOINTS.me, SessionSchema, { signal }),
     staleTime: 5 * 60_000,
     retry: false,
   })
@@ -41,13 +41,13 @@ export function login(returnTo: string): void {
   if (redirecting) return
   redirecting = true
   const target = encodeURIComponent(safeRedirect(returnTo))
-  window.location.assign(`${env.API_BASE_URL}/auth/login?returnTo=${target}`)
+  window.location.assign(`${env.API_BASE_URL}${AUTH_ENDPOINTS.login}?returnTo=${target}`)
 }
 
 /** POST /auth/logout, wipe every cached query, back to the app root. */
 export async function logout(queryClient: QueryClient): Promise<void> {
   try {
-    await http.post('/auth/logout')
+    await http.post(AUTH_ENDPOINTS.logout)
   } finally {
     queryClient.clear()
     window.location.assign(safeRedirect('/'))

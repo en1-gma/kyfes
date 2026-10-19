@@ -1,26 +1,31 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { formatCurrency, formatNumber } from '@/shared/i18n'
-import type { ChartProps } from './types'
+import { CHART_KIND, CHART_VALUE_FORMAT, type ChartKind, type ChartProps } from './types'
 
 const PALETTE_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
-const FALLBACK = ['#2563eb', '#16a34a', '#d97706', '#9333ea', '#dc2626']
+const PRIMARY_FALLBACK = '#2563eb'
+const FALLBACK = [PRIMARY_FALLBACK, '#16a34a', '#d97706', '#9333ea', '#dc2626']
 
 /** Palette from the design tokens (CSS variables on :root). */
 export function readPalette(): string[] {
   const style = typeof window === 'undefined' ? undefined : getComputedStyle(document.documentElement)
-  return PALETTE_VARS.map((name, i) => style?.getPropertyValue(name).trim() || FALLBACK[i] || '#2563eb')
+  return PALETTE_VARS.map(
+    (name, i) => style?.getPropertyValue(name).trim() || FALLBACK[i] || PRIMARY_FALLBACK,
+  )
 }
 
-export function valueFormatter(props: Pick<ChartProps, 'valueFormat' | 'currency'>) {
+export function valueFormatter(props: ChartProps) {
   return (value: unknown): string => {
     const n = typeof value === 'number' ? value : Number(value)
     if (Number.isNaN(n)) return ''
-    return props.valueFormat === 'currency' ? formatCurrency(n, props.currency) : formatNumber(n)
+    return props.valueFormat === CHART_VALUE_FORMAT.currency
+      ? formatCurrency(n, props.currency)
+      : formatNumber(n)
   }
 }
 
 /** Shared option for bar and line charts: Intl tooltip, CSP-safe rich-text rendering, palette, aria. */
-export function buildCartesianOption(kind: 'bar' | 'line', props: ChartProps): EChartsCoreOption {
+export function buildCartesianOption(kind: ChartKind, props: ChartProps): EChartsCoreOption {
   const format = valueFormatter(props)
   return {
     color: readPalette(),
@@ -36,8 +41,8 @@ export function buildCartesianOption(kind: 'bar' | 'line', props: ChartProps): E
       type: kind,
       name: s.name,
       data: s.data,
-      smooth: kind === 'line',
-      showSymbol: kind === 'line',
+      smooth: kind === CHART_KIND.line,
+      showSymbol: kind === CHART_KIND.line,
     })),
   }
 }

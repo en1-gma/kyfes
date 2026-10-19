@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { useT } from '@/shared/i18n'
-import { useAbility } from '@/shared/rbac'
+import { ACTION, useAbility } from '@/shared/rbac'
 import { ORDER_SUBJECT, OrdersChart, OrdersTable, type Order } from '@/features/orders'
 import { ROUTES } from './route-names'
 
@@ -16,7 +16,7 @@ const editTo = (order: Order) => ({ name: ROUTES.orderEdit, params: { id: order.
     <div class="page__header">
       <h1>{{ t('orders.title') }}</h1>
       <RouterLink
-        v-if="ability.can('create', ORDER_SUBJECT)"
+        v-if="ability.can(ACTION.create, ORDER_SUBJECT)"
         class="button-link"
         :to="{ name: ROUTES.orderNew }"
       >

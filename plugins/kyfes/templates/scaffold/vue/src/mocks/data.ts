@@ -1,5 +1,13 @@
 import type { Session } from '@/shared/auth'
-import type { Order, OrderStatus } from '@/features/orders'
+import { ACTION } from '@/shared/rbac'
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELD,
+  ORDER_STATUS,
+  ORDER_STATUSES,
+  ORDER_SUBJECT,
+  type Order,
+} from '@/features/orders'
 
 export type MockUser = 'manager' | 'operator' | 'viewer'
 
@@ -9,14 +17,19 @@ export const sessions: Record<MockUser, Session> = {
     user: { id: 'u-manager', name: 'Maria Rossi', email: 'maria.rossi@example.com' },
     locale: 'it',
     rules: [
-      { action: 'manage', subject: 'Order' },
+      { action: ACTION.manage, subject: ORDER_SUBJECT },
       // Shipped orders are frozen; the status of a cancelled order cannot change.
-      { action: ['update', 'delete'], subject: 'Order', conditions: { status: 'shipped' }, inverted: true },
       {
-        action: 'update',
-        subject: 'Order',
-        fields: ['status'],
-        conditions: { status: 'cancelled' },
+        action: [ACTION.update, ACTION.delete],
+        subject: ORDER_SUBJECT,
+        conditions: { status: ORDER_STATUS.shipped },
+        inverted: true,
+      },
+      {
+        action: ACTION.update,
+        subject: ORDER_SUBJECT,
+        fields: [ORDER_FIELD.status],
+        conditions: { status: ORDER_STATUS.cancelled },
         inverted: true,
       },
     ],
@@ -26,20 +39,24 @@ export const sessions: Record<MockUser, Session> = {
     user: { id: 'u-operator', name: 'Giulia Verdi', email: 'giulia.verdi@example.com' },
     locale: 'it',
     rules: [
-      { action: 'read', subject: 'Order' },
-      { action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+      { action: ACTION.read, subject: ORDER_SUBJECT },
       {
-        action: 'update',
-        subject: 'Order',
-        fields: ['customerName', 'total'],
-        conditions: { status: 'draft' },
+        action: ACTION.create,
+        subject: ORDER_SUBJECT,
+        fields: [ORDER_FIELD.customerName, ORDER_FIELD.total],
+      },
+      {
+        action: ACTION.update,
+        subject: ORDER_SUBJECT,
+        fields: [ORDER_FIELD.customerName, ORDER_FIELD.total],
+        conditions: { status: ORDER_STATUS.draft },
       },
     ],
   },
   viewer: {
     user: { id: 'u-viewer', name: 'Luca Bianchi', email: 'luca.bianchi@example.com' },
     locale: 'it',
-    rules: [{ action: 'read', subject: 'Order' }],
+    rules: [{ action: ACTION.read, subject: ORDER_SUBJECT }],
   },
 }
 
@@ -47,7 +64,6 @@ export const sessions: Record<MockUser, Session> = {
 export const FORBIDDEN_ORDER_ID = '00000000-0000-4000-8000-000000000403'
 export const BROKEN_ORDER_ID = '00000000-0000-4000-8000-000000000500'
 
-const STATUSES: OrderStatus[] = ['draft', 'confirmed', 'shipped', 'cancelled']
 const CUSTOMERS = ['Acme S.p.A.', 'Globex S.r.l.', 'Initech', 'Umbrella Italia', 'Stark Industries']
 
 function seedOrder(i: number): Order {
@@ -56,7 +72,7 @@ function seedOrder(i: number): Order {
     id: `10000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     number: `ORD-${String(1000 + i)}`,
     customerName: CUSTOMERS[i % CUSTOMERS.length] ?? 'Acme S.p.A.',
-    status: STATUSES[i % STATUSES.length] ?? 'draft',
+    status: ORDER_STATUSES[i % ORDER_STATUSES.length] ?? DEFAULT_ORDER_STATUS,
     total: Math.round((100 + ((i * 7919) % 2400)) * 100) / 100,
     createdAt: created.toISOString(),
   }

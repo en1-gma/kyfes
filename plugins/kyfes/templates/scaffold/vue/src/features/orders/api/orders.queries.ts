@@ -4,17 +4,20 @@ import { DEFAULT_PAGE_SIZE } from '@/shared/api'
 import { formatMonth } from '@/shared/i18n'
 import type { OrderFilters } from '../model/orders.schema'
 import { ordersApi } from './orders.api'
+import { ORDERS_FEATURE } from '../model/orders.feature'
 
 export type OrderListParams = OrderFilters & { limit?: number }
 
 /** Key factory: the only place where order query keys are written. */
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_FEATURE] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (params: OrderListParams) => [...orderKeys.lists(), params] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  /** Mutation key shared by every delete (lets a failing delete know whether others are in flight). */
+  removals: () => [...orderKeys.all, 'remove'] as const,
 }
 
 export function ordersInfiniteQueryOptions(params: OrderListParams = {}) {

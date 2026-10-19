@@ -5,6 +5,7 @@ import { createDb, sessions } from '@/mocks/data'
 import { createHandlers } from '@/mocks/handlers'
 import { server } from '@/mocks/node'
 import { renderWithProviders } from '@/test/render'
+import { ORDER_STATUS } from '../model/orders.schema'
 import OrderForm from './OrderForm.vue'
 
 /** Records the JSON bodies the form sends. */
@@ -35,7 +36,7 @@ describe('OrderForm field-level permissions', () => {
   it('operator: update of a draft sends only the writable fields', async () => {
     const db = createDb()
     server.use(...createHandlers('operator', db))
-    const draft = db.orders.find((o) => o.status === 'draft')
+    const draft = db.orders.find((o) => o.status === ORDER_STATUS.draft)
     const bodies = captureBodies('patch', '/api/orders/')
     const { emitted } = await renderWithProviders(OrderForm, {
       session: sessions.operator,

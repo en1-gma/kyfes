@@ -4,6 +4,9 @@ import { z } from 'zod'
 export const SUPPORTED_LOCALES = ['it', 'en'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
+/** Boolean flags arrive from Vite as strings. */
+const FLAG = { on: 'true', off: 'false' } as const
+
 const EnvSchema = z.object({
   API_BASE_URL: z
     .string()
@@ -14,11 +17,11 @@ const EnvSchema = z.object({
       (v) => v.startsWith('/') && !v.startsWith('//') && !v.includes('\\'),
       'API_BASE_URL must be a same-origin path starting with "/" (e.g. /api)',
     ),
-  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default('it'),
+  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default(SUPPORTED_LOCALES[0]),
   API_MOCKS: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
+    .enum([FLAG.on, FLAG.off])
+    .default(FLAG.off)
+    .transform((v) => v === FLAG.on),
 })
 
 export type Env = z.infer<typeof EnvSchema>

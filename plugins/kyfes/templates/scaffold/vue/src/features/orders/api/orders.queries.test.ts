@@ -5,6 +5,7 @@ import { createDb, sessions } from '@/mocks/data'
 import { createHandlers, errorBody } from '@/mocks/handlers'
 import { server } from '@/mocks/node'
 import { createTestQueryClient, withSetup } from '@/test/render'
+import { ORDER_STATUS } from '../model/orders.schema'
 import { useCreateOrder, useDeleteOrder } from './orders.mutations'
 import {
   orderKeys,
@@ -55,7 +56,11 @@ describe('orders mutations', () => {
     await queryClient.fetchInfiniteQuery(ordersInfiniteQueryOptions())
     const { result } = await withSetup(() => useCreateOrder(), { queryClient, session: sessions.manager })
 
-    const created = await result.mutateAsync({ customerName: 'Nuovo Cliente', status: 'draft', total: 10 })
+    const created = await result.mutateAsync({
+      customerName: 'Nuovo Cliente',
+      status: ORDER_STATUS.draft,
+      total: 10,
+    })
     expect(created.customerName).toBe('Nuovo Cliente')
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryData(orderKeys.detail(created.id))).toEqual(created)
@@ -68,7 +73,7 @@ describe('orders mutations', () => {
     const options = ordersInfiniteQueryOptions()
     await queryClient.fetchInfiniteQuery(options)
     // Newest shipped order: it is on the first page (default sort -createdAt).
-    const shipped = db.orders.filter((o) => o.status === 'shipped').at(-1)
+    const shipped = db.orders.filter((o) => o.status === ORDER_STATUS.shipped).at(-1)
     const { result } = await withSetup(() => useDeleteOrder(), { queryClient, session: sessions.manager })
 
     const ids = () =>

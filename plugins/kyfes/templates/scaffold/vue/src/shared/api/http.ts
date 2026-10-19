@@ -6,8 +6,15 @@ import { toApiError } from './api-error'
 export const XSRF_COOKIE_NAME = 'XSRF-TOKEN'
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN'
 export const CORRELATION_HEADER = 'x-correlation-id'
-const REFRESH_URL = '/auth/refresh'
-const AUTH_URLS = ['/auth/refresh', '/auth/login', '/auth/logout']
+/** BFF authentication endpoints (relative to API_BASE_URL). */
+export const AUTH_ENDPOINTS = {
+  me: '/auth/me',
+  login: '/auth/login',
+  logout: '/auth/logout',
+  refresh: '/auth/refresh',
+} as const
+/** Calls that must never trigger the refresh/401 flow themselves. */
+const AUTH_URLS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout]
 
 type RetriableConfig = InternalAxiosRequestConfig & {
   _retried?: boolean
@@ -63,7 +70,7 @@ let sessionGeneration = 0
 /** Single-flight: concurrent 401s share the same refresh; a failure notifies `onUnauthorized` once. */
 function refreshSession(): Promise<boolean> {
   refreshInFlight ??= http
-    .post(REFRESH_URL)
+    .post(AUTH_ENDPOINTS.refresh)
     .then(
       () => {
         sessionGeneration += 1

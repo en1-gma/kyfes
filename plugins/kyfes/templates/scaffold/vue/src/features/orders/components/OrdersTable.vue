@@ -3,11 +3,11 @@ import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import { formatCurrency, formatDate, useT } from '@/shared/i18n'
-import { useAbility } from '@/shared/rbac'
+import { ACTION, useAbility } from '@/shared/rbac'
 import { AppButton, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '@/shared/ui'
 import { useDeleteOrder } from '../api/orders.mutations'
 import { useOrdersInfinite } from '../api/orders.queries'
-import { ORDER_STATUSES, type Order } from '../model/orders.schema'
+import { ORDER_SORT, ORDER_STATUSES, type Order } from '../model/orders.schema'
 import { ORDER_SUBJECT, orderSubject } from '../permissions'
 import { useOrdersUiStore } from '../stores/orders-ui.store'
 
@@ -27,10 +27,10 @@ const deleteOrder = useDeleteOrder()
 
 /** The actions column exists only if the user may update or delete at least some order. */
 const showActions = computed(
-  () => ability.can('update', ORDER_SUBJECT) || ability.can('delete', ORDER_SUBJECT),
+  () => ability.can(ACTION.update, ORDER_SUBJECT) || ability.can(ACTION.delete, ORDER_SUBJECT),
 )
-const canEdit = (order: Order) => ability.can('update', orderSubject(order))
-const canDelete = (order: Order) => ability.can('delete', orderSubject(order))
+const canEdit = (order: Order) => ability.can(ACTION.update, orderSubject(order))
+const canDelete = (order: Order) => ability.can(ACTION.delete, orderSubject(order))
 
 const pendingDelete = ref<Order | null>(null)
 const deleteLabels = computed(() => ({
@@ -71,7 +71,7 @@ const deleteLabels = computed(() => ({
             <th scope="col">{{ t('orders.fields.customerName') }}</th>
             <th scope="col">{{ t('orders.fields.status') }}</th>
             <th scope="col" class="num">{{ t('orders.fields.total') }}</th>
-            <th scope="col" :aria-sort="sort === 'createdAt' ? 'ascending' : 'descending'">
+            <th scope="col" :aria-sort="sort === ORDER_SORT.createdAtAsc ? 'ascending' : 'descending'">
               <!-- The accessible name starts with the visible text (WCAG 2.5.3 label in name). -->
               <AppButton
                 variant="link"

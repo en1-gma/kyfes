@@ -3,10 +3,10 @@ import { computed } from 'vue'
 import ChartFrame from './ChartFrame.vue'
 import { buildCartesianOption } from './chart-options'
 import { VChart } from './echarts'
-import type { ChartProps } from './types'
+import { CHART_KIND, type ChartProps } from './types'
 
 const props = defineProps<ChartProps>()
-const option = computed(() => buildCartesianOption('bar', props))
+const option = computed(() => buildCartesianOption(CHART_KIND.bar, props))
 </script>
 
 <template>

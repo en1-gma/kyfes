@@ -1,7 +1,20 @@
 import { z } from 'zod'
 
-export const ORDER_STATUSES = ['draft', 'confirmed', 'shipped', 'cancelled'] as const
-export const OrderStatusSchema = z.enum(ORDER_STATUSES)
+export const ORDER_STATUS = {
+  draft: 'draft',
+  confirmed: 'confirmed',
+  shipped: 'shipped',
+  cancelled: 'cancelled',
+} as const
+export const OrderStatusSchema = z.enum(ORDER_STATUS)
+export const ORDER_STATUSES = OrderStatusSchema.options
+/** Status of a new order. */
+export const DEFAULT_ORDER_STATUS = ORDER_STATUS.draft
+
+/** List sort (`-` = descending), as sent to the API. */
+export const ORDER_SORT = { createdAtAsc: 'createdAt', createdAtDesc: '-createdAt' } as const
+export type OrderSort = (typeof ORDER_SORT)[keyof typeof ORDER_SORT]
+export const DEFAULT_ORDER_SORT: OrderSort = ORDER_SORT.createdAtDesc
 
 export const OrderSchema = z.object({
   id: z.uuid(),
@@ -34,4 +47,4 @@ export type Order = z.infer<typeof OrderSchema>
 export type OrderInput = z.infer<typeof OrderInputSchema>
 export type OrderStats = z.infer<typeof OrderStatsSchema>
 
-export type OrderFilters = { sort?: 'createdAt' | '-createdAt' | undefined; status?: OrderStatus | undefined }
+export type OrderFilters = { sort?: OrderSort | undefined; status?: OrderStatus | undefined }
