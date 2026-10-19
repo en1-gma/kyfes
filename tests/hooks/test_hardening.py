@@ -524,9 +524,9 @@ class ConstantReuseAtWriteTime(unittest.TestCase):
     def setUp(self):
         self.proj = project("react")
         files = {
-            "src/shared/rbac/ability.ts": "export const ACTIONS = { read: 'read', update: 'update' } as const\n",
-            "src/features/orders/permissions.ts": "export const ORDER_SUBJECT = 'Order' as const\n",
-            "src/features/orders/model/orders.schema.ts": "export const ORDER_STATUSES = ['draft', 'shipped'] as const\n",
+            "src/shared/config/constants.ts": "export const ACTIONS = { read: 'read', update: 'update' } as const\n",
+            "src/features/orders/constants.ts": ("export const ORDER_SUBJECT = 'Order' as const\n"
+                                                 "export const ORDER_STATUSES = ['draft', 'shipped'] as const\n"),
             "src/features/orders/index.ts": "export {}\n",
         }
         for rel, text in files.items():
@@ -540,22 +540,22 @@ class ConstantReuseAtWriteTime(unittest.TestCase):
     def test_new_code_must_reference_existing_constants(self):
         out = write(self.proj, self.rel, "const ok = can('update', record)")
         self.assertIn("[constant-reuse]", reason(out))
-        self.assertIn("ACTIONS.update (src/shared/rbac/ability.ts:1)", reason(out))
+        self.assertIn("ACTIONS.update (src/shared/config/constants.ts:1)", reason(out))
         self.assertIn("ORDER_STATUSES[1]", reason(write(self.proj, "src/features/orders/components/OrdersTable.tsx",
                                                         "if (s === 'shipped') x()")))
         self.assertFalse(denied(write(self.proj, self.rel, "const ok = can(ACTIONS.update, record)")))
 
     def test_other_features_constants_are_homonyms_not_reuse(self):
-        out = write(self.proj, "src/features/customers/model/customers.schema.ts",
+        out = write(self.proj, "src/features/customers/constants.ts",
                     "export const CUSTOMER_STATUS = { draft: 'draft', active: 'active' } as const")
         self.assertFalse(denied(out), reason(out))
         # una pagina compone le feature: lì la costante della feature si importa
         self.assertIn("ORDER_STATUSES[0]", reason(write(self.proj, "src/pages/OrdersPage.tsx", "if (s === 'draft') x()")))
 
     def test_duplicate_constant_definitions_are_denied(self):
-        out = write(self.proj, "src/features/customers/permissions.ts", "export const EDIT = 'update' as const")
+        out = write(self.proj, "src/features/customers/constants.ts", "export const EDIT = 'update' as const")
         self.assertIn("ACTIONS.update", reason(out))
-        self.assertFalse(denied(write(self.proj, "src/features/customers/permissions.ts",
+        self.assertFalse(denied(write(self.proj, "src/features/customers/constants.ts",
                                       "export const CUSTOMER_SUBJECT = 'Customer' as const")))
 
     def test_existing_literals_tests_and_ignored_values_do_not_block(self):
@@ -568,6 +568,63 @@ class ConstantReuseAtWriteTime(unittest.TestCase):
         conf["constant_reuse"] = {"ignore_values": ["update"]}
         (self.proj / ".kyfes/config.json").write_text(json.dumps(conf))
         self.assertFalse(denied(write(self.proj, self.rel, "const ok = can('update', record)")))
+
+
+class ConstantsLocation(unittest.TestCase):
+    """Le costanti di dominio si definiscono solo in features/<f>/constants.ts e shared/config/constants.ts."""
+
+    CONSTANT = "export const CUSTOMER_STATUS = { active: 'active', blocked: 'blocked' } as const"
+
+    def test_definitions_outside_constants_files_are_denied(self):
+        homes = {"react": ("src/features", "src/shared"), "next": ("src/features", "src/shared"),
+                 "vue": ("src/features", "src/shared"), "angular": ("src/app/features", "src/app/shared"),
+                 "svelte": ("src/lib/features", "src/lib/shared")}
+        for fw, (feat, shared) in homes.items():
+            proj = project(fw)
+            try:
+                with self.subTest(fw=fw):
+                    for rel in (f"{feat}/customers/permissions.ts", f"{feat}/customers/model/customers.schema.ts",
+                                f"{feat}/customers/components/x.ts"):
+                        out = write(proj, rel, self.CONSTANT)
+                        self.assertIn("[constants-location]", reason(out))
+                        self.assertIn(f"{feat}/customers/constants.ts", reason(out))
+                    out = write(proj, f"{shared}/ui/button.ts", "export const BUTTON_VARIANT = { primary: 'primary' } as const")
+                    self.assertIn(f"{shared}/config/constants.ts", reason(out))
+                    self.assertFalse(denied(write(proj, f"{feat}/customers/constants.ts", self.CONSTANT)))
+                    self.assertFalse(denied(write(proj, f"{shared}/config/constants.ts",
+                                                  "export const BUTTON_VARIANT = { primary: 'primary' } as const")))
+            finally:
+                shutil.rmtree(proj)
+
+    def test_what_counts_as_an_explicit_constant(self):
+        proj = project("react")
+        rel = "src/features/customers/components/CustomersTable.tsx"
+        try:
+            self.assertIn("[constants-location]", reason(write(proj, rel, "const STORAGE_KEY = 'customers-filters'")))
+            self.assertIn("[constants-location]", reason(write(proj, rel, "export const KINDS = ['a1', 'b2'] as const")))
+            for ok in ("const label = 'customers-filters'", "export const routes = [{ path: 'x1', lazy: () => import('./A') }]",
+                       "export const MAX_ITEMS = 50", "export const ORDERS_NS = ORDERS_FEATURE"):
+                with self.subTest(ok=ok):
+                    self.assertFalse(denied(write(proj, rel, ok)), reason(write(proj, rel, ok)))
+            self.assertFalse(denied(write(proj, "src/features/customers/components/X.test.tsx", "const K = 'kk'")))
+        finally:
+            shutil.rmtree(proj)
+
+    def test_preexisting_definitions_and_server_code(self):
+        proj = project("next")
+        try:
+            legacy = proj / "src/features/orders/permissions.ts"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text("export const ORDER_SUBJECT = 'Order' as const\nexport const n = 1\n")
+            self.assertFalse(denied(edit(proj, "src/features/orders/permissions.ts", "export const n = 1", "export const n = 2")))
+            self.assertFalse(denied(write(proj, "src/app/api/orders/route.ts", "const UPSTREAM_PATH = 'orders-v2'")))
+            (proj / "src/features/orders/index.ts").write_text("export {}\n")
+            import arch_check
+            found = [f for f in arch_check.run(proj, rules.load_config(proj)) if f.rule == "constants-location"]
+            self.assertEqual([(f.path, f.line) for f in found], [("src/features/orders/permissions.ts", 1)])
+            self.assertFalse(rules.check_layout("src/features/orders/constants.ts", rules.load_config(proj)))
+        finally:
+            shutil.rmtree(proj)
 
 
 class CommentStripping(unittest.TestCase):

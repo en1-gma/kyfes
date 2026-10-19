@@ -87,7 +87,7 @@ DENY_CASES = [
 ALLOW_CASES = [
     "import { sanitizeHtml } from '@/shared/lib'\nel.innerHTML = sanitizeHtml(html)",
     "<a href={url} target=\"_blank\" rel=\"noopener noreferrer\">{t('doc')}</a>",
-    "const API = 'http://localhost:8080'",
+    "const api = 'http://localhost:8080'",
     "const ns = 'http://www.w3.org/2000/svg'",
     "const canEdit = can('update', subject('Order', order))",
     "const theme = localStorage.getItem('theme')",
