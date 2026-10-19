@@ -7,13 +7,22 @@ import { ApiError, ApiErrorBodySchema } from './api-error';
 export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
 const REFRESH_URL = '/auth/refresh';
+/** Auth endpoints never trigger the refresh nor the unauthorized callback (no loops). */
+const AUTH_ENDPOINTS = [REFRESH_URL, '/auth/login', '/auth/logout'];
 
 type UnauthorizedHandler = () => void;
-type RetriableConfig = InternalAxiosRequestConfig & { _kyfesRetried?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & {
+	_kyfesRetried?: boolean;
+	/** Logical instant the request was sent at (see `clock`). */
+	_kyfesSentAt?: number;
+};
 
 let unauthorizedHandler: UnauthorizedHandler | undefined;
 let refreshEnabled = false;
 let refreshInFlight: Promise<boolean> | undefined;
+/** Logical clock: strictly increasing, so "sent before the last refresh" is never ambiguous. */
+let clock = 0;
+let lastRefreshAt = 0;
 
 /** Registers what to do on a 401 (shared/auth: invalidate the session and go to login). */
 export function onUnauthorized(handler: UnauthorizedHandler | undefined): void {
@@ -68,12 +77,27 @@ export function toApiError(error: unknown): ApiError {
 	return new ApiError({ status: 0, code: 'UNKNOWN', message: String(error) });
 }
 
-/** Single-flight: concurrent 401s share one refresh request. */
+function isAuthEndpoint(url: string | undefined): boolean {
+	if (!url) return false;
+	const path = url.split(/[?#]/, 1)[0] ?? '';
+	return AUTH_ENDPOINTS.some((endpoint) => path.endsWith(endpoint));
+}
+
+/**
+ * Single-flight: concurrent 401s share one refresh request. A failed refresh calls the
+ * unauthorized handler here, once, not once per waiting request.
+ */
 function refreshSession(client: AxiosInstance): Promise<boolean> {
 	refreshInFlight ??= client
-		.post(REFRESH_URL, undefined, { _kyfesRetried: true } as RetriableConfig)
-		.then(() => true)
-		.catch(() => false)
+		.post(REFRESH_URL)
+		.then(() => {
+			lastRefreshAt = ++clock;
+			return true;
+		})
+		.catch(() => {
+			unauthorizedHandler?.();
+			return false;
+		})
 		.finally(() => {
 			refreshInFlight = undefined;
 		});
@@ -81,19 +105,25 @@ function refreshSession(client: AxiosInstance): Promise<boolean> {
 }
 
 export function installInterceptors(client: AxiosInstance): void {
+	client.interceptors.request.use((config: RetriableConfig) => {
+		config._kyfesSentAt = ++clock;
+		return config;
+	});
 	client.interceptors.response.use(undefined, async (error: unknown) => {
 		// Cancellations (AbortSignal from TanStack Query) are not errors for the UI.
 		if (axios.isCancel(error)) throw error;
 		const apiError = toApiError(error);
 		const config =
 			error instanceof AxiosError ? (error.config as RetriableConfig | undefined) : undefined;
-		if (apiError.isUnauthorized) {
-			if (refreshEnabled && config && !config._kyfesRetried) {
-				config._kyfesRetried = true;
-				if (await refreshSession(client)) return client.request(config);
-			}
-			unauthorizedHandler?.();
+		if (!apiError.isUnauthorized || isAuthEndpoint(config?.url)) throw apiError;
+		if (refreshEnabled && config && !config._kyfesRetried) {
+			config._kyfesRetried = true;
+			// Sent before the last successful refresh: it carried the old cookie, just repeat it.
+			if ((config._kyfesSentAt ?? 0) < lastRefreshAt) return client.request(config);
+			if (await refreshSession(client)) return client.request(config);
+			throw apiError;
 		}
+		unauthorizedHandler?.();
 		throw apiError;
 	});
 }

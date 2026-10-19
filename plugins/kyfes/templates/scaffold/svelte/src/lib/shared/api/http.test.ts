@@ -1,4 +1,5 @@
-import { http as mswHttp, HttpResponse } from 'msw';
+import axios from 'axios';
+import { delay, http as mswHttp, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../../../mocks/node';
 import { ApiError } from './api-error';
@@ -89,5 +90,96 @@ describe('http client', () => {
 		expect(b.data).toEqual({ ok: true });
 		expect(refreshCalls).toBe(1);
 		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('repeats without a new refresh a 401 of a request sent before the last refresh', async () => {
+		enableSessionRefresh(true);
+		let refreshed = false;
+		let refreshCalls = 0;
+		let releaseSlow: () => void = () => {};
+		const slowGate = new Promise<void>((resolve) => {
+			releaseSlow = resolve;
+		});
+		let slowCalls = 0;
+		server.use(
+			mswHttp.post('/api/auth/refresh', () => {
+				refreshCalls += 1;
+				refreshed = true;
+				return new HttpResponse(null, { status: 204 });
+			}),
+			mswHttp.get('/api/fast', () =>
+				refreshed
+					? HttpResponse.json({ ok: 'fast' })
+					: HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 })
+			),
+			// Sent with the old cookie: the 401 arrives only after the refresh has completed.
+			mswHttp.get('/api/slow', async () => {
+				slowCalls += 1;
+				if (slowCalls > 1) return HttpResponse.json({ ok: 'slow' });
+				await slowGate;
+				return HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 });
+			})
+		);
+		const slow = http.get('/slow');
+		await delay(10);
+		const fast = await http.get('/fast');
+		expect(fast.data).toEqual({ ok: 'fast' });
+		releaseSlow();
+		expect((await slow).data).toEqual({ ok: 'slow' });
+		expect(refreshCalls).toBe(1);
+	});
+
+	it('calls onUnauthorized once when the refresh itself fails', async () => {
+		enableSessionRefresh(true);
+		const handler = vi.fn();
+		onUnauthorized(handler);
+		let refreshCalls = 0;
+		server.use(
+			mswHttp.post('/api/auth/refresh', () => {
+				refreshCalls += 1;
+				return HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 });
+			}),
+			mswHttp.get('/api/data', () =>
+				HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 })
+			)
+		);
+		const results = await Promise.allSettled([http.get('/data'), http.get('/data')]);
+		expect(results.every((result) => result.status === 'rejected')).toBe(true);
+		expect(refreshCalls).toBe(1);
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['/auth/login', '/auth/logout', '/auth/refresh'])(
+		'a 401 on %s triggers neither the refresh nor onUnauthorized',
+		async (path) => {
+			enableSessionRefresh(true);
+			const handler = vi.fn();
+			onUnauthorized(handler);
+			let refreshCalls = 0;
+			server.use(
+				mswHttp.all(`/api${path}`, () => {
+					refreshCalls += path === '/auth/refresh' ? 1 : 0;
+					return HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 });
+				})
+			);
+			await expect(http.post(path)).rejects.toMatchObject({ status: 401 });
+			expect(refreshCalls).toBe(path === '/auth/refresh' ? 1 : 0);
+			expect(handler).not.toHaveBeenCalled();
+		}
+	);
+
+	it('rethrows cancellations as they are, not as network errors', async () => {
+		server.use(
+			mswHttp.get('/api/never', async () => {
+				await delay('infinite');
+				return HttpResponse.json({});
+			})
+		);
+		const controller = new AbortController();
+		const pending = http.get('/never', { signal: controller.signal }).catch((e: unknown) => e);
+		controller.abort();
+		const error = await pending;
+		expect(axios.isCancel(error)).toBe(true);
+		expect(error).not.toBeInstanceOf(ApiError);
 	});
 });

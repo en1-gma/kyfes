@@ -28,7 +28,8 @@ npm run dev               # http://localhost:5173
 
 With `PUBLIC_API_MOCKS=true` (dev only) the browser uses MSW (`src/mocks`). Choose the user with a
 query string on the first page load: `?mockUser=manager` (manage Order, default),
-`?mockUser=viewer` (read Order only) or `?mockUser=anonymous` (401 → login).
+`?mockUser=viewer` (read Order only), `?mockUser=operator` (creates/edits only `customerName` and
+`total`, edits only draft orders) or `?mockUser=anonymous` (401 → login).
 
 ## Structure
 

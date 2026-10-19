@@ -3,15 +3,24 @@
 	import { m } from '$lib/shared/i18n';
 	import Button from './Button.svelte';
 
-	/** Generic message + correlationId: never the raw backend/axios error. */
+	/**
+	 * Generic message + correlationId: never the raw backend/axios error. A 403 (or `forbidden`,
+	 * e.g. a record-level check that fails in the UI) shows "not authorized" instead, without retry.
+	 */
 	let {
 		error,
 		correlationId,
+		forbidden: forceForbidden = false,
 		onretry
-	}: { error?: unknown; correlationId?: string | undefined; onretry?: () => void } = $props();
+	}: {
+		error?: unknown;
+		correlationId?: string | undefined;
+		forbidden?: boolean;
+		onretry?: () => void;
+	} = $props();
 
 	const id = $derived(correlationId ?? (isApiError(error) ? error.correlationId : undefined));
-	const forbidden = $derived(isApiError(error) && error.isForbidden);
+	const forbidden = $derived(forceForbidden || (isApiError(error) && error.isForbidden));
 </script>
 
 <div class="error-state" role="alert">

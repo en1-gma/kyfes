@@ -13,7 +13,7 @@ export const OrderSchema = z.object({
 });
 
 /**
- * Body of POST/PUT /orders. Error messages are i18n codes (mapped to orders_validation_*),
+ * Validation of the order form. Error messages are i18n codes (mapped to orders_validation_*),
  * never user-facing text.
  */
 export const OrderInputSchema = z.object({
@@ -24,6 +24,12 @@ export const OrderInputSchema = z.object({
 		.nonnegative({ error: 'invalidAmount' })
 		.max(1_000_000_000, { error: 'invalidAmount' })
 });
+
+/**
+ * Body of POST /orders and PATCH /orders/:id: only the fields the user may write (field-level
+ * permissions), so every field is optional; the server applies its defaults (e.g. `status`).
+ */
+export const OrderPayloadSchema = OrderInputSchema.partial();
 
 export const OrderStatsSchema = z.object({
 	months: z.array(
@@ -38,5 +44,7 @@ export const OrderStatsSchema = z.object({
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 export type Order = z.infer<typeof OrderSchema>;
 export type OrderInput = z.infer<typeof OrderInputSchema>;
+export type OrderPayload = z.infer<typeof OrderPayloadSchema>;
+export type OrderField = keyof OrderInput;
 export type OrderStats = z.infer<typeof OrderStatsSchema>;
 export type OrderValidationCode = 'required' | 'tooLong' | 'invalidAmount';

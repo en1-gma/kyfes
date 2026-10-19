@@ -13,6 +13,11 @@ describe('safeRedirect', () => {
 		'/\\evil.example',
 		'\\\\evil.example',
 		'/orders\n',
+		'/.//evil.example',
+		'/a/..//evil.example',
+		'/%2e%2e//evil.example',
+		'/..//evil.example',
+		'/./%2F/evil.example',
 		'orders',
 		'',
 		undefined,
@@ -23,5 +28,9 @@ describe('safeRedirect', () => {
 
 	it('uses the given fallback', () => {
 		expect(safeRedirect('//x', '/home')).toBe('/home');
+	});
+
+	it('normalizes dot segments that stay on the same origin', () => {
+		expect(safeRedirect('/a/../orders')).toBe('/orders');
 	});
 });

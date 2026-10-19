@@ -32,4 +32,23 @@ describe('OrdersTable RBAC', () => {
 		expect(alert).toHaveTextContent(/mock-\d+/);
 		expect(alert).not.toHaveTextContent('Boom');
 	});
+
+	it('shows "not authorized" (not the generic error) on 403', async () => {
+		server.use(errorHandlers.ordersForbidden);
+		renderWithProviders(OrdersTable);
+		const alert = await screen.findByRole('alert');
+		expect(alert).toHaveTextContent('Accesso non autorizzato');
+		expect(alert).not.toHaveTextContent('Si è verificato un errore');
+		expect(screen.queryByRole('button', { name: 'Riprova' })).not.toBeInTheDocument();
+	});
+
+	it('operator edits only draft orders (condition on the record) and never deletes', async () => {
+		renderWithProviders(OrdersTable, { user: 'operator' });
+		await screen.findByText('ORD-0045');
+		const drafts = screen.getAllByRole('cell', { name: 'Bozza' }).length;
+		await waitFor(() =>
+			expect(screen.getAllByRole('link', { name: /Modifica l'ordine/ })).toHaveLength(drafts)
+		);
+		expect(screen.queryByRole('button', { name: /Elimina l'ordine/ })).not.toBeInTheDocument();
+	});
 });

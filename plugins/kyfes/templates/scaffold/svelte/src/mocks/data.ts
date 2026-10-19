@@ -1,7 +1,7 @@
 import type { Order } from '$lib/features/orders';
 import type { Session } from '$lib/shared/auth';
 
-export type MockUser = 'manager' | 'viewer';
+export type MockUser = 'manager' | 'viewer' | 'operator';
 
 export const SESSIONS: Record<MockUser, Session> = {
 	manager: {
@@ -12,6 +12,21 @@ export const SESSIONS: Record<MockUser, Session> = {
 	viewer: {
 		user: { id: 'u-viewer', name: 'Vittorio Viewer', email: 'vittorio.viewer@example.com' },
 		rules: [{ action: 'read', subject: 'Order' }],
+		locale: 'it'
+	},
+	// Field-level and conditional rules: never sets `status`, edits only draft orders.
+	operator: {
+		user: { id: 'u-operator', name: 'Olga Operator', email: 'olga.operator@example.com' },
+		rules: [
+			{ action: 'read', subject: 'Order' },
+			{ action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+			{
+				action: 'update',
+				subject: 'Order',
+				fields: ['customerName', 'total'],
+				conditions: { status: 'draft' }
+			}
+		],
 		locale: 'it'
 	}
 };

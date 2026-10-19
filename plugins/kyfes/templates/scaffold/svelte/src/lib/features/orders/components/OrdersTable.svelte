@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { m, formatCurrency, formatDate } from '$lib/shared/i18n';
 	import { useAbility } from '$lib/shared/rbac';
-	import { Button, ConfirmDialog, EmptyState, ErrorState, Spinner } from '$lib/shared/ui';
+	import { Button, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '$lib/shared/ui';
 	import { useDeleteOrder } from '../api/orders.mutations';
 	import { useOrders } from '../api/orders.queries';
 	import type { Order } from '../model/orders.schema';
@@ -20,25 +20,9 @@
 	);
 
 	let pending: Order | undefined = $state();
-	let confirmOpen = $state(false);
-
-	function askDelete(order: Order) {
-		pending = order;
-		confirmOpen = true;
-	}
-
-	function confirmDelete() {
-		if (pending) remove.mutate(pending.id);
-	}
 </script>
 
-{#if orders.isPending}
-	<Spinner />
-{:else if orders.isError}
-	<ErrorState error={orders.error} onretry={() => orders.refetch()} />
-{:else if rows.length === 0}
-	<EmptyState title={m.orders_empty()} />
-{:else}
+<QueryState query={orders} isEmpty={rows.length === 0} emptyTitle={m.orders_empty()}>
 	{#if remove.isError}
 		<ErrorState error={remove.error} />
 	{/if}
@@ -76,7 +60,7 @@
 								<Button
 									variant="danger"
 									aria-label={m.orders_action_delete_label({ number: order.number })}
-									onclick={() => askDelete(order)}>{m.orders_action_delete()}</Button
+									onclick={() => (pending = order)}>{m.orders_action_delete()}</Button
 								>
 							{/if}
 						</td>
@@ -85,21 +69,16 @@
 			{/each}
 		</tbody>
 	</table>
-	<p class="count" aria-live="polite">{m.orders_count({ count: rows.length })}</p>
-	{#if orders.hasNextPage}
-		<Button disabled={orders.isFetchingNextPage} onclick={() => orders.fetchNextPage()}>
-			{orders.isFetchingNextPage ? m.common_loading() : m.common_load_more()}
-		</Button>
-	{/if}
-{/if}
+	<LoadMore summary={m.orders_count({ count: rows.length })} query={orders} />
+</QueryState>
 
-<ConfirmDialog
-	bind:open={confirmOpen}
-	danger
+<ConfirmDeleteDialog
+	item={pending}
 	title={m.orders_delete_title()}
 	message={m.orders_delete_text({ number: pending?.number ?? '' })}
 	confirmLabel={m.orders_action_delete()}
-	onconfirm={confirmDelete}
+	onconfirm={(order) => remove.mutate(order.id)}
+	onclose={() => (pending = undefined)}
 />
 
 <style>
@@ -110,8 +89,5 @@
 		display: flex;
 		gap: var(--space-2);
 		align-items: center;
-	}
-	.count {
-		color: var(--color-text-muted);
 	}
 </style>

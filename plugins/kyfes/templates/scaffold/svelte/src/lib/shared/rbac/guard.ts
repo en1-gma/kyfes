@@ -13,7 +13,9 @@ export async function requirePermission(
 	action: Actions,
 	subjectType: SubjectType
 ): Promise<void> {
-	const session = await queryClient.ensureQueryData(sessionQueryOptions());
+	// fetchQuery, not ensureQueryData: after a 403 the session query is invalidated and the
+	// permissions must be read fresh, not from the cache (it still returns cached data otherwise).
+	const session = await queryClient.fetchQuery(sessionQueryOptions());
 	if (!buildAbility(session.rules).can(action, subjectType)) {
 		error(403, 'Forbidden', { code: 'FORBIDDEN' });
 	}

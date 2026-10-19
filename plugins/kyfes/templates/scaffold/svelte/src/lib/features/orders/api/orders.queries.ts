@@ -29,7 +29,8 @@ export function ordersInfiniteQueryOptions(filters: OrdersFilters = {}) {
 	};
 	return infiniteQueryOptions({
 		queryKey: orderKeys.list(normalized),
-		queryFn: ({ pageParam }) => ordersApi.list({ ...normalized, cursor: pageParam }),
+		queryFn: ({ pageParam, signal }) =>
+			ordersApi.list({ ...normalized, cursor: pageParam }, signal),
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined
 	});
@@ -38,11 +39,15 @@ export function ordersInfiniteQueryOptions(filters: OrdersFilters = {}) {
 export function orderQueryOptions(id: string) {
 	return queryOptions({
 		queryKey: orderKeys.detail(id),
-		queryFn: () => ordersApi.get(id)
+		queryFn: ({ signal }) => ordersApi.get(id, signal)
 	});
 }
 
-/** Monthly totals already shaped for shared/charts (labels formatted with Intl). */
+/**
+ * Monthly totals shaped for shared/charts (labels formatted with Intl in the current locale).
+ * Applied by the component in a `$derived`, not as `select`: TanStack memoizes `select`, so
+ * the labels would not follow a language switch.
+ */
 export function toMonthlyTotals(stats: OrderStats): ChartDatum[] {
 	return stats.months.map(({ month, total }) => ({
 		label: formatDate(`${month}-01T00:00:00Z`, {
@@ -57,8 +62,7 @@ export function toMonthlyTotals(stats: OrderStats): ChartDatum[] {
 export function orderStatsQueryOptions() {
 	return queryOptions({
 		queryKey: orderKeys.stats(),
-		queryFn: () => ordersApi.stats(),
-		select: toMonthlyTotals,
+		queryFn: ({ signal }) => ordersApi.stats(signal),
 		staleTime: 5 * 60_000
 	});
 }

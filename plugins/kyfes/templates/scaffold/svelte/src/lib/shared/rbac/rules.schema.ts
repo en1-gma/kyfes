@@ -1,14 +1,16 @@
 import { z } from 'zod';
-import { ACTIONS, SUBJECT_TYPES } from './subjects';
 
-const ActionSchema = z.enum(ACTIONS);
-const SubjectTypeSchema = z.enum([...SUBJECT_TYPES, 'all']);
+const oneOrMany = z.union([z.string(), z.array(z.string())]);
 
-/** A packed CASL rule as sent by GET /api/auth/me. Unknown subjects/actions are rejected. */
+/**
+ * A packed CASL rule as sent by GET /api/auth/me. Rules are computed by the server: actions and
+ * subjects unknown to this app (`export`, `Invoice`) stay plain strings and simply never match,
+ * they do not invalidate the whole session.
+ */
 export const RawRuleSchema = z.object({
-	action: z.union([ActionSchema, z.array(ActionSchema)]),
-	subject: z.union([SubjectTypeSchema, z.array(SubjectTypeSchema)]),
-	fields: z.union([z.string(), z.array(z.string())]).optional(),
+	action: oneOrMany,
+	subject: oneOrMany,
+	fields: oneOrMany.optional(),
 	conditions: z.record(z.string(), z.unknown()).optional(),
 	inverted: z.boolean().optional(),
 	reason: z.string().optional()

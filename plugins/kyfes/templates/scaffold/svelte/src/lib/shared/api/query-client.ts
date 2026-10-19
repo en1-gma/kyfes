@@ -4,10 +4,12 @@ import { isApiError } from './api-error';
 
 const MAX_RETRIES = 2;
 
-/** No retry on 4xx; at most 2 retries on 5xx and network errors. */
+/**
+ * At most 2 retries, only for ApiError on the network (status 0, timeout) or 5xx. Never on 4xx
+ * nor on non-HTTP errors (ZodError on an invalid payload, bugs): repeating would not help.
+ */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-	if (isApiError(error) && !error.isRetryable) return false;
-	return failureCount < MAX_RETRIES;
+	return isApiError(error) && error.isRetryable && failureCount < MAX_RETRIES;
 }
 
 export function createAppQueryClient(): QueryClient {

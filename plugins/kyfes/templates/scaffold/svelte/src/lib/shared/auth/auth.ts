@@ -1,7 +1,7 @@
 import { useQueryClient, type QueryClient } from '@tanstack/svelte-query';
 import { navigating } from '$app/state';
 import { env } from '$lib/shared/config';
-import { http, isApiError, onUnauthorized } from '$lib/shared/api';
+import { enableSessionRefresh, http, isApiError, onUnauthorized } from '$lib/shared/api';
 import { safeRedirect } from '$lib/shared/lib';
 import { invalidateSession, sessionKeys } from './session';
 
@@ -41,10 +41,16 @@ export function useLogout(): () => Promise<void> {
 }
 
 /**
- * Wires the HTTP client to the session: 401 → drop the session and go to login;
- * 403 on any query/mutation → permissions may have changed, refetch the session.
+ * Wires the HTTP client to the session: 401 → single-flight POST /auth/refresh and one retry,
+ * and only if the refresh fails drop the session and go to login; 403 on any query/mutation →
+ * permissions may have changed, refetch the session. Without a refresh endpoint in the BFF,
+ * pass `{ refresh: false }`.
  */
-export function installAuthHandlers(queryClient: QueryClient): () => void {
+export function installAuthHandlers(
+	queryClient: QueryClient,
+	{ refresh = true }: { refresh?: boolean } = {}
+): () => void {
+	enableSessionRefresh(refresh);
 	onUnauthorized(() => {
 		queryClient.removeQueries({ queryKey: sessionKeys.all });
 		login();
@@ -65,6 +71,7 @@ export function installAuthHandlers(queryClient: QueryClient): () => void {
 		}
 	});
 	return () => {
+		enableSessionRefresh(false);
 		onUnauthorized(undefined);
 		unsubscribeQueries();
 		unsubscribeMutations();

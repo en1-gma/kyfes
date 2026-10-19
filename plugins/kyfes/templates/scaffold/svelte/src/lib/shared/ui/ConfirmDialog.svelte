@@ -27,9 +27,10 @@
 		if (!open && dialog.open) dialog.close();
 	});
 
+	// onconfirm first: a caller bound to `open` may clear the pending record on close.
 	function confirm() {
-		open = false;
 		onconfirm();
+		open = false;
 	}
 </script>
 

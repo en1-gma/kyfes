@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isApiError } from '$lib/shared/api';
 	import { m } from '$lib/shared/i18n';
 	import { useAbility } from '$lib/shared/rbac';
 	import { Button, ErrorState } from '$lib/shared/ui';
@@ -7,13 +8,16 @@
 		ORDER_STATUSES,
 		OrderInputSchema,
 		type Order,
-		type OrderInput,
+		type OrderField,
 		type OrderStatus
 	} from '../model/orders.schema';
-	import { asOrderSubject, ORDER_SUBJECT } from '../permissions';
+	import { canWriteOrderField, ORDER_FIELDS, pickWritableFields } from '../permissions';
 	import { orderStatusLabel, validationMessage } from './order-status';
 
-	/** Create (no `order`) or edit an order. Validation with OrderInputSchema (Zod). */
+	/**
+	 * Create (no `order`) or edit an order. Validation with OrderInputSchema (Zod); the payload
+	 * contains only the fields the user may write (POST / PATCH), never a read-only one.
+	 */
 	let { order, onsaved }: { order?: Order; onsaved?: (order: Order) => void } = $props();
 
 	const ability = useAbility();
@@ -28,17 +32,34 @@
 		total: order ? String(order.total) : ''
 	});
 	let values = $state(initial());
-	let errors: Partial<Record<keyof OrderInput, string>> = $state({});
+	let errors: Partial<Record<OrderField, string>> = $state({});
+	/** Server error without recognised field errors: shown as the generic ErrorState. */
+	let submitError: unknown = $state();
 
-	const canEditStatus = $derived(
-		order
-			? ability.can('update', asOrderSubject(order), 'status')
-			: ability.can('create', ORDER_SUBJECT, 'status')
+	const writable = $derived(
+		Object.fromEntries(
+			ORDER_FIELDS.map((field) => [field, canWriteOrderField(ability, field, order)])
+		) as Record<OrderField, boolean>
 	);
 	const mutation = $derived(order ? update : create);
 
+	const isOrderField = (field: string): field is OrderField =>
+		ORDER_FIELDS.some((known) => known === field);
+
+	/** 422 fieldErrors → messages on the fields; `true` if at least one field was recognised. */
+	function applyServerErrors(error: unknown): boolean {
+		if (!isApiError(error) || !error.fieldErrors) return false;
+		const next: typeof errors = {};
+		for (const [field, codes] of Object.entries(error.fieldErrors)) {
+			if (isOrderField(field)) next[field] = validationMessage(codes[0] ?? 'invalid');
+		}
+		errors = next;
+		return Object.keys(next).length > 0;
+	}
+
 	async function onsubmit(event: SubmitEvent) {
 		event.preventDefault();
+		submitError = undefined;
 		const parsed = OrderInputSchema.safeParse({
 			customerName: values.customerName,
 			status: values.status,
@@ -47,23 +68,30 @@
 		if (!parsed.success) {
 			const next: typeof errors = {};
 			for (const issue of parsed.error.issues) {
-				const field = issue.path[0] as keyof OrderInput;
-				next[field] ??= validationMessage(issue.message);
+				const field = issue.path[0];
+				if (typeof field === 'string' && isOrderField(field)) {
+					next[field] ??= validationMessage(issue.message);
+				}
 			}
 			errors = next;
 			return;
 		}
 		errors = {};
-		const saved = order
-			? await update.mutateAsync({ id: order.id, input: parsed.data })
-			: await create.mutateAsync(parsed.data);
-		onsaved?.(saved);
+		const payload = pickWritableFields(parsed.data, (field) => writable[field]);
+		try {
+			const saved = order
+				? await update.mutateAsync({ id: order.id, payload })
+				: await create.mutateAsync(payload);
+			onsaved?.(saved);
+		} catch (error) {
+			if (!applyServerErrors(error)) submitError = error;
+		}
 	}
 </script>
 
 <form class="order-form" novalidate {onsubmit}>
-	{#if mutation.isError}
-		<ErrorState error={mutation.error} />
+	{#if submitError}
+		<ErrorState error={submitError} />
 	{/if}
 
 	<div class="field">
@@ -73,6 +101,7 @@
 			name="customerName"
 			autocomplete="organization"
 			bind:value={values.customerName}
+			disabled={!writable.customerName}
 			aria-invalid={errors.customerName ? 'true' : undefined}
 			aria-describedby={errors.customerName ? `${formId}-customer-error` : undefined}
 		/>
@@ -87,14 +116,23 @@
 			id="{formId}-status"
 			name="status"
 			bind:value={values.status}
-			disabled={!canEditStatus}
-			aria-describedby={canEditStatus ? undefined : `${formId}-status-hint`}
+			disabled={!writable.status}
+			aria-invalid={errors.status ? 'true' : undefined}
+			aria-describedby={[
+				errors.status ? `${formId}-status-error` : '',
+				writable.status ? '' : `${formId}-status-hint`
+			]
+				.filter(Boolean)
+				.join(' ') || undefined}
 		>
 			{#each ORDER_STATUSES as status (status)}
 				<option value={status}>{orderStatusLabel(status)}</option>
 			{/each}
 		</select>
-		{#if !canEditStatus}
+		{#if errors.status}
+			<p id="{formId}-status-error" class="error">{errors.status}</p>
+		{/if}
+		{#if !writable.status}
 			<p id="{formId}-status-hint" class="hint">{m.orders_status_readonly()}</p>
 		{/if}
 	</div>
@@ -106,6 +144,7 @@
 			name="total"
 			inputmode="decimal"
 			bind:value={values.total}
+			disabled={!writable.total}
 			aria-invalid={errors.total ? 'true' : undefined}
 			aria-describedby={errors.total ? `${formId}-total-error` : undefined}
 		/>

@@ -1,4 +1,7 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
+import { z } from 'zod';
+import { OrderInputSchema, type Order } from '$lib/features/orders';
+import { buildAbility, subject } from '$lib/shared/rbac';
 import { seedOrders, SESSIONS, type MockUser } from './data';
 
 /** In-memory backend for dev (browser) and tests (node). */
@@ -15,31 +18,55 @@ export function useMockUser(user: MockUser | null): void {
 }
 
 let correlation = 0;
-function apiError(status: number, code: string, message: string) {
+function apiError(
+	status: number,
+	code: string,
+	message: string,
+	fieldErrors?: Record<string, string[]>
+) {
 	correlation += 1;
 	return HttpResponse.json(
-		{ code, message, correlationId: `mock-${String(correlation).padStart(6, '0')}` },
+		{
+			code,
+			message,
+			correlationId: `mock-${String(correlation).padStart(6, '0')}`,
+			...(fieldErrors ? { fieldErrors } : {})
+		},
 		{ status }
 	);
 }
 
-function can(action: 'create' | 'update' | 'delete'): boolean {
-	const rules = db.user ? SESSIONS[db.user].rules : [];
-	return rules.some(
-		(rule) => (rule.action === 'manage' || rule.action === action) && rule.subject === 'Order'
-	);
+/** Same rules as the session: the mock backend enforces conditions and fields like a real one. */
+const ability = () => buildAbility(db.user ? SESSIONS[db.user].rules : []);
+
+/** Request body: every field optional (POST and PATCH carry only the writable fields). */
+const OrderBodySchema = OrderInputSchema.partial().strict();
+type OrderBody = z.infer<typeof OrderBodySchema>;
+
+function invalidBody(error: z.ZodError) {
+	return apiError(422, 'VALIDATION_ERROR', 'Invalid order', z.flattenError(error).fieldErrors);
 }
 
-type OrderBody = {
-	customerName: string;
-	status: 'draft' | 'confirmed' | 'shipped' | 'cancelled';
-	total: number;
-};
+/** A field sent by the client that the user may not write on `target`. */
+function forbiddenField(
+	action: 'create' | 'update',
+	target: Order | 'Order',
+	body: OrderBody
+): boolean {
+	const current = ability();
+	const subjectOf = target === 'Order' ? target : subject('Order', { ...target });
+	return Object.keys(body).some((field) => current.cannot(action, subjectOf, field));
+}
 
 export const handlers: HttpHandler[] = [
 	http.get('/api/auth/me', () =>
 		db.user
 			? HttpResponse.json(SESSIONS[db.user])
+			: apiError(401, 'UNAUTHENTICATED', 'Login required')
+	),
+	http.post('/api/auth/refresh', () =>
+		db.user
+			? new HttpResponse(null, { status: 204 })
 			: apiError(401, 'UNAUTHENTICATED', 'Login required')
 	),
 	http.post('/api/auth/logout', () => {
@@ -77,11 +104,18 @@ export const handlers: HttpHandler[] = [
 		return order ? HttpResponse.json(order) : apiError(404, 'NOT_FOUND', 'Order not found');
 	}),
 	http.post('/api/orders', async ({ request }) => {
-		if (!can('create')) return apiError(403, 'FORBIDDEN', 'Not allowed');
-		const body = (await request.json()) as OrderBody;
+		if (ability().cannot('create', 'Order')) return apiError(403, 'FORBIDDEN', 'Not allowed');
+		const parsed = OrderBodySchema.required({ customerName: true, total: true }).safeParse(
+			await request.json()
+		);
+		if (!parsed.success) return invalidBody(parsed.error);
+		if (forbiddenField('create', 'Order', parsed.data)) {
+			return apiError(403, 'FORBIDDEN', 'Field not allowed');
+		}
 		const n = db.orders.length + 1;
-		const order = {
-			...body,
+		const order: Order = {
+			status: 'draft',
+			...parsed.data,
 			id: crypto.randomUUID(),
 			number: `ORD-${String(n).padStart(4, '0')}`,
 			createdAt: new Date().toISOString()
@@ -89,18 +123,29 @@ export const handlers: HttpHandler[] = [
 		db.orders.push(order);
 		return HttpResponse.json(order, { status: 201 });
 	}),
-	http.put('/api/orders/:id', async ({ params, request }) => {
-		if (!can('update')) return apiError(403, 'FORBIDDEN', 'Not allowed');
+	http.patch('/api/orders/:id', async ({ params, request }) => {
 		const index = db.orders.findIndex((o) => o.id === params.id);
 		const current = db.orders[index];
 		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-		const updated = { ...current, ...((await request.json()) as OrderBody) };
+		if (ability().cannot('update', subject('Order', { ...current }))) {
+			return apiError(403, 'FORBIDDEN', 'Not allowed');
+		}
+		const parsed = OrderBodySchema.safeParse(await request.json());
+		if (!parsed.success) return invalidBody(parsed.error);
+		if (forbiddenField('update', current, parsed.data)) {
+			return apiError(403, 'FORBIDDEN', 'Field not allowed');
+		}
+		const updated: Order = { ...current, ...parsed.data };
 		db.orders[index] = updated;
 		return HttpResponse.json(updated);
 	}),
 	http.delete('/api/orders/:id', ({ params }) => {
-		if (!can('delete')) return apiError(403, 'FORBIDDEN', 'Not allowed');
-		db.orders = db.orders.filter((o) => o.id !== params.id);
+		const current = db.orders.find((o) => o.id === params.id);
+		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
+		if (ability().cannot('delete', subject('Order', { ...current }))) {
+			return apiError(403, 'FORBIDDEN', 'Not allowed');
+		}
+		db.orders = db.orders.filter((o) => o.id !== current.id);
 		return new HttpResponse(null, { status: 204 });
 	})
 ];

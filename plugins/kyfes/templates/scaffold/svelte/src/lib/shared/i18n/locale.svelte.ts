@@ -3,40 +3,56 @@ import { env } from '$lib/shared/config';
 import {
 	extractLocaleFromCookie,
 	extractLocaleFromNavigator,
-	getLocale,
 	isLocale,
 	locales,
+	overwriteGetLocale,
+	overwriteSetLocale,
 	setLocale,
 	type Locale
 } from './paraglide/runtime';
 
 export { locales, type Locale };
 
-/**
- * Reactive mirror of Paraglide's locale. The app is client-rendered (ssr = false), so the
- * locale changes without reloading: <LocaleBoundary> re-renders the tree on change.
- */
-export const localeState = $state<{ current: Locale }>({ current: getLocale() });
+/** Paraglide's own setLocale: with the `cookie` strategy (reload: false) it only writes the cookie. */
+const writeLocaleCookie = setLocale;
 
-function apply(locale: Locale): void {
-	if (getLocale() !== locale) void setLocale(locale, { reload: false });
-	localeState.current = locale;
-	if (browser) document.documentElement.lang = locale;
+function navigatorLocale(): Locale | undefined {
+	return browser ? extractLocaleFromNavigator() : undefined;
 }
 
-/** Explicit user choice (persisted by Paraglide's cookie strategy). */
+/**
+ * Reactive source of the locale. Paraglide's getLocale() reads it, so every message (`m.x()`)
+ * and Intl formatter called in a template or `$derived` re-runs on change: no remount of the
+ * tree (form drafts and component state survive a language switch). Overwriting getLocale also
+ * stops Paraglide from resolving the locale itself, which on first use wrote the cookie.
+ */
+export const localeState = $state<{ current: Locale }>({
+	current: extractLocaleFromCookie() ?? navigatorLocale() ?? env.DEFAULT_LOCALE
+});
+
+overwriteGetLocale(() => localeState.current);
+// Anyone calling Paraglide's setLocale directly makes an explicit choice too.
+overwriteSetLocale((locale) => changeLocale(locale));
+
+function apply(locale: Locale): void {
+	localeState.current = locale;
+}
+
+/** Explicit user choice: the only place that writes the locale cookie. */
 export function changeLocale(locale: Locale): void {
 	apply(locale);
+	void writeLocaleCookie(locale, { reload: false });
 }
 
 /**
  * Initial locale: explicit choice (cookie) → session → navigator.language → PUBLIC_DEFAULT_LOCALE.
+ * Never writes the cookie, so a later session locale is not shadowed by an implicit choice.
  */
 export function initLocale(sessionLocale?: string | null): Locale {
 	const locale =
 		extractLocaleFromCookie() ??
 		(isLocale(sessionLocale) ? sessionLocale : undefined) ??
-		(browser ? extractLocaleFromNavigator() : undefined) ??
+		navigatorLocale() ??
 		env.DEFAULT_LOCALE;
 	apply(locale);
 	return locale;

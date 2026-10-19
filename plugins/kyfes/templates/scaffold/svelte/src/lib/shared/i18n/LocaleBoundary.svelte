@@ -3,9 +3,12 @@
 	import { localeState } from './locale.svelte';
 
 	let { children }: { children: Snippet } = $props();
+
+	// Messages are reactive through localeState (see locale.svelte.ts): no {#key} remount here,
+	// which would throw away form drafts. Only <html lang> has to follow the locale.
+	$effect(() => {
+		document.documentElement.lang = localeState.current;
+	});
 </script>
 
-<!-- Paraglide messages are plain functions: re-render the subtree when the locale changes. -->
-{#key localeState.current}
-	{@render children()}
-{/key}
+{@render children()}

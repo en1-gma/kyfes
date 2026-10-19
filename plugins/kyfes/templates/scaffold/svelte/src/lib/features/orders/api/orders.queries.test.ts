@@ -1,10 +1,10 @@
 import { InfiniteQueryObserver, MutationObserver, QueryClient } from '@tanstack/svelte-query';
+import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { errorHandlers } from '../../../../mocks/handlers';
 import { server } from '../../../../mocks/node';
 import { ApiError } from '$lib/shared/api';
 import { createOrderMutationOptions, deleteOrderMutationOptions } from './orders.mutations';
-import { ordersApi } from './orders.api';
 import {
 	orderKeys,
 	ordersInfiniteQueryOptions,
@@ -32,8 +32,8 @@ describe('orders queries', () => {
 	});
 
 	it('exposes stats already shaped for the chart', async () => {
-		const shaped = toMonthlyTotals(await ordersApi.stats());
-		expect(orderStatsQueryOptions().select).toBe(toMonthlyTotals);
+		const client = newClient();
+		const shaped = toMonthlyTotals(await client.fetchQuery(orderStatsQueryOptions()));
 		expect(shaped.length).toBeGreaterThan(0);
 		expect(shaped[0]).toEqual({ label: expect.any(String), value: expect.any(Number) });
 	});
@@ -82,5 +82,50 @@ describe('orders mutations', () => {
 
 		const after = client.getQueryData(options.queryKey);
 		expect(after?.pages[0]?.items.some((o) => o.id === target.id)).toBe(true);
+	});
+
+	it('concurrent deletes: the first fails, the second row does not come back', async () => {
+		const client = newClient();
+		const options = ordersInfiniteQueryOptions();
+		const before = await client.fetchInfiniteQuery(options);
+		const [first, second] = before.pages[0]?.items ?? [];
+		if (!first || !second) throw new Error('seed data missing');
+		let releaseSecond: () => void = () => {};
+		const secondGate = new Promise<void>((resolve) => {
+			releaseSecond = resolve;
+		});
+		server.use(
+			http.delete('/api/orders/:id', async ({ params }) => {
+				if (params.id === first.id) {
+					await delay(5);
+					return HttpResponse.json({ code: 'INTERNAL', message: 'Boom' }, { status: 500 });
+				}
+				await secondGate;
+				return new HttpResponse(null, { status: 204 });
+			})
+		);
+		const rows = () => client.getQueryData(options.queryKey)?.pages[0]?.items ?? [];
+
+		const failing = new MutationObserver(client, deleteOrderMutationOptions).mutate(first.id);
+		const pending = new MutationObserver(client, deleteOrderMutationOptions).mutate(second.id);
+		await expect(failing).rejects.toBeInstanceOf(ApiError);
+		expect(rows().some((o) => o.id === second.id)).toBe(false);
+
+		releaseSecond();
+		await pending;
+		expect(rows().some((o) => o.id === second.id)).toBe(false);
+	});
+
+	it('delete removes the detail cache only on success', async () => {
+		server.use(errorHandlers.deleteServerError);
+		const client = newClient();
+		const order = (await client.fetchInfiniteQuery(ordersInfiniteQueryOptions())).pages[0]
+			?.items[0];
+		if (!order) throw new Error('seed data missing');
+		client.setQueryData(orderKeys.detail(order.id), order);
+		await new MutationObserver(client, deleteOrderMutationOptions)
+			.mutate(order.id)
+			.catch(() => undefined);
+		expect(client.getQueryData(orderKeys.detail(order.id))).toEqual(order);
 	});
 });

@@ -6,4 +6,5 @@ export { default as OrderDetail } from './components/OrderDetail.svelte';
 export { default as OrdersChart } from './components/OrdersChart.svelte';
 export { ORDER_SUBJECT, asOrderSubject } from './permissions';
 export { orderKeys } from './api/orders.queries';
-export type { Order, OrderInput, OrderStatus } from './model/orders.schema';
+export { OrderInputSchema } from './model/orders.schema';
+export type { Order, OrderInput, OrderPayload, OrderStatus } from './model/orders.schema';

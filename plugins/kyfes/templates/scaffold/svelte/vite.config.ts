@@ -59,6 +59,9 @@ export default defineConfig(({ mode }) => {
 			include: ['src/**/*.test.ts'],
 			setupFiles: ['./src/mocks/sveltekit-globals.ts', './src/mocks/vitest-setup.ts'],
 			restoreMocks: true,
+			// No persistent module cache: a stale transform (e.g. after adding locale files)
+			// would make tests fail for reasons unrelated to the code.
+			fsModuleCache: false,
 			server: { deps: { inline: ['msw'] } },
 			alias: {
 				// svelteTesting() adds the `browser` condition (Svelte client runtime in jsdom), which maps
