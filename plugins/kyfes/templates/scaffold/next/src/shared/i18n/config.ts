@@ -1,12 +1,9 @@
+import { COMMON_NS, LOCALE_COOKIE, TIME_ZONE } from '@/shared/config/constants';
 import { env, LOCALES, type Locale } from '@/shared/config/env';
 
-export { LOCALES, type Locale };
+export { COMMON_NS, LOCALE_COOKIE, LOCALES, TIME_ZONE, type Locale };
 
 export const DEFAULT_LOCALE: Locale = env.DEFAULT_LOCALE;
-export const LOCALE_COOKIE = 'NEXT_LOCALE';
-export const TIME_ZONE = 'Europe/Rome';
-/** Global i18n namespace (loaded for every route): `useTranslations(COMMON_NS)`. */
-export const COMMON_NS = 'common';
 
 export type Messages = Record<string, unknown>;
 

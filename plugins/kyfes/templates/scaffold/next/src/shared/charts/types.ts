@@ -1,7 +1,6 @@
-export const CHART_KIND = {
-  bar: 'bar',
-  line: 'line',
-} as const;
+import { CHART_KIND } from '@/shared/config/constants';
+
+export { CHART_KIND };
 export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND];
 
 export type ChartDatum = Record<string, string | number>;

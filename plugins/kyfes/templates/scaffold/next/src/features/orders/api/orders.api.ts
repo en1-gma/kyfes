@@ -9,9 +9,10 @@ import {
   type OrderStats,
   type OrderWrite,
 } from '../model/orders.schema';
+import { ORDERS_ENDPOINT, ORDERS_ENDPOINT_SEGMENT } from '../constants';
 
 /** REST resource of the orders feature (relative to API_BASE_URL); also the root of its query keys. */
-export const ORDERS_ENDPOINT = '/orders';
+export { ORDERS_ENDPOINT };
 const BASE = ORDERS_ENDPOINT;
 
 /** Endpoints of the orders feature: every response is parsed with Zod. */
@@ -42,7 +43,7 @@ export const ordersApi = {
   },
 
   async stats(signal?: AbortSignal): Promise<OrderStats> {
-    const { data } = await http.get(`${BASE}/stats`, { signal });
+    const { data } = await http.get(`${BASE}/${ORDERS_ENDPOINT_SEGMENT.stats}`, { signal });
     return OrderStatsSchema.parse(data);
   },
 };

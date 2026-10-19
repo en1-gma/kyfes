@@ -3,6 +3,8 @@ import commonEn from './locales/en.json';
 import commonIt from './locales/it.json';
 import ordersEn from '@/features/orders/locales/en.json';
 import ordersIt from '@/features/orders/locales/it.json';
+import { ORDERS_NS } from '@/features/orders/constants';
+import { COMMON_NS } from '@/shared/config/constants';
 
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
 
@@ -16,8 +18,8 @@ function keys(obj: unknown, prefix = ''): string[] {
 
 describe('locale key parity (it ⇄ en)', () => {
   it.each([
-    ['common', commonIt, commonEn],
-    ['orders', ordersIt, ordersEn],
+    [COMMON_NS, commonIt, commonEn],
+    [ORDERS_NS, ordersIt, ordersEn],
   ])('%s has the same keys in every language', (_ns, it_, en) => {
     expect(keys(en)).toEqual(keys(it_));
   });

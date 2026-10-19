@@ -4,26 +4,36 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '@/mocks/node';
 import { ApiError } from './api-error';
 import { http, setOnUnauthorized, setRefreshPath, shouldSendXsrf } from './http';
+import {
+  AUTH_ENDPOINTS,
+  DEFAULT_API_BASE_URL,
+  XSRF_COOKIE,
+  XSRF_HEADER,
+} from '@/shared/config/constants';
 
 afterEach(() => {
   setOnUnauthorized(null);
-  setRefreshPath('/auth/refresh');
+  setRefreshPath(AUTH_ENDPOINTS.refresh);
 });
 
 describe('http client', () => {
   it('sends cookies and is configured for double-submit XSRF', () => {
     expect(http.defaults.withCredentials).toBe(true);
-    expect(http.defaults.xsrfCookieName).toBe('XSRF-TOKEN');
-    expect(http.defaults.xsrfHeaderName).toBe('X-XSRF-TOKEN');
-    expect(http.defaults.baseURL).toBe('/api');
+    expect(http.defaults.xsrfCookieName).toBe(XSRF_COOKIE);
+    expect(http.defaults.xsrfHeaderName).toBe(XSRF_HEADER);
+    expect(http.defaults.baseURL).toBe(DEFAULT_API_BASE_URL);
     expect(http.defaults.timeout).toBeGreaterThan(0);
     expect(http.defaults.headers.Accept).toBe('application/json');
   });
 
   it('sends the XSRF header only to the API origin', () => {
-    expect(shouldSendXsrf({ baseURL: '/api', url: '/orders' })).toBe(true);
-    expect(shouldSendXsrf({ baseURL: '/api', url: 'https://evil.example.com/x' })).toBe(false);
-    expect(shouldSendXsrf({ baseURL: '/api', url: '//evil.example.com/x' })).toBe(false);
+    expect(shouldSendXsrf({ baseURL: DEFAULT_API_BASE_URL, url: '/orders' })).toBe(true);
+    expect(
+      shouldSendXsrf({ baseURL: DEFAULT_API_BASE_URL, url: 'https://evil.example.com/x' }),
+    ).toBe(false);
+    expect(shouldSendXsrf({ baseURL: DEFAULT_API_BASE_URL, url: '//evil.example.com/x' })).toBe(
+      false,
+    );
     expect(shouldSendXsrf({ baseURL: 'https://evil.example.com', url: '/orders' })).toBe(false);
     expect(shouldSendXsrf({ baseURL: '//evil.example.com', url: '/orders' })).toBe(false);
   });
@@ -87,7 +97,7 @@ describe('http client', () => {
     let refreshed = false;
     let refreshCalls = 0;
     server.use(
-      mswHttp.post('/api/auth/refresh', () => {
+      mswHttp.post(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.refresh}`, () => {
         refreshCalls += 1;
         refreshed = true;
         return new HttpResponse(null, { status: 204 });
@@ -107,7 +117,7 @@ describe('http client', () => {
     let refreshed = false;
     let slowCalls = 0;
     server.use(
-      mswHttp.post('/api/auth/refresh', () => {
+      mswHttp.post(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.refresh}`, () => {
         refreshCalls += 1;
         refreshed = true;
         return new HttpResponse(null, { status: 204 });
@@ -139,7 +149,7 @@ describe('http client', () => {
     setOnUnauthorized(onUnauthorized);
     let refreshCalls = 0;
     server.use(
-      mswHttp.post('/api/auth/refresh', () => {
+      mswHttp.post(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.refresh}`, () => {
         refreshCalls += 1;
         return HttpResponse.json({}, { status: 401 });
       }),
@@ -158,26 +168,30 @@ describe('http client', () => {
   it('refreshes /auth/me (expired access, valid refresh) without reporting failures', async () => {
     let refreshed = false;
     server.use(
-      mswHttp.post('/api/auth/refresh', () => {
+      mswHttp.post(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.refresh}`, () => {
         refreshed = true;
         return new HttpResponse(null, { status: 204 });
       }),
-      mswHttp.get('/api/auth/me', () =>
+      mswHttp.get(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.me}`, () =>
         refreshed ? HttpResponse.json({ ok: true }) : HttpResponse.json({}, { status: 401 }),
       ),
     );
-    await expect(http.get('/auth/me')).resolves.toMatchObject({ data: { ok: true } });
+    await expect(http.get(AUTH_ENDPOINTS.me)).resolves.toMatchObject({ data: { ok: true } });
   });
 
   it('a failed refresh triggered by /auth/me does not call onUnauthorized (no loop)', async () => {
     const onUnauthorized = vi.fn();
     setOnUnauthorized(onUnauthorized);
-    server.use(mswHttp.get('/api/auth/me', () => HttpResponse.json({}, { status: 401 })));
-    await expect(http.get('/auth/me')).rejects.toMatchObject({ status: 401 });
+    server.use(
+      mswHttp.get(`${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.me}`, () =>
+        HttpResponse.json({}, { status: 401 }),
+      ),
+    );
+    await expect(http.get(AUTH_ENDPOINTS.me)).rejects.toMatchObject({ status: 401 });
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
-  it.each(['/auth/refresh', '/auth/login', '/auth/logout'])(
+  it.each([AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout])(
     '%s never triggers a refresh nor onUnauthorized',
     async (path) => {
       const onUnauthorized = vi.fn();

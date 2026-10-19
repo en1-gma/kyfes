@@ -8,6 +8,8 @@ import { renderWithProviders } from '@/test/render';
 import { ORDER_FIELD, ORDER_STATUS } from '../model/orders.schema';
 import { ORDER_SUBJECT } from '../permissions';
 import { OrdersTable } from './OrdersTable';
+import { DEFAULT_API_BASE_URL } from '@/shared/config/constants';
+import { ORDERS_ENDPOINT } from '../constants';
 
 describe('OrdersTable RBAC', () => {
   it('manager sees Edit and Delete on every row', async () => {
@@ -53,7 +55,7 @@ describe('OrdersTable RBAC', () => {
 
   it('shows the empty state', async () => {
     server.use(
-      mswHttp.get('/api/orders', () =>
+      mswHttp.get(`${DEFAULT_API_BASE_URL}${ORDERS_ENDPOINT}`, () =>
         HttpResponse.json({ items: [], nextCursor: null, limit: 20 }),
       ),
     );

@@ -6,6 +6,8 @@ import { db, setMockUser } from '@/mocks/data';
 import { server } from '@/mocks/node';
 import { renderWithProviders } from '@/test/render';
 import { EditOrder, NewOrder } from './OrderEditor';
+import { DEFAULT_API_BASE_URL } from '@/shared/config/constants';
+import { ORDER_STATUS, ORDER_VALIDATION, ORDERS_ENDPOINT } from '../constants';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -22,8 +24,8 @@ function captureBodies() {
 
 afterEach(() => server.events.removeAllListeners());
 
-const draft = () => db.orders.find((o) => o.status === 'draft')!;
-const confirmed = () => db.orders.find((o) => o.status === 'confirmed')!;
+const draft = () => db.orders.find((o) => o.status === ORDER_STATUS.draft)!;
+const confirmed = () => db.orders.find((o) => o.status === ORDER_STATUS.confirmed)!;
 
 describe('OrderEditor field permissions (operator)', () => {
   it('create never sends the status', async () => {
@@ -36,7 +38,7 @@ describe('OrderEditor field permissions (operator)', () => {
     expect(bodies[0]).toEqual({ customerName: 'New Co', total: 0 });
     expect(bodies[0]).not.toHaveProperty('status');
     await vi.waitFor(() =>
-      expect(db.orders[0]).toMatchObject({ customerName: 'New Co', status: 'draft' }),
+      expect(db.orders[0]).toMatchObject({ customerName: 'New Co', status: ORDER_STATUS.draft }),
     );
   });
 
@@ -70,12 +72,12 @@ describe('OrderEditor field permissions (operator)', () => {
 
   it('server fieldErrors land on their fields (translated, never raw)', async () => {
     server.use(
-      mswHttp.post('/api/orders', () =>
+      mswHttp.post(`${DEFAULT_API_BASE_URL}${ORDERS_ENDPOINT}`, () =>
         HttpResponse.json(
           {
             code: 'VALIDATION_ERROR',
             message: 'Invalid order',
-            fieldErrors: { customerName: ['validation.tooLong'], total: ['must be < 1e9'] },
+            fieldErrors: { customerName: [ORDER_VALIDATION.tooLong], total: ['must be < 1e9'] },
           },
           { status: 422 },
         ),

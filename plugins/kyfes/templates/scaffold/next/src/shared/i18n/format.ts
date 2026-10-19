@@ -1,19 +1,14 @@
+import { DATE_FORMAT, DEFAULT_CURRENCY } from '@/shared/config/constants';
 import type { Locale } from './config';
 
-export type DateInput = Date | string | number;
+/** Date presets shared by every screen: `formatDate(value, DATE_FORMAT.dateTime)`. */
+export { DATE_FORMAT };
 
-const DEFAULT_CURRENCY = 'EUR';
+export type DateInput = Date | string | number;
 
 function toDate(value: DateInput): Date {
   return value instanceof Date ? value : new Date(value);
 }
-
-/** Date presets shared by every screen: `formatDate(value, DATE_FORMAT.dateTime)`. */
-export const DATE_FORMAT = {
-  date: { dateStyle: 'medium' },
-  dateTime: { dateStyle: 'long', timeStyle: 'short' },
-  monthYear: { month: 'short', year: 'numeric' },
-} as const satisfies Record<string, Intl.DateTimeFormatOptions>;
 
 export function formatDate(
   value: DateInput,

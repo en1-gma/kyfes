@@ -9,8 +9,9 @@ import { server } from '@/mocks/node';
 import { ApiError } from '@/shared/api';
 import { createTestQueryClient } from '@/test/render';
 import { useCreateOrder, useDeleteOrder } from './orders.mutations';
-import { ORDERS_ENDPOINT } from './orders.api';
 import { orderKeys, ordersInfiniteQueryOptions, useOrderStats } from './orders.queries';
+import { DEFAULT_API_BASE_URL } from '@/shared/config/constants';
+import { ORDER_QUERY_SCOPE, ORDER_STATUS, ORDERS_ENDPOINT } from '../constants';
 
 function setup() {
   const queryClient = createTestQueryClient();
@@ -22,12 +23,12 @@ function setup() {
 
 describe('orders queries', () => {
   it('builds hierarchical keys', () => {
-    expect(orderKeys.list({ limit: 20, status: 'draft' })).toEqual([
+    expect(orderKeys.list({ limit: 20, status: ORDER_STATUS.draft })).toEqual([
       ORDERS_ENDPOINT,
-      'list',
-      { limit: 20, status: 'draft' },
+      ORDER_QUERY_SCOPE.list,
+      { limit: 20, status: ORDER_STATUS.draft },
     ]);
-    expect(orderKeys.detail('1')).toEqual([ORDERS_ENDPOINT, 'detail', '1']);
+    expect(orderKeys.detail('1')).toEqual([ORDERS_ENDPOINT, ORDER_QUERY_SCOPE.detail, '1']);
   });
 
   it('loads cursor pages parsed with Zod', async () => {
@@ -74,7 +75,11 @@ describe('orders mutations', () => {
 
     const create = renderHook(() => useCreateOrder(), { wrapper });
     await act(() =>
-      create.result.current.mutateAsync({ customerName: 'New Co', status: 'draft', total: 42 }),
+      create.result.current.mutateAsync({
+        customerName: 'New Co',
+        status: ORDER_STATUS.draft,
+        total: 42,
+      }),
     );
 
     await waitFor(() =>
@@ -110,7 +115,7 @@ describe('orders mutations', () => {
       queryClient.getQueryData(listKey)?.pages.flatMap((p) => p.items.map((o) => o.id));
 
     server.use(
-      mswHttp.delete('/api/orders/:id', async ({ params }) => {
+      mswHttp.delete(`${DEFAULT_API_BASE_URL}${ORDERS_ENDPOINT}/:id`, async ({ params }) => {
         if (params.id === a!.id) {
           await delay(20);
           return HttpResponse.json({ code: 'INTERNAL' }, { status: 500 });

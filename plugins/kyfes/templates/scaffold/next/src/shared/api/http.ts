@@ -1,4 +1,10 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import {
+  AUTH_ENDPOINTS,
+  CORRELATION_ID_HEADER,
+  XSRF_COOKIE,
+  XSRF_HEADER,
+} from '@/shared/config/constants';
 import { env } from '@/shared/config/env';
 import { toApiError } from './api-error';
 
@@ -9,12 +15,7 @@ type RetriableConfig = InternalAxiosRequestConfig & {
 };
 
 /** BFF auth endpoints (relative to API_BASE_URL). */
-export const AUTH_ENDPOINTS = {
-  me: '/auth/me',
-  login: '/auth/login',
-  logout: '/auth/logout',
-  refresh: '/auth/refresh',
-} as const;
+export { AUTH_ENDPOINTS };
 
 /** Never refreshed nor reported as unauthorized: they are the auth flow itself (avoids loops). */
 const AUTH_FLOW_PATHS = [AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout, AUTH_ENDPOINTS.refresh];
@@ -71,8 +72,8 @@ export function shouldSendXsrf(
 export const http = axios.create({
   baseURL: env.API_BASE_URL,
   withCredentials: true,
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-XSRF-TOKEN',
+  xsrfCookieName: XSRF_COOKIE,
+  xsrfHeaderName: XSRF_HEADER,
   withXSRFToken: (config) => shouldSendXsrf(config),
   timeout: 15_000,
   headers: { Accept: 'application/json' },
@@ -156,7 +157,7 @@ http.interceptors.response.use(
       }
     }
 
-    const correlationId: unknown = error.response?.headers?.['x-correlation-id'];
+    const correlationId: unknown = error.response?.headers?.[CORRELATION_ID_HEADER];
     throw toApiError(
       status,
       error.response?.data,

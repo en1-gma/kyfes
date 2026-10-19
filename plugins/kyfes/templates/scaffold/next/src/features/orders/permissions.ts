@@ -1,4 +1,5 @@
-import { ACTION, SUBJECT, subject, type AppAbility } from '@/shared/rbac';
+import { ACTION, subject, type AppAbility } from '@/shared/rbac';
+import { ORDER_SUBJECT } from './constants';
 import {
   ORDER_FIELD,
   ORDER_FIELDS,
@@ -7,8 +8,8 @@ import {
   type OrderWrite,
 } from './model/orders.schema';
 
-/** CASL subject of the orders feature (registered in shared/rbac SUBJECT). */
-export const ORDER_SUBJECT = SUBJECT.Order;
+/** CASL subject of the orders feature (defined in ./constants). */
+export { ORDER_SUBJECT };
 
 /** Tags a record so that conditions (e.g. `{ status: 'draft' }`) are evaluated on it. */
 export function orderSubject(order: Order) {

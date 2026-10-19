@@ -1,4 +1,4 @@
-const TOKENS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5', '--chart-6'];
+import { CHART_PALETTE_TOKENS as TOKENS } from '@/shared/config/constants';
 
 /**
  * Chart palette read from the CSS design tokens (:root --chart-N).

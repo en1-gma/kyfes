@@ -1,11 +1,8 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { BUTTON_VARIANT } from '@/shared/config/constants';
 import styles from './ui.module.css';
 
-export const BUTTON_VARIANT = {
-  default: 'default',
-  primary: 'primary',
-  danger: 'danger',
-} as const;
+export { BUTTON_VARIANT };
 export type ButtonVariant = (typeof BUTTON_VARIANT)[keyof typeof BUTTON_VARIANT];
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

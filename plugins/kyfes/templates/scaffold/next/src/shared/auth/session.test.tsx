@@ -10,6 +10,9 @@ import { createQueryClient, http } from '@/shared/api';
 import { buildAbility } from '@/shared/rbac';
 import { invalidateSession, useSession } from './session';
 import { SessionSchema } from './session.schema';
+import { ACTION, AUTH_ENDPOINTS, DEFAULT_API_BASE_URL, SUBJECT } from '@/shared/config/constants';
+
+const ME_URL = `${DEFAULT_API_BASE_URL}${AUTH_ENDPOINTS.me}`;
 
 /** Same wiring as app/providers.tsx: a 403 invalidates the session. */
 function setup() {
@@ -26,7 +29,7 @@ describe('session query', () => {
   it('a 403 on /auth/me does not invalidate the session in a loop', async () => {
     let calls = 0;
     server.use(
-      mswHttp.get('/api/auth/me', () => {
+      mswHttp.get(ME_URL, () => {
         calls += 1;
         return HttpResponse.json({ code: 'FORBIDDEN' }, { status: 403 });
       }),
@@ -42,7 +45,7 @@ describe('session query', () => {
   it('a 403 elsewhere still invalidates the session (permissions may have changed)', async () => {
     let calls = 0;
     server.use(
-      mswHttp.get('/api/auth/me', () => {
+      mswHttp.get(ME_URL, () => {
         calls += 1;
         return HttpResponse.json(sessions.manager);
       }),
@@ -58,7 +61,7 @@ describe('session query', () => {
   });
 
   it('returns null (anonymous) on 401 when the refresh fails', async () => {
-    server.use(mswHttp.get('/api/auth/me', () => HttpResponse.json({}, { status: 401 })));
+    server.use(mswHttp.get(ME_URL, () => HttpResponse.json({}, { status: 401 })));
     const { wrapper } = setup();
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -84,11 +87,11 @@ describe('SessionSchema', () => {
       ...base,
       rules: [
         { action: 'approve', subject: 'Invoice' },
-        { action: 'read', subject: 'Order' },
+        { action: ACTION.read, subject: SUBJECT.Order },
       ],
     });
     const ability = buildAbility(parsed.rules);
-    expect(ability.can('read', 'Order')).toBe(true);
-    expect(ability.can('update', 'Order')).toBe(false);
+    expect(ability.can(ACTION.read, SUBJECT.Order)).toBe(true);
+    expect(ability.can(ACTION.update, SUBJECT.Order)).toBe(false);
   });
 });

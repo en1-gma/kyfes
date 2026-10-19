@@ -1,7 +1,5 @@
 import DOMPurify from 'dompurify';
-
-/** Forbidden both as a tag (<style>) and as an attribute (style="…"). */
-const STYLE = 'style';
+import { STYLE } from '@/shared/config/constants';
 
 const FORBID_TAGS = [
   STYLE,

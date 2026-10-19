@@ -1,7 +1,8 @@
 import type { Locale, NamespaceLoader } from '@/shared/i18n';
+import { ORDERS_NS } from '../constants';
 
 /** i18n namespace of the orders feature: `useTranslations(ORDERS_NS)`. */
-export const ORDERS_NS = 'orders';
+export { ORDERS_NS };
 
 const loaders: Record<Locale, () => Promise<{ default: Record<string, unknown> }>> = {
   it: () => import('./it.json'),

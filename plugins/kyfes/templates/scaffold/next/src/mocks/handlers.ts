@@ -2,20 +2,19 @@ import { http, HttpResponse } from 'msw';
 import { z } from 'zod';
 // Model only (not the feature index): loading the components here would load them before
 // the tests can mock their dependencies (e.g. next/navigation).
-import { ORDERS_ENDPOINT } from '@/features/orders/api/orders.api';
 import {
   DEFAULT_ORDER_STATUS,
   ORDER_FIELDS,
-  OrderInputSchema,
-  type Order,
-} from '@/features/orders/model/orders.schema';
-import { ORDER_SUBJECT } from '@/features/orders/permissions';
+  ORDER_SUBJECT,
+  ORDERS_ENDPOINT,
+} from '@/features/orders/constants';
+import { OrderInputSchema, type Order } from '@/features/orders/model/orders.schema';
 import { orderPaths } from '@/features/orders/routes';
-import { AUTH_ENDPOINTS } from '@/shared/api';
+import { AUTH_ENDPOINTS, DEFAULT_API_BASE_URL } from '@/shared/config/constants';
 import { ACTION, buildAbility, subject } from '@/shared/rbac';
 import { db, mockState, sessions, type MockUser } from './data';
 
-const API = '/api';
+const API = DEFAULT_API_BASE_URL;
 const ORDERS = `${API}${ORDERS_ENDPOINT}`;
 
 /** Error body with the backend contract: `{ code, message, correlationId, fieldErrors? }`. */

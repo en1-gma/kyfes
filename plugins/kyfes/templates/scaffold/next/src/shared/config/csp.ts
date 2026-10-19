@@ -1,16 +1,6 @@
-/** Header carrying the policy (request, so Next applies the nonce, and response). */
-export const CSP_HEADER = 'Content-Security-Policy';
-/** Request header exposing the per-request nonce to server components. */
-export const NONCE_HEADER = 'x-nonce';
+import { CSP_HEADER, CSP_SRC as SRC, NONCE_HEADER } from './constants';
 
-/** CSP source keywords: quoted as the header requires. */
-const SRC = {
-  self: "'self'",
-  none: "'none'",
-  strictDynamic: "'strict-dynamic'",
-  unsafeEval: "'unsafe-eval'",
-  unsafeInline: "'unsafe-inline'",
-} as const;
+export { CSP_HEADER, NONCE_HEADER };
 
 /**
  * Per-request CSP with nonce. Next reads the nonce from the request CSP header and applies it to

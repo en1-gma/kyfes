@@ -1,20 +1,15 @@
 import { z } from 'zod';
 import { pageSchema } from '@/shared/api';
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELD,
+  ORDER_FIELDS,
+  ORDER_STATUS,
+  ORDER_STATUSES,
+  ORDER_VALIDATION,
+} from '../constants';
 
-export const ORDER_STATUS = {
-  draft: 'draft',
-  confirmed: 'confirmed',
-  shipped: 'shipped',
-  cancelled: 'cancelled',
-} as const;
-export const ORDER_STATUSES = [
-  ORDER_STATUS.draft,
-  ORDER_STATUS.confirmed,
-  ORDER_STATUS.shipped,
-  ORDER_STATUS.cancelled,
-] as const;
-/** Status of a new order when the user cannot choose it (the server applies the same default). */
-export const DEFAULT_ORDER_STATUS = ORDER_STATUS.draft;
+export { DEFAULT_ORDER_STATUS, ORDER_FIELD, ORDER_FIELDS, ORDER_STATUS, ORDER_STATUSES };
 export const OrderStatusSchema = z.enum(ORDER_STATUSES);
 
 export const OrderSchema = z.object({
@@ -26,17 +21,20 @@ export const OrderSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
 });
 
-const TOTAL_INVALID = 'validation.totalInvalid';
-
-/** Body of create/update. Messages are i18n keys of the `orders` namespace. */
+/**
+ * Body of create/update, keyed by ORDER_FIELD (so `OrderField` is exactly its values).
+ * Messages are i18n keys of the `orders` namespace.
+ */
 export const OrderInputSchema = z.object({
-  customerName: z
+  [ORDER_FIELD.customerName]: z
     .string()
     .trim()
-    .min(1, 'validation.customerRequired')
-    .max(120, 'validation.tooLong'),
-  status: OrderStatusSchema,
-  total: z.number({ error: TOTAL_INVALID }).nonnegative(TOTAL_INVALID),
+    .min(1, ORDER_VALIDATION.customerRequired)
+    .max(120, ORDER_VALIDATION.tooLong),
+  [ORDER_FIELD.status]: OrderStatusSchema,
+  [ORDER_FIELD.total]: z
+    .number({ error: ORDER_VALIDATION.totalInvalid })
+    .nonnegative(ORDER_VALIDATION.totalInvalid),
 });
 
 export const OrderPageSchema = pageSchema(OrderSchema);
@@ -59,17 +57,6 @@ export type OrderField = keyof OrderInput;
 /** Write payload: only the fields the user may write (create omits what the server defaults). */
 export type OrderWrite = Partial<OrderInput>;
 
-/** Writable fields (CASL field permissions, form fields, server fieldErrors keys). */
-export const ORDER_FIELD = {
-  customerName: 'customerName',
-  status: 'status',
-  total: 'total',
-} as const satisfies Record<OrderField, OrderField>;
-export const ORDER_FIELDS = [
-  ORDER_FIELD.customerName,
-  ORDER_FIELD.status,
-  ORDER_FIELD.total,
-] as const satisfies readonly OrderField[];
 export type OrderPage = z.infer<typeof OrderPageSchema>;
 export type OrderStats = z.infer<typeof OrderStatsSchema>;
 
