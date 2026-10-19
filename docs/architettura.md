@@ -22,12 +22,17 @@ flowchart TD
 
 | Libreria | Dove si importa |
 |---|---|
-| axios / `@angular/common/http` | `shared/api` |
-| `@tanstack/*-query` | `shared/api`, `shared/auth`, `shared/rbac`, `app`, `features/*/api` |
+| axios / `@angular/common/http` | `shared/api` (`HttpClient` anche `app`) |
+| altri client HTTP: ky, ofetch, superagent, got, node-fetch, cross-fetch, redaxios, socket.io-client, graphql-request | `shared/api` |
+| @apollo/client, urql | `shared/api`, `app` |
+| `@tanstack/*-query`, `@tanstack/query-core` | `shared/api`, `shared/auth`, `shared/rbac`, `app`, `features/*/api` |
+| swr | `shared/api`, `features/*/api` |
 | CASL | `shared/rbac`, `app` |
-| i18next, react-i18next, next-intl, vue-i18n, Transloco, Paraglide | `shared/i18n`, `app` |
+| i18next, react-i18next, next-intl, vue-i18n, Transloco, Paraglide, react-intl, `@formatjs/*`, `@lingui/*`, svelte-i18n, `@ngx-translate/*` | `shared/i18n`, `app` |
 | Recharts, ECharts, vue-echarts, ngx-echarts | `shared/charts` (ECharts anche `app` per la registrazione) |
-| DOMPurify | `shared/lib` |
+| Chart.js, layerchart, echarts-for-react, react-chartjs-2, vue-chartjs, `@nivo/*`, victory, apexcharts (e wrapper), highcharts (e wrapper), d3 / `d3-*`, `@visx/*`, plotly | `shared/charts` |
+| DOMPurify, isomorphic-dompurify, sanitize-html, xss, insane | `shared/lib` |
+| js-cookie, universal-cookie, react-cookie, vue-cookies, ngx-cookie-service, svelte-cookie | da nessuna parte: i cookie li imposta il server |
 
 Gli altri file usano le ri-esportazioni. Cambiare libreria (per esempio da Recharts a ECharts) tocca una sola cartella.
 

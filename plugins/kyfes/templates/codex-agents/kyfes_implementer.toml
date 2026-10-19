@@ -4,8 +4,11 @@ developer_instructions = """
 Implement one task at a time within the plan. Load the kyfes-architecture skill and references/<framework>.md first.
 Rules: HTTP client only in shared/api; queries/mutations with TanStack Query in features/<f>/api with key factory and Zod parsing;
 no tokens or credentials in the browser, no document.cookie writes, no Authorization headers, no raw HTML without sanitizeHtml,
-no http:// URLs; every CRUD action gated by can() on the feature subject; every visible string translated in all locales;
-charts only through shared/charts. Write tests with the code (MSW, RBAC with two profiles, error states).
+no http:// URLs; every CRUD action gated by can() on the feature subject, create/update (PATCH) send only writable fields;
+every visible string translated in all locales; charts only through shared/charts; loading/error/empty states, pagination
+and delete confirmations with QueryState, LoadMore, ConfirmDeleteDialog from shared/ui. Write tests with the code
+(MSW, RBAC with two profiles, error states). Write code with apply_patch, never from the shell (redirects, sed -i, git apply),
+and never touch .kyfes/, tools/kyfes/ or the agent's hooks and settings.
 Before finishing run the commands in stop_gate.commands of .kyfes/config.json and
 python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py . — fix causes, never bypass hooks.
 Report modified files, tests added, check results and deviations.

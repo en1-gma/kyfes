@@ -1,6 +1,8 @@
 # Configurazione: `.kyfes/config.json`
 
-Creato dall'installer, protetto dagli hook: lo modifica solo l'utente.
+Creato dall'installer, protetto dagli hook (scritture, `apply_patch` e comandi shell, con qualunque combinazione di maiuscole nel percorso) e, in Claude Code, dalle regole `permissions.deny` che l'installer aggiunge a `.claude/settings.json`: lo modifica solo l'utente.
+
+In un monorepo ogni progetto ha la sua `.kyfes/config.json`: gli hook usano quella più vicina al file scritto.
 
 ```json
 {
@@ -27,5 +29,9 @@ Creato dall'installer, protetto dagli hook: lo modifica solo l'utente.
 | `shared_dirs` | 8 cartelle | sottocartelle ammesse in `shared` |
 | `rules` | vedi [controlli](controlli.md) | `block`, `warn` oppure `off` per ogni regola |
 | `exclude` | build, `node_modules`, `generated` | glob esclusi dalla scansione |
-| `stop_gate.*` | vedi sopra | comandi e comportamento del controllo finale |
+| `stop_gate.enabled` | `true` | attiva il controllo finale |
+| `stop_gate.only_if_changes` | `true` | salta il controllo solo se `git status` è pulito e `HEAD` non è cambiato dall'inizio della sessione (senza baseline: nessun commit non pubblicato) |
+| `stop_gate.max_blocks` | `3` | blocchi di fila nella stessa catena di stop, poi chiusura consentita con avviso "NON è conforme" |
+| `stop_gate.commands` | `[]` (l'installer scrive lint, typecheck, test) | comandi eseguiti nella radice del progetto |
 | `duplicates.min_lines` | `8` | righe significative uguali che contano come duplicato |
+| `allowed_http_hosts` | `[]` | host ammessi in URL `http://`/`ws://` (es. un BFF interno in sviluppo); il confronto è sull'host esatto |

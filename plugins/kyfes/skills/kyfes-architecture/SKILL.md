@@ -7,7 +7,7 @@ description: Regole vincolanti per progettare, pianificare e scrivere codice fro
 
 Queste regole sono vincolanti per ogni piano e ogni riga di codice frontend. Se una richiesta le viola, dichiaralo e proponi l'alternativa conforme prima di scrivere codice.
 
-La configurazione del progetto è in `.kyfes/config.json` (framework, cartelle, alias, comandi di controllo). Leggila all'inizio del lavoro: i percorsi indicati lì prevalgono su quelli di esempio. Il file lo modifica solo l'utente.
+La configurazione del progetto è in `.kyfes/config.json` (framework, cartelle, alias, comandi di controllo). Leggila all'inizio del lavoro: i percorsi indicati lì prevalgono su quelli di esempio. Il file lo modifica solo l'utente, come `tools/kyfes/`, le impostazioni e gli hook dell'agente (`.claude/settings*.json`, `.codex/hooks.json`, `.codex/config.toml`) e i file di kyfes in `.claude/rules/`, `.agents/skills/`, `.codex/agents/` e `.github/workflows/`: gli hook rifiutano ogni modifica, anche via shell. Il codice si scrive con gli strumenti di modifica dei file (Write/Edit, `apply_patch`), non con redirect, `sed -i`, `cp`/`mv` o `git apply` da shell, così le regole valutano il risultato.
 
 Le API delle librerie cambiano spesso: prima di usare un'API di cui non sei certo (versione maggiore nuova, opzione rinominata) consulta la documentazione aggiornata (Context7 o sito ufficiale). Le regole qui sotto non cambiano con la versione.
 
@@ -72,7 +72,7 @@ Regole:
 3. Le pagine sono sottili: leggono parametri di rotta, compongono componenti delle feature, impostano titolo e permesso della rotta.
 4. In `shared/` esistono solo le sottocartelle elencate. Una nuova sottocartella è una decisione architetturale: va proposta all'utente.
 5. Nomi file: componenti `PascalCase.tsx|vue|svelte` (Angular: `kebab-case.component.ts`), il resto `kebab-case.ts` o `<feature>.<ruolo>.ts`. Test accanto al file (`*.test.ts`) o in `e2e/`.
-6. Niente codice duplicato: un blocco di 8+ righe uguale in due punti blocca la chiusura del lavoro. Si estrae: dati → `features/<f>/api`, trasformazione pura → `shared/lib`, UI generica → `shared/ui`.
+6. Niente codice duplicato: un blocco di 8+ righe uguale in due punti blocca la chiusura del lavoro. Si estrae: dati → `features/<f>/api`, trasformazione pura → `shared/lib`, UI generica → `shared/ui`. Per stati di caricamento/errore/vuoto, paginazione e conferme si usano i componenti esistenti di `shared/ui` (4.3), non una copia del markup della feature `orders`.
 
 ## 3. Sicurezza (bloccante)
 
@@ -81,8 +81,8 @@ Regole:
 - Il frontend **non vede, non legge, non salva** access token, refresh token o id token: niente `localStorage`, `sessionStorage`, IndexedDB, variabili globali, header `Authorization: Bearer` costruiti nel browser, `document.cookie = …`.
 - Tutte le chiamate vanno all'origine stessa (`/api/...`, reverse proxy/CDN davanti al backend) con `withCredentials: true`. Se l'API è su un altro dominio: CORS con origini esplicite e `credentials`, mai `*`.
 - Sessione: `GET /api/auth/me` → `{ user, rules, locale }` (`rules` = regole CASL impacchettate). È una query TanStack (`sessionQuery`), unica fonte di verità di utente e permessi.
-- Login: navigazione a `/api/auth/login?returnTo=<path>`; logout: `POST /api/auth/logout`, poi `queryClient.clear()` e redirect. `returnTo` passa sempre da `safeRedirect()` (solo percorsi relativi della stessa origine: niente `//`, schemi o backslash).
-- 401 da qualunque chiamata → l'interceptor invalida la sessione e porta al login. Se il backend espone `POST /api/auth/refresh`, il refresh è **single-flight** (una sola richiesta in volo, le altre in coda) e la richiesta originale è ripetuta una sola volta.
+- Login: navigazione a `/api/auth/login?returnTo=<path>` (un solo redirect anche con più 401 in parallelo); logout: `POST /api/auth/logout`, poi `queryClient.clear()` e redirect. `returnTo` passa sempre da `safeRedirect()` (solo percorsi relativi della stessa origine: niente `//`, schemi o backslash, controllati anche sul risultato normalizzato e decodificato, così `/.//host` non esce dall'origine).
+- 401 da qualunque chiamata → refresh **single-flight** (`POST /api/auth/refresh`: una sola richiesta in volo, le altre la attendono) e la richiesta originale è ripetuta una sola volta. Un contatore dei refresh riusciti evita un secondo refresh per le richieste partite prima di un refresh già concluso: si ripetono e basta. Se il refresh fallisce (o il backend non lo espone), `onUnauthorized` porta al login una sola volta. Gli endpoint `/auth/refresh|login|logout` non entrano in questo giro.
 - Solo HTTPS (HSTS `max-age=63072000; includeSubDomains; preload`). Nessun URL `http://` o `ws://` nel codice, salvo `localhost` in sviluppo.
 
 ### 3.2 CSRF
@@ -90,48 +90,52 @@ Regole:
 - Le richieste che cambiano stato non usano mai `GET`.
 
 ### 3.3 XSS e contenuti
-- Niente HTML grezzo: `dangerouslySetInnerHTML`, `v-html`, `{@html}`, `innerHTML`/`outerHTML`/`insertAdjacentHTML`, `document.write`, `bypassSecurityTrust*` sono vietati, salvo `v-html="sanitizeHtml(x)"` o equivalente con `sanitizeHtml` di `shared/lib` (DOMPurify) sulla stessa riga.
-- Vietati `eval`, `new Function`, `setTimeout`/`setInterval` con stringa.
+- Niente HTML grezzo: `dangerouslySetInnerHTML`, `v-html`, `{@html}`, `innerHTML`/`outerHTML`/`insertAdjacentHTML`, `document.write`, `createContextualFragment`, `srcdoc`, `bypassSecurityTrust*` sono vietati, salvo `v-html="sanitizeHtml(x)"` o equivalente con `sanitizeHtml` sulla stessa riga, importato da `shared/lib` (DOMPurify) e mai ridefinito o rinominato nel file.
+- Vietati `eval` (anche `window.eval`), `Function(...)` con o senza `new`, `setTimeout`/`setInterval` con stringa, e `import()`/`require()` con un nome calcolato.
 - URL forniti dall'utente passano da `safeUrl()` (`https:`, `mailto:`, `tel:`, relativi); mai `javascript:`.
 - `target="_blank"` sempre con `rel="noopener noreferrer"`.
 - `postMessage`: verifica sempre `event.origin` contro una lista esplicita.
 - CSP senza `unsafe-inline`/`unsafe-eval` (in produzione; il dev server può richiederli): con SSR nonce per richiesta + `strict-dynamic`; per una SPA statica senza script inline basta `script-src 'self'`. Esempio completo: `default-src 'self'; script-src 'self' 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self'`. Inoltre `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` minimale. Script di terze parti con SRI.
 
 ### 3.4 Segreti e configurazione
-- Nel bundle finisce solo ciò che ha il prefisso pubblico (`VITE_`, `NEXT_PUBLIC_`, `PUBLIC_`, `NG_APP_`): mai segreti, chiavi API private, password. Variabili lette solo in `shared/config/env.ts` e validate con Zod.
+- Nel bundle finisce solo ciò che ha il prefisso pubblico (`VITE_`, `NEXT_PUBLIC_`, `PUBLIC_`, `NG_APP_`): mai segreti, chiavi API private, password. Variabili lette solo in `shared/config/env.ts` e validate con Zod. Nei `.env` versionati niente segreti, nemmeno senza virgolette; i valori di esempio stanno in `.env.example`.
+- Nessuna libreria di cookie lato client (js-cookie, universal-cookie, react-cookie, vue-cookies, ngx-cookie-service): i cookie li imposta il server.
 - Source map di produzione non pubbliche. Messaggi d'errore all'utente generici, con `correlationId` (vedi 4.3). Nessun dato personale nei log.
 - Lockfile versionato, `npm audit --omit=dev --audit-level=high` in CI, dipendenze con versioni bloccate dal lockfile.
 
 ## 4. Dati: client HTTP, TanStack Query, errori
 
 ### 4.1 Client HTTP unico
-- `axios` (Angular: `HttpClient`) si importa **solo** in `shared/api`. `fetch` e `XMLHttpRequest` non si usano altrove (eccezione: codice server di Next/SvelteKit nei percorsi `server_globs` della config).
-- `shared/api/http.ts` crea l'istanza: `baseURL` da env, `withCredentials: true`, XSRF (3.2), `timeout`, header `Accept: application/json`. Interceptor di risposta: 401 (3.1), normalizzazione in `ApiError`.
+- `axios` (Angular: `HttpClient`) si importa **solo** in `shared/api`, come ogni altro client HTTP o di rete (ky, ofetch, got, socket.io-client, graphql-request, Apollo, urql, …). `fetch` (anche `window.fetch`, `globalThis.fetch`), `XMLHttpRequest`, `WebSocket`, `EventSource` e `navigator.sendBeacon` non si usano altrove (eccezione: codice server di Next/SvelteKit nei percorsi `server_globs` della config).
+- `shared/api/http.ts` crea l'istanza: `baseURL` da env, `withCredentials: true`, XSRF (3.2), `timeout`, header `Accept: application/json`. Interceptor di risposta: 401 (3.1), normalizzazione in `ApiError`; una richiesta annullata (`AbortSignal`) si rilancia così com'è, non diventa un errore di rete.
 - `ApiError { status, code, message, correlationId, fieldErrors? }`: il formato degli errori del backend (compatibile con kybes: `code`, `message`, `correlationId`). I componenti non leggono mai `error.response` di axios.
 
 ### 4.2 TanStack Query
 - Ogni lettura è una query, ogni scrittura una mutation, definite in `features/<f>/api`. I componenti non chiamano mai il client HTTP.
 - Chiavi con factory per feature: `orderKeys.all`, `.lists()`, `.list(filters)`, `.details()`, `.detail(id)`. Mai chiavi scritte a mano nei componenti.
 - Le risposte si validano con lo schema Zod della feature dentro la `queryFn` (`OrderSchema.parse(data)`): i tipi derivano dagli schemi (`z.infer`), mai `any`.
-- Default del `QueryClient` in `shared/api/query-client.ts`: `staleTime` > 0, nessun retry sugli errori 4xx, `refetchOnWindowFocus` ragionato. Le mutation invalidano le chiavi interessate (o aggiornano la cache con `setQueryData`/optimistic update con rollback).
+- Default del `QueryClient` in `shared/api/query-client.ts`: `staleTime` > 0, retry solo per `ApiError` con `status` 0 o >= 500 (mai su 4xx, `ZodError` o altri errori), mutation senza retry, `refetchOnWindowFocus` ragionato. Le mutation invalidano le chiavi interessate (o aggiornano la cache con `setQueryData`/optimistic update con rollback).
+- Create e update inviano solo i campi che l'utente può scrivere (sez. 5); l'update è un `PATCH` parziale.
+- Delete con optimistic update sicuro con più eliminazioni in volo: `mutationKey` condivisa; in `onError` lo snapshot si ripristina solo se è l'ultima delete in corso (`isMutating(...) <= 1`), altrimenti le liste si marcano da rifare; il dettaglio si toglie dalla cache solo in `onSuccess`; liste e aggregati si invalidano quando finisce l'ultima.
 - Liste: paginazione a cursore `Page { items, nextCursor, limit }` (stesso contratto di kybes) con `useInfiniteQuery`/`infiniteQueryOptions`; parametri `limit`, `cursor`, `sort` nella chiave.
 - Stato client (filtri UI, pannelli) nello store del framework, mai copie dei dati del server.
 
 ### 4.3 Errori e UX
 - Error boundary per rotta; stati `loading`/`error`/`empty` espliciti in ogni vista che legge dati.
-- 403 → messaggio "non autorizzato" e invalidazione di `sessionQuery` (i permessi potrebbero essere cambiati); 404 → pagina non trovata; 5xx → messaggio generico + `correlationId`.
+- Componenti standard di `shared/ui` (React/Next `.tsx`, Vue `.vue`, Svelte `.svelte`, Angular `*Component`): `QueryState` per caricamento → errore con "riprova" → vuoto → contenuto, `LoadMore` per il piè di pagina delle liste a cursore (conteggio + "carica altri"), `ConfirmDeleteDialog` per confermare l'eliminazione di un record. Ogni nuova feature li usa invece di riscrivere il markup: copiare quello di `orders` fa scattare `duplicates`.
+- 403 → messaggio "non autorizzato" (senza "riprova") e invalidazione di `sessionQuery` (i permessi potrebbero essere cambiati), senza ciclo se è `/auth/me` a rispondere 403; 404 → pagina non trovata; 5xx → messaggio generico + `correlationId`.
 
 ## 5. RBAC sul CRUD (CASL)
 
-- I permessi arrivano dal server (`/api/auth/me` → `rules`), si trasformano in una `Ability` in `shared/rbac` e si aggiornano quando cambia la sessione. **La UI non decide mai in base ai nomi dei ruoli**: vietati `role === 'admin'`, `roles.includes('…')`, `isAdmin`, `hasRole(...)` fuori da `shared/rbac`.
+- I permessi arrivano dal server (`/api/auth/me` → `rules`), si trasformano in una `Ability` in `shared/rbac` e si aggiornano quando cambia la sessione. Lo schema della sessione è tollerante: regole con azioni o soggetti sconosciuti non fanno match invece di invalidare la sessione. **La UI non decide mai in base ai nomi dei ruoli**: vietati `role === 'admin'` (anche invertito), `roles.includes('…')`, `[...].includes(role)`, `switch (role)`, `role.startsWith(...)`, `isAdmin`, `hasRole(...)` fuori da `shared/rbac`.
 - Azioni: `create`, `read`, `update`, `delete` (+ `manage` = tutte). Soggetti: un sostantivo singolare PascalCase per feature (`Order`, `Customer`), dichiarato in `features/<f>/permissions.ts` e registrato nel tipo `Subjects` di `shared/rbac`.
 - Ogni elemento CRUD della UI è condizionato dal permesso:
-  - rotte: `read` sul soggetto (guard di rotta / `meta.permission`); senza permesso → pagina 403, non un redirect silenzioso;
+  - rotte: `read` sul soggetto (guard di rotta / `meta.permission`); senza permesso → pagina 403, non un redirect silenzioso; la rotta di modifica controlla `update` anche sul record caricato, prima di mostrare il form;
   - pulsanti "Nuovo", "Modifica", "Elimina": `can('create'|'update'|'delete', subject)`; per il record specifico `can('update', subject('Order', order))` (condizioni sul record);
-  - campi: permessi per campo (`can('update', order, 'status')`) → campo in sola lettura se negato;
+  - campi: permessi per campo (`can('update', order, 'status')`) → campo in sola lettura se negato e assente dal payload (create e `PATCH` inviano solo i campi scrivibili);
   - colonne/azioni di tabella e voci di menu: nascoste se negate.
 - La UI nasconde, **il server decide**: ogni chiamata è comunque autorizzata dal backend; un 403 si gestisce come in 4.3. Mai fidarsi di flag di permesso salvati lato client.
-- Test obbligatori per ogni feature: la stessa vista renderizzata con ability diverse mostra/nasconde le azioni CRUD attese.
+- Test obbligatori per ogni feature: la stessa vista renderizzata con ability diverse mostra/nasconde le azioni CRUD attese. I mock MSW applicano le stesse regole (condizioni sul record, permessi per campo → 403), come negli scaffold con i profili `manager`, `viewer` e `operator`.
 
 ## 6. i18n
 
@@ -139,7 +143,7 @@ Regole:
 - Namespace = nome della feature (`orders:list.title`), più `common`. I file `locales/<lingua>.json` stanno nella feature; il caricamento è lazy.
 - Libreria importata solo in `shared/i18n` (che ri-esporta hook/funzioni per i componenti). Lingua iniziale: sessione → `navigator.language` → default di config; `<html lang>` aggiornato al cambio.
 - Date, numeri e valute solo con i formatter `Intl` di `shared/i18n` (mai formattazione a mano).
-- Le chiavi esistono in tutte le lingue configurate: un test confronta le chiavi dei file di locale.
+- Le chiavi esistono in tutte le lingue configurate: un test confronta le chiavi dei file di locale, ignorando i suffissi plurali (le categorie di plurale cambiano da lingua a lingua).
 
 ## 7. Grafici
 
@@ -175,7 +179,7 @@ Chiudi con task piccoli e indipendenti, ciascuno con i file coinvolti.
 - [ ] Client HTTP, librerie di i18n, chart e CASL importati solo nelle loro cartelle di `shared`.
 - [ ] Dipendenze solo verso il basso; nessun import interno tra feature.
 - [ ] Ogni lettura/scrittura in `features/<f>/api` con TanStack Query, chiavi dalla factory, risposta validata con Zod.
-- [ ] Ogni azione CRUD condizionata da `can()`; nessun controllo su nomi di ruolo; 403 gestito.
+- [ ] Ogni azione CRUD condizionata da `can()`; payload con i soli campi scrivibili; nessun controllo su nomi di ruolo; 403 gestito.
 - [ ] Ogni testo visibile tradotto, in tutte le lingue; formattazioni con `Intl`.
-- [ ] Stati loading/error/empty; error boundary; accessibilità.
+- [ ] Stati loading/error/empty con `QueryState`, liste con `LoadMore`, eliminazioni con `ConfirmDeleteDialog`; error boundary; accessibilità.
 - [ ] Test RBAC, errori e query presenti e verdi; `stop_gate.commands` verdi.

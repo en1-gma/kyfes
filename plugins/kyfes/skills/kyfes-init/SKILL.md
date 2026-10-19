@@ -23,10 +23,10 @@ Until `.kyfes/config.json` exists, every kyfes hook is a no-op in that repositor
 4. Report in a few lines what was created:
    - `.kyfes/config.json` (framework, layers, commands of the stop gate);
    - `tools/kyfes/` — the versioned copy of the kit used by CI, teammates and Codex project hooks;
-   - Claude Code: `.claude/rules/kyfes/`, the block in `CLAUDE.md`;
-   - Codex: the block in `AGENTS.md`, `.agents/skills/kyfes-*`, `.codex/agents/kyfes-*.toml`, `.codex/hooks.json` (Codex asks to review and trust project hooks the first time; the project must be trusted);
+   - Claude Code: `.claude/rules/kyfes/`, the block in `CLAUDE.md`, `permissions.deny` rules in `.claude/settings.json` (no `Edit` of `.kyfes/**`, `tools/kyfes/**`, `.claude/settings*.json`; existing settings are kept);
+   - Codex: the block in `AGENTS.md`, `.agents/skills/kyfes-*`, `.codex/agents/kyfes_*.toml`, `.codex/hooks.json` (Codex asks to review and trust project hooks the first time; the project must be trusted);
    - `.github/workflows/kyfes-check.yml`;
    - the scaffold files, if requested, then remind to run the package manager install.
 5. Suggest the next step: describe a feature and plan it with the `kyfes:architect` agent (Claude Code) or `$kyfes-plan` (Codex).
 
-Do not edit `.kyfes/config.json` yourself after installation: it is protected, and only the user changes it.
+Do not edit `.kyfes/config.json` yourself after installation: it is protected, and only the user changes it. The same holds for `tools/kyfes/`, the agent settings and hooks, and the kyfes rules, skills, agents and CI workflow; the hooks also refuse `install.sh --force` and `--uninstall` from the agent's shell, so ask the user to run those.

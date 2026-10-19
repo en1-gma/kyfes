@@ -44,6 +44,7 @@ src/shared/
   i18n/           i18n.ts · formatters.ts · use-locale.ts · locales/{it,en}.json (namespace common)
   charts/         CartesianChart.tsx (unico import di recharts) · ChartFigure.tsx · lazy.tsx · types.ts
   ui/             Button · Spinner · ErrorState · EmptyState · ForbiddenState · ConfirmDialog (<dialog>)
+                  QueryState · LoadMore · ConfirmDeleteDialog (usati da OrdersTable, OrdersChart, OrderDetail)
   lib/            sanitize.ts · safe-redirect.ts · safe-url.ts (+ test)
   config/         env.ts (unico lettore di import.meta.env)
 src/mocks/        data.ts · handlers.ts · browser.ts · node.ts      src/test/ setup.ts · render.tsx
@@ -66,8 +67,9 @@ configureHttp({ refreshOnUnauthorized: true, onUnauthorized: () => login(), onFo
 ```
 
 - axios 1.20 invia l'header solo se `withXSRFToken === true` **oppure** è `undefined` e l'URL è same-origin; la funzione rende esplicito il confine anche con URL assoluti.
-- Interceptor di risposta: ogni errore diventa `ApiError { status, code, message, correlationId, fieldErrors }` (`toApiError`; `correlationId` dal body o dall'header `x-correlation-id`; `status: 0` per rete/timeout). 401 → refresh **single-flight** (`POST /auth/refresh`, una promessa condivisa) e una sola ripetizione (`_kyfesRetried`), poi `onUnauthorized`. Gli endpoint `/auth/refresh|login|logout` sono esclusi dal retry. 403 → `onForbidden`.
-- `query-client.ts`: `createQueryClient(overrides)` con `staleTime: 30_000`, `retry: shouldRetry` (mai su 4xx, max 2 su 5xx/rete), mutation senza retry.
+- Interceptor di risposta: le cancellazioni (`axios.isCancel`: `AbortSignal`, query smontata) sono rilanciate così come sono; ogni altro errore diventa `ApiError { status, code, message, correlationId, fieldErrors }` (`toApiError`; `correlationId` dal body o dall'header `x-correlation-id`; `status: 0` per rete/timeout). 403 → `onForbidden`.
+- 401 → refresh **single-flight** (`POST /auth/refresh`, una promessa condivisa) e una sola ripetizione (`_kyfesRetried`). Un interceptor di richiesta salva in `_kyfesSessionGen` il contatore dei refresh riusciti: una richiesta partita prima di un refresh già concluso viene ripetuta senza nuovo refresh. Se il refresh fallisce, `onUnauthorized` è chiamato **una sola volta** per tutte le richieste in attesa (flag azzerato da un refresh riuscito o da `configureHttp`). Gli endpoint `/auth/refresh|login|logout` (confronto sul path senza query/hash) sono esclusi.
+- `query-client.ts`: `createQueryClient(overrides)` con `staleTime: 30_000`, `retry: shouldRetry` (solo `ApiError` con `status` 0 o >= 500, max 2; mai su 4xx, `ZodError` o altri errori), mutation senza retry.
 - `pagination.ts`: `pageSchema(item)` → `{ items, nextCursor: string|null, limit }`, `PageParams { limit, cursor?, sort? }`, `getNextCursor`.
 
 ## Sessione (`shared/auth`)
@@ -124,7 +126,8 @@ infiniteQueryOptions({
 ```
 
 - `orders.api.ts`: ogni endpoint fa `Schema.parse(data)`; `http.get<unknown>` (mai `any`).
-- Mutation: create/update → `setQueryData(detail)` + invalidazione di `lists()` e `stats()`; delete → `onMutate` (`cancelQueries`, `getQueriesData`, `setQueriesData` che filtra le pagine), `onError` ripristina, `onSettled` invalida.
+- `create(input: Partial<OrderInput>)` (POST) e `update` (PATCH) ricevono solo i campi scrivibili: `OrderForm` filtra `ORDER_EDITABLE_FIELDS` con `can('create', ORDER_SUBJECT, field)` o `can('update', orderSubject(order), field)`; i default dei campi omessi (es. `status`) li applica il server.
+- Mutation: create/update → `setQueryData(detail)` + invalidazione di `lists()` e `stats()`. Delete ottimistico con `mutationKey: DELETE_ORDER_KEY` condivisa: `onMutate` (`cancelQueries`, `getQueriesData`, `setQueriesData` che filtra le pagine); `onError` ripristina lo snapshot solo se `isMutating({ mutationKey }) <= 1` (ultima delete in volo), altrimenti `invalidateQueries(lists, refetchType: 'none')`; `onSuccess` rimuove il dettaglio dalla cache; `onSettled` invalida liste e `stats()` solo dall'ultima delete in volo.
 - Zustand (`stores/orders-ui.store.ts`) tiene solo filtri/ordinamento, che entrano nella chiave della query.
 
 ## i18n (`shared/i18n`)
@@ -135,7 +138,7 @@ infiniteQueryOptions({
 - Lingua: browser → `VITE_DEFAULT_LOCALE`, poi `changeLocale(session.locale)`; `<html lang>` aggiornato sull'evento `languageChanged`.
 - Formatter: `formatDate`, `formatNumber`, `formatCurrency(value, 'EUR')`, `formatMonth('2026-03')`.
 - Messaggi Zod = chiavi i18n (`{ error: 'validation.required' }`), tradotte nel form con `t(\`common:${message}\`)`.
-- Test di parità: `shared/i18n/locales.test.ts` confronta le chiavi di ogni namespace in tutte le lingue.
+- Test di parità: `shared/i18n/locales.test.ts` confronta le chiavi di ogni namespace in tutte le lingue, ignorando i suffissi plurali (`_zero|_one|_two|_few|_many|_other`).
 
 ## Grafici (`shared/charts`)
 
@@ -153,18 +156,20 @@ infiniteQueryOptions({
 
 ## Test
 
-- `vite.config.ts` → `test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test/setup.ts'] }`.
+- `vite.config.ts` → `test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test/setup.ts'], fsModuleCache: false }` (la cache persistente delle trasformazioni conserva risultati vecchi di `import.meta.glob`: i locales di una nuova feature non verrebbero trovati).
 - `setup.ts`: `server.listen({ onUnhandledFrame: 'error' })`, `initI18n('it')` + `loadNamespaces(['common','orders'])`, `resetHandlers` + `db.reset()` dopo ogni test, stub di `ResizeObserver` per Recharts.
 - `renderWithProviders(ui, { user: 'manager' | 'viewer' | 'operator' })`: QueryClient di test (`retry: false`, `staleTime: Infinity`) con la sessione già in cache, `AbilityProvider`, i18n, `createMemoryRouter`.
-- Mock: `apiError(status, code, message)` restituisce `{ code, message, correlationId }` + header; override per test con `server.use(http.get('/api/orders', () => apiError(500, …)))`.
-- RBAC: la stessa vista con `manager` mostra Nuovo/Modifica/Elimina, con `viewer` no; `operator` verifica condizioni sul record (`status: 'draft'`) e permessi per campo (stato in sola lettura).
+- Mock: `apiError(status, code, message)` restituisce `{ code, message, correlationId }` + header; override per test con `server.use(http.get('/api/orders', () => apiError(500, …)))`. Gli handler POST/PATCH applicano le regole CASL dell'utente mock: tipo, record (condizioni) e ogni campo del body (`deniedFields` → 403); in create `status` ha default `'draft'`.
+- RBAC: la stessa vista con `manager` mostra Nuovo/Modifica/Elimina, con `viewer` no; `operator` verifica condizioni sul record (`status: 'draft'`), permessi per campo (stato in sola lettura) e che create/update non inviino mai `status`.
+- Coperti anche: refresh 401 (richiesta lenta partita prima del refresh, `onUnauthorized` una volta, cancellazioni), `shouldRetry` su `ZodError`/`TypeError`, delete concorrenti con errore, `safeRedirect` su percorsi normalizzati.
 - e2e: `playwright.config.ts` avvia `npm run dev` con `VITE_API_MOCKS=true`; `AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'])`.
 
 ## Trappole
 
 - **Tracked props di TanStack Query**: il risultato di `useQuery`/`useInfiniteQuery` notifica solo le proprietà già lette. Nei test con `renderHook`, leggere `data` nel primo `waitFor`, altrimenti il re-render dopo un'invalidazione non arriva.
 - **Barrel e code splitting**: `"sideEffects": ["**/*.css", "./src/app/main.tsx"]` in `package.json`, altrimenti Rolldown porta nel chunk iniziale tutti i componenti esportati da `features/<f>/index.ts` (importato da router/layout per `orderPaths`/`ORDER_SUBJECT`). Un modulo con effetti a livello di modulo va aggiunto all'elenco.
-- **Campo in sola lettura con React Hook Form**: `disabled` (attributo o opzione di `register`) rende il valore `undefined` e fa fallire lo schema; si mostra un `<input readOnly>` non registrato e si toglie il campo dal payload.
+- **Campo in sola lettura con React Hook Form**: `disabled` (attributo o opzione di `register`) rende il valore `undefined` e fa fallire lo schema; si mostra un `<input readOnly>` non registrato e il payload contiene solo i campi scrivibili.
+- **`safeRedirect`**: `new URL` risolve i dot segment (`/.//evil.example` → `//evil.example`, protocol-relative); il risultato normalizzato e il pathname decodificato (`decodeURIComponent`) sono ricontrollati: `//…` o `\` → fallback.
 - **MSW 3**: opzione `onUnhandledFrame`; `delay()` senza argomenti in Node è immediato; il worker si avvia solo con `import.meta.env.DEV && env.API_MOCKS` (costante di build: il ramo sparisce dal bundle di produzione). `VITE_MOCK_USER` è letto solo in `src/mocks/browser.ts`.
 - **CASL `subject()`** marca l'oggetto: passare una copia (`{ ...order }`) per non toccare i dati in cache.
 - **`Can` di `@casl/react` 7** è generico ma in JSX non si può passare il tipo: usare il `Can` ri-esportato da `shared/rbac`. Hook e `Can` stanno in `can.ts` (non `.tsx`) per la regola `react-refresh/only-export-components`.

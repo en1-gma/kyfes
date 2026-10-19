@@ -15,6 +15,6 @@ Modo di lavorare:
 - Pianifica con l'agente **kyfes:architect** (Claude Code) o la skill **$kyfes-plan** (Codex), non con il planner integrato.
 - Implementa un task alla volta con **kyfes:implementer** / l'agente Codex `kyfes_implementer`.
 - Fai verificare con **kyfes:reviewer** / **$kyfes-review**.
-- Gli hook rifiutano le scritture non conformi e bloccano la chiusura finché `arch_check`, lint, typecheck e test non passano: correggi la causa, non aggirarli.
-- Configurazione e comandi: `.kyfes/config.json` (la modifica solo l'utente). Controllo completo: `python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py .`
+- Gli hook rifiutano le scritture non conformi (valutando il file risultante) e bloccano la chiusura finché `arch_check`, lint, typecheck e test non passano, anche dopo un commit: correggi la causa, non aggirarli. Il codice si scrive con gli strumenti di modifica dei file, non da shell (redirect, `sed -i`, `cp`/`mv`, `git apply`): quei comandi sono rifiutati.
+- Configurazione e comandi: `.kyfes/config.json` (la modifica solo l'utente, come `tools/kyfes/` e le impostazioni e gli hook dell'agente). Controllo completo: `python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py .`
 <!-- kyfes:end -->

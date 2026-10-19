@@ -109,7 +109,7 @@ src/
 | Forms / validation | React Hook Form + Zod | React Hook Form + Zod | VeeValidate + Zod | Reactive Forms + Zod | Zod |
 | Tests | Vitest · Testing Library · MSW · Playwright + axe | ← same | ← same | ← same | ← same |
 
-Each framework ships a **reference scaffold** with a complete `orders` CRUD feature: cursor-paginated list, form, detail, delete with optimistic update, permission-gated actions and fields, a chart, two locales, MSW mocks with a *manager* and a *viewer* profile, and tests that prove the RBAC matrix.
+Each framework ships a **reference scaffold** with a complete `orders` CRUD feature: cursor-paginated list, form that sends only the fields the user may write, detail, delete with optimistic update, permission-gated actions and fields, a chart, two locales, MSW mocks with a *manager*, a *viewer* and an *operator* profile (conditions on the record and per-field permissions, enforced by the mocks too), and tests that prove the RBAC matrix. Loading/error/empty states, "load more" and delete confirmations come from shared components in `shared/ui` (`QueryState`, `LoadMore`, `ConfirmDeleteDialog`).
 
 ## RBAC on CRUD, the same everywhere
 
@@ -143,17 +143,19 @@ Vue uses `<Can>`/`useAbility()` from `@casl/vue`, Angular the `@casl/angular` si
 
 | When | Check | Default |
 |---|---|---|
-| before every write | tokens/credentials in `localStorage`/`sessionStorage`, `document.cookie =`, `Authorization: Bearer` built in the browser | block |
-| before every write | `http://`/`ws://` URLs, raw HTML (`dangerouslySetInnerHTML`, `v-html`, `{@html}`, `innerHTML`, `bypassSecurityTrust*`) without `sanitizeHtml`, `eval`/`new Function`, `target="_blank"` without `rel` | block |
-| before every write | secrets in code or `.env`, secrets behind public prefixes (`VITE_`, `NEXT_PUBLIC_`, `PUBLIC_`, `NG_APP_`) | block |
-| before every write | `fetch`/axios/`HttpClient` outside `shared/api`; TanStack Query outside `features/*/api`; chart, i18n, CASL and DOMPurify libraries outside their `shared` folder | block |
+| before every write | tokens/credentials in `localStorage`/`sessionStorage` (calls, properties, multi-line), `document.cookie =`, `cookieStore.set`, `Authorization` headers built in the browser (`Bearer`/`Basic`/`Token`) | block |
+| before every write | `http://`/`ws://` URLs (except localhost and reserved test domains), raw HTML (`dangerouslySetInnerHTML`, `v-html`, `{@html}`, `innerHTML`, `bypassSecurityTrust*`) without `sanitizeHtml` imported from `shared/lib`, `eval`/`Function`, `target="_blank"` without `rel` | block |
+| before every write | secrets in code or `.env` (quoted or not), secrets behind public prefixes (`VITE_`, `NEXT_PUBLIC_`, `PUBLIC_`, `NG_APP_`) | block |
+| before every write | `fetch`/`WebSocket`/`EventSource`/`sendBeacon`/axios/`HttpClient` (and other HTTP clients) outside `shared/api`; TanStack Query outside `features/*/api`; chart, i18n, CASL and sanitizer libraries outside their `shared` folder; client-side cookie libraries anywhere | block |
 | before every write | imports against the layer direction, deep imports into another feature, unknown `shared` sub-folders or feature entries | block |
-| before every write | role-name checks (`role === 'admin'`, `roles.includes('…')`, `isAdmin`, `hasRole()`) instead of `can()` | block |
+| before every write | role-name checks (`role === 'admin'`, `roles.includes('…')`, `switch (role)`, `isAdmin`, `hasRole()`) instead of `can()` | block |
+| before every write | the agent's own guardrails: `.kyfes/`, `tools/kyfes/`, agent settings and hooks (`.claude/settings*.json`, `.codex/hooks.json`, …), kyfes rules, skills and CI workflow | block |
+| before every shell command | writes through the shell into source files, `.env` or protected files (`>`, `tee`, `sed -i`, `cp`/`mv`, `curl -o`, inline scripts), `git apply`/`patch`, `disableAllHooks` | block |
 | after every write | untranslated visible text, `console.log`, `any`, `@ts-ignore` | warn |
 | before finishing (main agent and every subagent) | `arch_check` (incl. duplicated blocks of 8+ lines) + your lint, typecheck and test commands | block |
 | in CI | the same checks with `--strict`, `npm audit`, build | fail build |
 
-Every rule can be set to `block`, `warn` or `off` in `.kyfes/config.json` — a file the agent is not allowed to modify. The same Python hooks (standard library only) run in **Claude Code** (`Write`/`Edit`/`MultiEdit`) and **Codex** (`apply_patch`).
+Every rule can be set to `block`, `warn` or `off` in `.kyfes/config.json` — a file the agent is not allowed to modify. The same Python hooks (standard library only) run in **Claude Code** (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`, `Bash`) and **Codex** (`apply_patch`, shell). Write hooks evaluate the file as it will be after the change, not just the written fragment, and find the project from the file being written, so they also work in a monorepo opened at its root. Committing does not switch the stop gate off: it also compares `HEAD` with the commit recorded when the session started.
 
 ## Install
 
@@ -190,7 +192,7 @@ kyfes/install.sh --target /path/to/project --framework react --agents both --sca
 | `--scaffold` | copy the reference project (never overwrites existing files) |
 | `--ci github\|none`, `--scope`, `--no-plugin`, `--force`, `--uninstall` | |
 
-The installer is idempotent. It creates `.kyfes/config.json`, a versioned copy of the kit in `tools/kyfes/` (used by CI, Codex hooks and teammates), `.claude/rules/kyfes/`, the managed blocks in `CLAUDE.md` / `AGENTS.md` and `.github/workflows/kyfes-check.yml`. Teammates run `tools/kyfes/setup.sh` once to register the Claude Code plugin.
+The installer is idempotent. It creates `.kyfes/config.json`, a versioned copy of the kit in `tools/kyfes/` (used by CI, Codex hooks and teammates), `.claude/rules/kyfes/`, the `permissions.deny` rules in `.claude/settings.json`, the managed blocks in `CLAUDE.md` / `AGENTS.md` and `.github/workflows/kyfes-check.yml`; `--uninstall` removes them and leaves your own settings in place. Teammates run `tools/kyfes/setup.sh` once to register the Claude Code plugin.
 
 ### What you get in each agent
 
@@ -200,7 +202,8 @@ The installer is idempotent. It creates `.kyfes/config.json`, a versioned copy o
 | Plan | agent `kyfes:architect` | skill `$kyfes-plan`, agent `kyfes_architect` |
 | Implement | agent `kyfes:implementer` | agent `kyfes_implementer` |
 | Review | agent `kyfes:reviewer` | skill `$kyfes-review`, agent `kyfes_reviewer` |
-| Hooks | `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop` | `PreToolUse` (`apply_patch`), `PostToolUse`, `Stop` |
+| Hooks | `PreToolUse` (writes and `Bash`), `PostToolUse`, `Stop`, `SubagentStop`, `SessionStart` | `PreToolUse` (`apply_patch` and shell), `PostToolUse`, `Stop`, `SessionStart` |
+| Permissions | `permissions.deny` in `.claude/settings.json`: no `Edit` of `.kyfes/**`, `tools/kyfes/**`, `.claude/settings*.json` | — |
 
 ## The backend contract kyfes expects
 
@@ -218,8 +221,9 @@ The installer is idempotent. It creates `.kyfes/config.json`, a versioned copy o
 
 | | Verification |
 |---|---|
-| Hooks | every rule with its expected outcome (deny/allow) for all five layouts, sent as a Claude Code `Write` and as a Codex `apply_patch`; server-code exceptions (Next route handlers, SvelteKit `+server.ts`); stop gate block → release; duplicate detection |
-| Installer | idempotent install, managed blocks, Codex hooks merge, uninstall that leaves your files intact |
+| Hooks | `tests/hooks/test_hooks.py`: every rule with its expected outcome (deny/allow) for all five layouts, sent as a Claude Code `Write` and as a Codex `apply_patch`; server-code exceptions (Next route handlers, SvelteKit `+server.ts`); stop gate block → release; duplicate detection |
+| Hardening | `tests/hooks/test_hardening.py`: regressions from the security audit — rule bypasses and false positives, protected files and case variants, whole-file evaluation of `Edit`/`MultiEdit`/`apply_patch`, monorepo, the `Bash` guard, the stop gate after commits and while `stop_hook_active` |
+| Installer | idempotent install, managed blocks, Codex hooks merge, Claude Code deny rules, uninstall that leaves your files intact |
 | Scaffolds | in CI, for each framework: `npm install`, lint, typecheck, unit/RBAC/i18n tests, production build and `arch_check --strict` with zero findings |
 
 ## Documentation
@@ -228,7 +232,7 @@ Detailed documentation (Italian) is in [`docs/`](docs/README.md): [architecture]
 
 ## A note on security
 
-kyfes enforces the browser half of a secure web app. Cookie flags, CSRF validation, CSP headers, CORS and authorization are ultimately enforced by your server and edge: the docs and scaffolds show the expected configuration, and the reviewer agent checks for it, but they cannot replace a security review of the whole system.
+kyfes enforces the browser half of a secure web app. Cookie flags, CSRF validation, CSP headers, CORS and authorization are ultimately enforced by your server and edge: the docs and scaffolds show the expected configuration, and the reviewer agent checks for it, but they cannot replace a security review of the whole system. The same goes for the agent guardrails: the checks on shell commands are heuristic, so the Claude Code deny rules and the CI run are the barriers behind them.
 
 ## License
 
