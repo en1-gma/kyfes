@@ -97,12 +97,40 @@ elif dst.exists():
 PY
 }
 
+# Regole deny di Claude Code: seconda barriera (indipendente dagli hook) contro la modifica di config, kit e impostazioni.
+merge_claude_permissions() {  # $1 .claude/settings.json, $2 add|remove
+  python3 - "$1" "$2" <<'PY'
+import json, sys, pathlib
+dst, mode = pathlib.Path(sys.argv[1]), sys.argv[2]
+ours = [f"Edit({p})" for p in (".kyfes/**", "/.kyfes/**", "tools/kyfes/**", "/tools/kyfes/**",
+                               ".claude/settings.json", "/.claude/settings.json",
+                               ".claude/settings.local.json", "/.claude/settings.local.json")]
+cur = json.loads(dst.read_text(encoding="utf-8")) if dst.exists() else {}
+perms = cur.setdefault("permissions", {})
+deny = [r for r in perms.get("deny", []) if r not in ours]
+if mode == "add":
+    deny += ours
+if deny:
+    perms["deny"] = deny
+else:
+    perms.pop("deny", None)
+if not perms:
+    cur.pop("permissions", None)
+if cur:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(json.dumps(cur, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+elif dst.exists():
+    dst.unlink()
+PY
+}
+
 # ------------------------------------------------------------------ disinstallazione
 if [ "$UNINSTALL" = 1 ]; then
   info "Rimuovo kyfes da $TARGET"
   [ -f "$TARGET/CLAUDE.md" ] && write_block "$TARGET/CLAUDE.md" ""
   [ -f "$TARGET/AGENTS.md" ] && write_block "$TARGET/AGENTS.md" ""
   rm -rf "$TARGET/.claude/rules/kyfes" "$TARGET/.agents/skills/kyfes-"* "$TARGET/.codex/agents/kyfes_"*.toml
+  [ -f "$TARGET/.claude/settings.json" ] && merge_claude_permissions "$TARGET/.claude/settings.json" remove
   [ -f "$TARGET/.codex/hooks.json" ] && merge_codex_hooks "$KIT_DIR/templates/codex-hooks.json" "$TARGET/.codex/hooks.json" remove
   rm -f "$TARGET/.github/workflows/kyfes-check.yml"
   rm -rf "$TARGET/${KIT_REL:?}"
@@ -191,7 +219,8 @@ if want_claude; then
     if [ ! -f "$dst" ] || [ "$FORCE" = 1 ]; then cp "$f" "$dst"; fi
   done
   write_block "$TARGET/CLAUDE.md" "$BLOCK_SRC"
-  ok "Claude Code: .claude/rules/kyfes/ e blocco in CLAUDE.md"
+  merge_claude_permissions "$TARGET/.claude/settings.json" add
+  ok "Claude Code: .claude/rules/kyfes/, blocco in CLAUDE.md, regole deny in .claude/settings.json"
   if [ "$NO_PLUGIN" = 0 ]; then
     if command -v claude >/dev/null; then
       bash "$KIT_DST/setup.sh" "$SCOPE" >/dev/null 2>&1 && ok "Claude Code: plugin kyfes registrato (scope $SCOPE)" \
