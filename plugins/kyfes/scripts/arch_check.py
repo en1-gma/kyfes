@@ -34,6 +34,7 @@ def run_with_metrics(proj: Path, cfg: dict) -> tuple:
             continue
         findings += rules.check_layout(rel, cfg)
         findings += rules.check_content(rel, text, cfg)
+        findings += rules.constants_location_findings(rel, None, text, cfg)
         all_texts.append((rel, text))
         if not rules.is_test(rel) and rel.endswith(rules.CODE_EXT):
             texts.append((rel, text))

@@ -53,7 +53,7 @@ PRESETS: Dict[str, dict] = {
 
 SHARED_DIRS = ("api", "auth", "rbac", "i18n", "charts", "ui", "lib", "config")
 FEATURE_ENTRIES = ("api", "components", "model", "locales", "hooks", "composables", "stores", "services",
-                   "permissions.ts", "index.ts", "routes.ts")
+                   "permissions.ts", "index.ts", "routes.ts", "constants.ts")
 
 DEFAULT_RULES: Dict[str, str] = {
     "protected-files": "block",
@@ -75,6 +75,7 @@ DEFAULT_RULES: Dict[str, str] = {
     "folder-layout": "block",
     "duplicates": "block",
     "constant-reuse": "block",
+    "constants-location": "block",
     "hardcoded-text": "warn",
     "console": "warn",
     "explicit-any": "warn",
@@ -260,6 +261,11 @@ def normalize_config(raw: dict) -> dict:
                              **(raw.get("constant_reuse") or {})}
     cfg["shared_dirs"] = list(raw.get("shared_dirs") or SHARED_DIRS)
     cfg["allowed_http_hosts"] = list(raw.get("allowed_http_hosts") or [])
+    # file in cui si definiscono le costanti di dominio (default: uno per feature + uno trasversale in shared/config)
+    cfg["constants_files"] = list(raw.get("constants_files") or [
+        cfg["layers"]["features"].rstrip("/") + "/*/constants.ts",
+        cfg["layers"]["shared"].rstrip("/") + "/config/constants.ts",
+    ])
     return cfg
 
 
@@ -1063,6 +1069,12 @@ def _balanced(code: str, start: int, open_c: str, close_c: str) -> int:
     return len(code)
 
 
+def _pure_string_array(body: str) -> bool:
+    """`['a', 'b']`: solo stringhe letterali (un array di oggetti o di chiamate è configurazione, non costanti)."""
+    rest = re.sub(r"""(['"])(?:\\.|(?!\1)[^\\\n])*\1|`[^`$]*`""", "", body)
+    return re.fullmatch(r"[\[\],\s]*", rest) is not None
+
+
 def constant_definitions(rel: str, text: str) -> List[Tuple[str, str, int]]:
     """(valore, riferimento da usare, riga) delle costanti esportate: `export const X = 'v'`, oggetti e array
     `as const` (`X.key`, `X[i]`) ed enum esportati."""
@@ -1084,7 +1096,7 @@ def constant_definitions(rel: str, text: str) -> List[Tuple[str, str, int]]:
                     key = e.group(1).strip("'\"")
                     ref = f"{name}.{key}" if re.fullmatch(r"[A-Za-z_$][\w$]*", key) else f"{name}['{key}']"
                     out.append((e.group(3), ref, line_of(j + e.start(3))))
-            else:
+            elif _pure_string_array(body):
                 for k, (pos, val) in enumerate(iter_string_literals(body)):
                     out.append((val, f"{name}[{k}]", line_of(j + pos)))
     for m in EXPORT_ENUM.finditer(code):
@@ -1146,5 +1158,89 @@ def literal_reuse_findings(rel: str, before: Optional[str], after: str, files: L
                            f"'{val}' esiste già come costante {ref} ({frel}:{fline}): importala invece di riscrivere il "
                            "letterale. Se è un concetto diverso con lo stesso testo, chiedi all'utente di aggiungerlo a "
                            "constant_reuse.ignore_values"))
+    return out
+
+
+# ---------------------------------------------------------------- costanti esplicite in constants.ts
+
+# Costante "esplicita" anche se non esportata: `const MAX_ITEMS_KEY = 'x'` (UPPER_SNAKE_CASE, primo livello).
+UPPER_CONST = re.compile(r"""^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*(?::[^=;]+)?=\s*""", re.M)
+
+
+def _values_at(code: str, name: str, j: int, line_of) -> List[Tuple[str, str, int]]:
+    """Valori stringa letterali assegnati a una costante a partire da `j` (stringa, oggetto o array)."""
+    out: List[Tuple[str, str, int]] = []
+    head = code[j:j + 1]
+    if head in ("'", '"', "`"):
+        lit = re.match(r"""(['"`])([^'"`\\\n$]*)\1""", code[j:])
+        if lit:
+            out.append((lit.group(2), name, line_of(j)))
+    elif head in ("{", "["):
+        end = _balanced(code, j, head, "}" if head == "{" else "]")
+        body = code[j:end]
+        if head == "{":
+            for e in OBJ_ENTRY.finditer(body):
+                key = e.group(1).strip("'\"")
+                ref = f"{name}.{key}" if re.fullmatch(r"[A-Za-z_$][\w$]*", key) else f"{name}['{key}']"
+                out.append((e.group(3), ref, line_of(j + e.start(3))))
+        elif _pure_string_array(body):
+            for k, (pos, val) in enumerate(iter_string_literals(body)):
+                out.append((val, f"{name}[{k}]", line_of(j + pos)))
+    return out
+
+
+def domain_constant_definitions(rel: str, text: str) -> List[Tuple[str, str, int]]:
+    """Costanti di dominio definite nel file: quelle esportate (`constant_definitions`) più ogni `const` UPPER_SNAKE di
+    primo livello con valori stringa letterali, anche non esportata."""
+    defs = constant_definitions(rel, text)
+    code = strip_comments(text, markup=rel.endswith(MARKUP_EXT))
+    line_of = lambda pos: code.count("\n", 0, pos) + 1
+    seen = {(v, line) for v, _, line in defs}
+    for m in UPPER_CONST.finditer(code):
+        for val, ref, line in _values_at(code, m.group(1), m.end(), line_of):
+            if (val, line) not in seen and len(val) >= 2 and re.search(r"[A-Za-z]", val) \
+                    and not re.search(r"[\s<>]", val):
+                seen.add((val, line))
+                defs.append((val, ref, line))
+    return defs
+
+
+def is_constants_file(rel: str, cfg: dict) -> bool:
+    return glob_match(rel, cfg.get("constants_files") or [])
+
+
+def constants_home(rel: str, cfg: dict) -> str:
+    """File costanti in cui va spostata una costante definita in `rel`."""
+    layer, sub, _ = layer_of(rel, cfg)
+    if layer == "features" and sub:
+        return f"{cfg['layers']['features'].rstrip('/')}/{sub}/constants.ts"
+    return f"{cfg['layers']['shared'].rstrip('/')}/config/constants.ts"
+
+
+def constants_location_findings(rel: str, before: Optional[str], after: str, cfg: dict) -> List[Finding]:
+    """Costanti di dominio definite fuori dai file costanti. Con `before` contano solo quelle introdotte dalla modifica."""
+    sev = cfg["rules"].get("constants-location", "block")
+    if sev == "off" or not counts_for_reuse(rel) or is_server(rel, cfg) or is_constants_file(rel, cfg):
+        return []
+    ignore = set(cfg["constant_reuse"].get("ignore_values") or [])
+    old: Dict[Tuple[str, str], int] = {}
+    for val, ref, _ in domain_constant_definitions(rel, before or ""):
+        old[(val, ref)] = old.get((val, ref), 0) + 1
+    home = constants_home(rel, cfg)
+    out: List[Finding] = []
+    reported = set()
+    for val, ref, line in domain_constant_definitions(rel, after):
+        if val in ignore:
+            continue
+        if old.get((val, ref), 0) > 0:
+            old[(val, ref)] -= 1
+            continue
+        const = ref.split(".")[0].split("[")[0]
+        if const in reported:
+            continue
+        reported.add(const)
+        out.append(Finding("constants-location", sev, rel, line,
+                           f"la costante {const} ('{val}') va definita in {home} e importata qui: le costanti di "
+                           "dominio vivono solo nei file constants.ts"))
     return out
 

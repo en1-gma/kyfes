@@ -79,6 +79,7 @@ def main() -> int:
         findings += new_findings(rel, op, cfg)
         if op.after is not None:
             findings += rules.literal_reuse_findings(rel, op.before, op.after, project_texts(proj, cfg), cfg)
+            findings += rules.constants_location_findings(rel, op.before, op.after, cfg)
     blocking = [f for f in findings if f.severity == "block"]
     if not blocking:
         return 0
