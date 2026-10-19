@@ -85,7 +85,7 @@ DENY_CASES = [
 ]
 
 ALLOW_CASES = [
-    "el.innerHTML = sanitizeHtml(html)",
+    "import { sanitizeHtml } from '@/shared/lib'\nel.innerHTML = sanitizeHtml(html)",
     "<a href={url} target=\"_blank\" rel=\"noopener noreferrer\">{t('doc')}</a>",
     "const API = 'http://localhost:8080'",
     "const ns = 'http://www.w3.org/2000/svg'",
@@ -241,7 +241,7 @@ class CodexPatchParsing(unittest.TestCase):
         patch = ("*** Begin Patch\n*** Update File: src/a.ts\n@@\n-old\n+new line\n*** Add File: src/b.ts\n+b1\n+b2\n"
                  "*** Delete File: src/c.ts\n*** Update File: src/d.ts\n*** Move to: src/e.ts\n@@\n+moved\n*** End Patch")
         files = hook_common.written_files({"tool_input": {"command": patch}})
-        self.assertEqual(files, {"src/a.ts": ["new line"], "src/b.ts": ["b1\nb2"], "src/d.ts": [""], "src/e.ts": ["moved"]})
+        self.assertEqual(files, {"src/a.ts": ["new line"], "src/b.ts": ["b1\nb2"], "src/e.ts": ["moved"]})
 
 
 class StopGateAndArchCheck(unittest.TestCase):
@@ -292,13 +292,17 @@ class Installer(unittest.TestCase):
             self.assertTrue((d / ".agents/skills/kyfes-architecture/SKILL.md").is_file())
             self.assertTrue((d / ".codex/agents/kyfes_reviewer.toml").is_file())
             hooks = json.loads((d / ".codex/hooks.json").read_text())["hooks"]
-            self.assertEqual(len(hooks["PreToolUse"]), 1)
+            self.assertEqual(len(hooks["PreToolUse"]), 2)  # scritture + guard della shell
             self.assertTrue((d / "tools/kyfes/plugins/kyfes/scripts/arch_check.py").is_file())
             self.assertFalse((d / "tools/kyfes/plugins/kyfes/templates/scaffold").exists())
+            deny = json.loads((d / ".claude/settings.json").read_text())["permissions"]["deny"]
+            self.assertIn("Edit(.kyfes/**)", deny)
+            self.assertEqual(len(deny), len(set(deny)))  # idempotente
             subprocess.run(cmd + ["--uninstall"], check=True, capture_output=True, text=True)
             self.assertEqual((d / "AGENTS.md").read_text().strip(), "# Team notes")
             self.assertFalse((d / ".codex/hooks.json").exists())
             self.assertFalse((d / "tools/kyfes").exists())
+            self.assertFalse((d / ".claude/settings.json").exists())
         finally:
             shutil.rmtree(d)
 
