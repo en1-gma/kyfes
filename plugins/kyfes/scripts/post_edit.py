@@ -12,12 +12,13 @@ import rules
 def main() -> int:
     event = hc.read_event()
     hc.debug_dump(event, "post")
-    proj, cfg = hc.project_and_config(event)
-    if cfg is None:
-        return 0
     findings = []
     for path in hc.written_files(event):
-        rel = rules.rel_to_project(path, proj)
+        proj = rules.project_for_file(path, event.get("cwd"))
+        cfg = rules.load_config(proj)
+        if cfg is None:
+            continue
+        rel = rules.rel_to_project(str(hc._abs(path, event.get("cwd"))), proj)
         if rel is None:
             continue
         p = proj / rel
