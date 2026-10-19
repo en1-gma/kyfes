@@ -1,7 +1,18 @@
-import { useQueryClient, type QueryClient } from '@tanstack/svelte-query';
+import {
+	useQueryClient,
+	type MutationCacheNotifyEvent,
+	type QueryClient,
+	type QueryCacheNotifyEvent
+} from '@tanstack/svelte-query';
 import { navigating } from '$app/state';
 import { env } from '$lib/shared/config';
-import { enableSessionRefresh, http, isApiError, onUnauthorized } from '$lib/shared/api';
+import {
+	AUTH_ENDPOINTS,
+	enableSessionRefresh,
+	http,
+	isApiError,
+	onUnauthorized
+} from '$lib/shared/api';
 import { safeRedirect } from '$lib/shared/lib';
 import { invalidateSession, sessionKeys } from './session';
 
@@ -9,7 +20,7 @@ let leaving = false;
 
 /** The BFF login URL: the OIDC flow (code + PKCE) happens on the server. */
 export function loginUrl(returnTo: string): string {
-	return `${env.API_BASE_URL}/auth/login?returnTo=${encodeURIComponent(safeRedirect(returnTo))}`;
+	return `${env.API_BASE_URL}${AUTH_ENDPOINTS.login}?returnTo=${encodeURIComponent(safeRedirect(returnTo))}`;
 }
 
 /** During a client navigation the target URL (not the old page) is the one to return to. */
@@ -27,7 +38,7 @@ export function login(returnTo: string = currentPath()): void {
 
 export async function logout(queryClient: QueryClient, redirectTo = '/'): Promise<void> {
 	try {
-		await http.post('/auth/logout');
+		await http.post(AUTH_ENDPOINTS.logout);
 	} finally {
 		queryClient.clear();
 		window.location.assign(safeRedirect(redirectTo));
@@ -38,6 +49,16 @@ export async function logout(queryClient: QueryClient, redirectTo = '/'): Promis
 export function useLogout(): () => Promise<void> {
 	const queryClient = useQueryClient();
 	return () => logout(queryClient);
+}
+
+/** A query or mutation that has just failed with 403. */
+function failedWithForbidden(event: QueryCacheNotifyEvent | MutationCacheNotifyEvent): boolean {
+	return (
+		event.type === 'updated' &&
+		event.action.type === 'error' &&
+		isApiError(event.action.error) &&
+		event.action.error.isForbidden
+	);
 }
 
 /**
@@ -55,20 +76,13 @@ export function installAuthHandlers(
 		queryClient.removeQueries({ queryKey: sessionKeys.all });
 		login();
 	});
-	const isForbidden = (error: unknown) => isApiError(error) && error.isForbidden;
 	const unsubscribeQueries = queryClient.getQueryCache().subscribe((event) => {
-		if (event.type !== 'updated' || event.action.type !== 'error') return;
-		if (event.query.queryKey[0] === sessionKeys.all[0]) return;
-		if (isForbidden(event.action.error)) void invalidateSession(queryClient);
-	});
-	const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
-		if (
-			event.type === 'updated' &&
-			event.action.type === 'error' &&
-			isForbidden(event.action.error)
-		) {
+		if (failedWithForbidden(event) && event.query.queryKey[0] !== sessionKeys.all[0]) {
 			void invalidateSession(queryClient);
 		}
+	});
+	const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+		if (failedWithForbidden(event)) void invalidateSession(queryClient);
 	});
 	return () => {
 		enableSessionRefresh(false);

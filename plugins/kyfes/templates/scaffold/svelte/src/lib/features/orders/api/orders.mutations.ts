@@ -35,7 +35,7 @@ export const updateOrderMutationOptions = mutationOptions({
 });
 
 /** Shared by every delete: lets a delete know whether others are still in flight. */
-export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const;
+export const deleteOrderMutationKey = orderKeys.deletes();
 
 /** Other deletes in flight besides the current one (still counted while its callbacks run). */
 const othersDeleting = (client: QueryClient) =>

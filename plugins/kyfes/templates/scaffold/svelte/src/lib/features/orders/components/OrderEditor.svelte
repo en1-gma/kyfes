@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useAbility } from '$lib/shared/rbac';
+	import { Action, useAbility } from '$lib/shared/rbac';
 	import { ErrorState, QueryState } from '$lib/shared/ui';
 	import { useOrder } from '../api/orders.queries';
 	import type { Order } from '../model/orders.schema';
@@ -18,7 +18,7 @@
 
 <QueryState query={order}>
 	{#snippet children(current)}
-		{#if ability.can('update', asOrderSubject(current))}
+		{#if ability.can(Action.Update, asOrderSubject(current))}
 			<OrderForm order={current} {onsaved} />
 		{:else}
 			<ErrorState forbidden />

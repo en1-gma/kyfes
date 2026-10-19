@@ -1,8 +1,8 @@
 <script lang="ts">
 	import CategoryChart from './CategoryChart.svelte';
-	import type { CategoryChartProps } from './options';
+	import { CHART_KIND, type CategoryChartProps } from './options';
 
 	let props: CategoryChartProps = $props();
 </script>
 
-<CategoryChart kind="line" {...props} />
+<CategoryChart kind={CHART_KIND.line} {...props} />

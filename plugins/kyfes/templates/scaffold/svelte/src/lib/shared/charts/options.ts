@@ -1,7 +1,9 @@
 import type { ChartOption } from './echarts';
 
 export type ChartDatum = { label: string; value: number };
-export type ChartKind = 'bar' | 'line';
+/** Series types the shared charts draw. */
+export const CHART_KIND = { bar: 'bar', line: 'line' } as const;
+export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND];
 
 export type CategoryChartProps = {
 	/** Accessible name of the chart (role="img"). Already translated. */
@@ -52,10 +54,10 @@ export function buildCategoryOption(
 		},
 		yAxis: { type: 'value', axisLabel: { ...axisLabel, formatter: (v: number) => format(v) } },
 		series: [
-			kind === 'bar'
-				? { type: 'bar', name: props.seriesName, data: props.data.map((d) => d.value) }
+			kind === CHART_KIND.bar
+				? { type: CHART_KIND.bar, name: props.seriesName, data: props.data.map((d) => d.value) }
 				: {
-						type: 'line',
+						type: CHART_KIND.line,
 						name: props.seriesName,
 						data: props.data.map((d) => d.value),
 						smooth: true

@@ -1,10 +1,16 @@
-import { subject, type AbilityState, type SubjectType } from '$lib/shared/rbac';
+import { Action, Subject, subject, type AbilityState } from '$lib/shared/rbac';
 import type { Order, OrderField, OrderInput, OrderPayload } from './model/orders.schema';
 
-/** CASL subject of the feature (registered in shared/rbac/subjects.ts). */
-export const ORDER_SUBJECT = 'Order' satisfies SubjectType;
+/** CASL subject of the feature (the name is registered in shared/rbac/subjects.ts). */
+export const ORDER_SUBJECT = Subject.Order;
 
-export const ORDER_FIELDS = ['customerName', 'status', 'total'] as const satisfies OrderField[];
+/** Writable fields of an order: field-level rules, form inputs and payload reference these. */
+export const ORDER_FIELDS = {
+	customerName: 'customerName',
+	status: 'status',
+	total: 'total'
+} as const satisfies { [F in OrderField]: F };
+export const ORDER_FIELD_NAMES: readonly OrderField[] = Object.values(ORDER_FIELDS);
 
 /**
  * Tags a record for conditional rules (e.g. `{ status: 'draft' }`). Works on a copy:
@@ -24,8 +30,8 @@ export function canWriteOrderField(
 	order: Order | undefined
 ): boolean {
 	return order
-		? ability.can('update', asOrderSubject(order), field)
-		: ability.can('create', ORDER_SUBJECT, field);
+		? ability.can(Action.Update, asOrderSubject(order), field)
+		: ability.can(Action.Create, ORDER_SUBJECT, field);
 }
 
 /** The payload never carries a field the user may not write (the server would answer 403). */
@@ -34,8 +40,9 @@ export function pickWritableFields(
 	canWrite: (field: OrderField) => boolean
 ): OrderPayload {
 	const payload: OrderPayload = {};
-	if (canWrite('customerName')) payload.customerName = input.customerName;
-	if (canWrite('status')) payload.status = input.status;
-	if (canWrite('total')) payload.total = input.total;
+	const copy = <F extends OrderField>(field: F) => {
+		payload[field] = input[field];
+	};
+	ORDER_FIELD_NAMES.filter(canWrite).forEach(copy);
 	return payload;
 }

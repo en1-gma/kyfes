@@ -1,5 +1,5 @@
 import { createQuery, queryOptions, type QueryClient } from '@tanstack/svelte-query';
-import { http } from '$lib/shared/api';
+import { AUTH_ENDPOINTS, http } from '$lib/shared/api';
 import { SessionSchema, type Session } from './session.schema';
 
 export const sessionKeys = {
@@ -8,7 +8,7 @@ export const sessionKeys = {
 };
 
 export async function fetchSession(): Promise<Session> {
-	const { data } = await http.get<unknown>('/auth/me');
+	const { data } = await http.get<unknown>(AUTH_ENDPOINTS.me);
 	return SessionSchema.parse(data);
 }
 

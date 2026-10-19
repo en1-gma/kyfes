@@ -1,14 +1,14 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '$lib/shared/config';
 import { ApiError, ApiErrorBodySchema } from './api-error';
+import { AUTH_ENDPOINTS } from './endpoints';
 
 /** The only HTTP client of the app. Components never use it directly: features/<f>/api does. */
 
 export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
-const REFRESH_URL = '/auth/refresh';
-/** Auth endpoints never trigger the refresh nor the unauthorized callback (no loops). */
-const AUTH_ENDPOINTS = [REFRESH_URL, '/auth/login', '/auth/logout'];
+/** These auth endpoints never trigger the refresh nor the unauthorized callback (no loops). */
+const NO_REFRESH_ENDPOINTS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout];
 
 type UnauthorizedHandler = () => void;
 type RetriableConfig = InternalAxiosRequestConfig & {
@@ -80,7 +80,7 @@ export function toApiError(error: unknown): ApiError {
 function isAuthEndpoint(url: string | undefined): boolean {
 	if (!url) return false;
 	const path = url.split(/[?#]/, 1)[0] ?? '';
-	return AUTH_ENDPOINTS.some((endpoint) => path.endsWith(endpoint));
+	return NO_REFRESH_ENDPOINTS.some((endpoint) => path.endsWith(endpoint));
 }
 
 /**
@@ -89,7 +89,7 @@ function isAuthEndpoint(url: string | undefined): boolean {
  */
 function refreshSession(client: AxiosInstance): Promise<boolean> {
 	refreshInFlight ??= client
-		.post(REFRESH_URL)
+		.post(AUTH_ENDPOINTS.refresh)
 		.then(() => {
 			lastRefreshAt = ++clock;
 			return true;

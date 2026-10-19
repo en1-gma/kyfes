@@ -1,7 +1,13 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { z } from 'zod';
-import { OrderInputSchema, type Order } from '$lib/features/orders';
-import { buildAbility, subject } from '$lib/shared/rbac';
+import {
+	asOrderSubject,
+	ORDER_STATUS,
+	ORDER_SUBJECT,
+	OrderInputSchema,
+	type Order
+} from '$lib/features/orders';
+import { Action, buildAbility } from '$lib/shared/rbac';
 import { seedOrders, SESSIONS, type MockUser } from './data';
 
 /** In-memory backend for dev (browser) and tests (node). */
@@ -49,12 +55,12 @@ function invalidBody(error: z.ZodError) {
 
 /** A field sent by the client that the user may not write on `target`. */
 function forbiddenField(
-	action: 'create' | 'update',
-	target: Order | 'Order',
+	action: typeof Action.Create | typeof Action.Update,
+	target: Order | typeof ORDER_SUBJECT,
 	body: OrderBody
 ): boolean {
 	const current = ability();
-	const subjectOf = target === 'Order' ? target : subject('Order', { ...target });
+	const subjectOf = target === ORDER_SUBJECT ? target : asOrderSubject(target);
 	return Object.keys(body).some((field) => current.cannot(action, subjectOf, field));
 }
 
@@ -104,17 +110,18 @@ export const handlers: HttpHandler[] = [
 		return order ? HttpResponse.json(order) : apiError(404, 'NOT_FOUND', 'Order not found');
 	}),
 	http.post('/api/orders', async ({ request }) => {
-		if (ability().cannot('create', 'Order')) return apiError(403, 'FORBIDDEN', 'Not allowed');
+		if (ability().cannot(Action.Create, ORDER_SUBJECT))
+			return apiError(403, 'FORBIDDEN', 'Not allowed');
 		const parsed = OrderBodySchema.required({ customerName: true, total: true }).safeParse(
 			await request.json()
 		);
 		if (!parsed.success) return invalidBody(parsed.error);
-		if (forbiddenField('create', 'Order', parsed.data)) {
+		if (forbiddenField(Action.Create, ORDER_SUBJECT, parsed.data)) {
 			return apiError(403, 'FORBIDDEN', 'Field not allowed');
 		}
 		const n = db.orders.length + 1;
 		const order: Order = {
-			status: 'draft',
+			status: ORDER_STATUS.draft,
 			...parsed.data,
 			id: crypto.randomUUID(),
 			number: `ORD-${String(n).padStart(4, '0')}`,
@@ -127,12 +134,12 @@ export const handlers: HttpHandler[] = [
 		const index = db.orders.findIndex((o) => o.id === params.id);
 		const current = db.orders[index];
 		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-		if (ability().cannot('update', subject('Order', { ...current }))) {
+		if (ability().cannot(Action.Update, asOrderSubject(current))) {
 			return apiError(403, 'FORBIDDEN', 'Not allowed');
 		}
 		const parsed = OrderBodySchema.safeParse(await request.json());
 		if (!parsed.success) return invalidBody(parsed.error);
-		if (forbiddenField('update', current, parsed.data)) {
+		if (forbiddenField(Action.Update, current, parsed.data)) {
 			return apiError(403, 'FORBIDDEN', 'Field not allowed');
 		}
 		const updated: Order = { ...current, ...parsed.data };
@@ -142,7 +149,7 @@ export const handlers: HttpHandler[] = [
 	http.delete('/api/orders/:id', ({ params }) => {
 		const current = db.orders.find((o) => o.id === params.id);
 		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-		if (ability().cannot('delete', subject('Order', { ...current }))) {
+		if (ability().cannot(Action.Delete, asOrderSubject(current))) {
 			return apiError(403, 'FORBIDDEN', 'Not allowed');
 		}
 		db.orders = db.orders.filter((o) => o.id !== current.id);

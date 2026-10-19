@@ -7,7 +7,7 @@ import {
 import { DEFAULT_PAGE_SIZE } from '$lib/shared/api';
 import type { ChartDatum } from '$lib/shared/charts';
 import { formatDate } from '$lib/shared/i18n';
-import type { OrderStats } from '../model/orders.schema';
+import { DEFAULT_ORDER_SORT, type OrderStats } from '../model/orders.schema';
 import { ordersApi } from './orders.api';
 
 export type OrdersFilters = { limit?: number; sort?: string };
@@ -19,13 +19,15 @@ export const orderKeys = {
 	list: (filters: Required<OrdersFilters>) => [...orderKeys.lists(), filters] as const,
 	details: () => [...orderKeys.all, 'detail'] as const,
 	detail: (id: string) => [...orderKeys.details(), id] as const,
-	stats: () => [...orderKeys.all, 'stats'] as const
+	stats: () => [...orderKeys.all, 'stats'] as const,
+	/** Mutation key shared by every delete (lets a delete know whether others are in flight). */
+	deletes: () => [...orderKeys.all, 'delete'] as const
 };
 
 export function ordersInfiniteQueryOptions(filters: OrdersFilters = {}) {
 	const normalized = {
 		limit: filters.limit ?? DEFAULT_PAGE_SIZE,
-		sort: filters.sort ?? '-createdAt'
+		sort: filters.sort ?? DEFAULT_ORDER_SORT
 	};
 	return infiniteQueryOptions({
 		queryKey: orderKeys.list(normalized),

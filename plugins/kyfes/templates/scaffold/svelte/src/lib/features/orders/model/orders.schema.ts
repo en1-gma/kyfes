@@ -1,7 +1,26 @@
 import { z } from 'zod';
 
-export const ORDER_STATUSES = ['draft', 'confirmed', 'shipped', 'cancelled'] as const;
-export const OrderStatusSchema = z.enum(ORDER_STATUSES);
+export const ORDER_STATUS = {
+	draft: 'draft',
+	confirmed: 'confirmed',
+	shipped: 'shipped',
+	cancelled: 'cancelled'
+} as const;
+export const OrderStatusSchema = z.enum(ORDER_STATUS);
+export const ORDER_STATUSES = OrderStatusSchema.options;
+/** Status of a new order in the form (the server applies the same default). */
+export const DEFAULT_ORDER_STATUS = ORDER_STATUS.draft;
+
+/** Server sort of the list: newest first. */
+export const ORDER_SORT = { createdAtDesc: '-createdAt' } as const;
+export const DEFAULT_ORDER_SORT = ORDER_SORT.createdAtDesc;
+
+/** Validation codes of the order form: i18n codes (orders_validation_*), never user-facing text. */
+export const ORDER_VALIDATION = {
+	required: 'required',
+	tooLong: 'tooLong',
+	invalidAmount: 'invalidAmount'
+} as const;
 
 export const OrderSchema = z.object({
 	id: z.uuid(),
@@ -12,17 +31,17 @@ export const OrderSchema = z.object({
 	createdAt: z.iso.datetime({ offset: true })
 });
 
-/**
- * Validation of the order form. Error messages are i18n codes (mapped to orders_validation_*),
- * never user-facing text.
- */
+const invalidAmount = { error: ORDER_VALIDATION.invalidAmount };
+
+/** Validation of the order form. Error messages are the ORDER_VALIDATION codes. */
 export const OrderInputSchema = z.object({
-	customerName: z.string().trim().min(1, { error: 'required' }).max(120, { error: 'tooLong' }),
+	customerName: z
+		.string()
+		.trim()
+		.min(1, { error: ORDER_VALIDATION.required })
+		.max(120, { error: ORDER_VALIDATION.tooLong }),
 	status: OrderStatusSchema,
-	total: z
-		.number({ error: 'invalidAmount' })
-		.nonnegative({ error: 'invalidAmount' })
-		.max(1_000_000_000, { error: 'invalidAmount' })
+	total: z.number(invalidAmount).nonnegative(invalidAmount).max(1_000_000_000, invalidAmount)
 });
 
 /**
@@ -47,4 +66,4 @@ export type OrderInput = z.infer<typeof OrderInputSchema>;
 export type OrderPayload = z.infer<typeof OrderPayloadSchema>;
 export type OrderField = keyof OrderInput;
 export type OrderStats = z.infer<typeof OrderStatsSchema>;
-export type OrderValidationCode = 'required' | 'tooLong' | 'invalidAmount';
+export type OrderValidationCode = (typeof ORDER_VALIDATION)[keyof typeof ORDER_VALIDATION];

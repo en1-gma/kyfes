@@ -1,4 +1,12 @@
-export { ACTIONS, SUBJECT_TYPES, type Actions, type SubjectType, type Subjects } from './subjects';
+export {
+	Action,
+	ACTIONS,
+	Subject,
+	SUBJECT_TYPES,
+	type Actions,
+	type SubjectType,
+	type Subjects
+} from './subjects';
 export { RawRuleSchema, type RawRule } from './rules.schema';
 export { buildAbility, subject, type AppAbility } from './ability';
 export { AbilityState, setAbilityContext, useAbility } from './ability-state.svelte';

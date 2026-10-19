@@ -5,13 +5,19 @@
 	import { Button, ErrorState } from '$lib/shared/ui';
 	import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations';
 	import {
+		DEFAULT_ORDER_STATUS,
 		ORDER_STATUSES,
 		OrderInputSchema,
 		type Order,
 		type OrderField,
 		type OrderStatus
 	} from '../model/orders.schema';
-	import { canWriteOrderField, ORDER_FIELDS, pickWritableFields } from '../permissions';
+	import {
+		canWriteOrderField,
+		ORDER_FIELD_NAMES,
+		ORDER_FIELDS,
+		pickWritableFields
+	} from '../permissions';
 	import { orderStatusLabel, validationMessage } from './order-status';
 
 	/**
@@ -28,7 +34,7 @@
 	// Initial values only: the form owns its draft (the order prop is not tracked on purpose).
 	const initial = (): { customerName: string; status: OrderStatus; total: string } => ({
 		customerName: order?.customerName ?? '',
-		status: order?.status ?? 'draft',
+		status: order?.status ?? DEFAULT_ORDER_STATUS,
 		total: order ? String(order.total) : ''
 	});
 	let values = $state(initial());
@@ -38,13 +44,13 @@
 
 	const writable = $derived(
 		Object.fromEntries(
-			ORDER_FIELDS.map((field) => [field, canWriteOrderField(ability, field, order)])
+			ORDER_FIELD_NAMES.map((field) => [field, canWriteOrderField(ability, field, order)])
 		) as Record<OrderField, boolean>
 	);
 	const mutation = $derived(order ? update : create);
 
 	const isOrderField = (field: string): field is OrderField =>
-		ORDER_FIELDS.some((known) => known === field);
+		ORDER_FIELD_NAMES.some((known) => known === field);
 
 	/** 422 fieldErrors → messages on the fields; `true` if at least one field was recognised. */
 	function applyServerErrors(error: unknown): boolean {
@@ -98,11 +104,11 @@
 		<label for="{formId}-customer">{m.orders_field_customer()}</label>
 		<input
 			id="{formId}-customer"
-			name="customerName"
+			name={ORDER_FIELDS.customerName}
 			autocomplete="organization"
 			bind:value={values.customerName}
 			disabled={!writable.customerName}
-			aria-invalid={errors.customerName ? 'true' : undefined}
+			aria-invalid={errors.customerName ? true : undefined}
 			aria-describedby={errors.customerName ? `${formId}-customer-error` : undefined}
 		/>
 		{#if errors.customerName}
@@ -114,10 +120,10 @@
 		<label for="{formId}-status">{m.orders_field_status()}</label>
 		<select
 			id="{formId}-status"
-			name="status"
+			name={ORDER_FIELDS.status}
 			bind:value={values.status}
 			disabled={!writable.status}
-			aria-invalid={errors.status ? 'true' : undefined}
+			aria-invalid={errors.status ? true : undefined}
 			aria-describedby={[
 				errors.status ? `${formId}-status-error` : '',
 				writable.status ? '' : `${formId}-status-hint`
@@ -141,11 +147,11 @@
 		<label for="{formId}-total">{m.orders_field_total()}</label>
 		<input
 			id="{formId}-total"
-			name="total"
+			name={ORDER_FIELDS.total}
 			inputmode="decimal"
 			bind:value={values.total}
 			disabled={!writable.total}
-			aria-invalid={errors.total ? 'true' : undefined}
+			aria-invalid={errors.total ? true : undefined}
 			aria-describedby={errors.total ? `${formId}-total-error` : undefined}
 		/>
 		{#if errors.total}

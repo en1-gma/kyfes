@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { m, formatCurrency, formatDate } from '$lib/shared/i18n';
-	import { useAbility } from '$lib/shared/rbac';
+	import { Action, useAbility } from '$lib/shared/rbac';
 	import { Button, ConfirmDeleteDialog, ErrorState, QueryState } from '$lib/shared/ui';
 	import { useDeleteOrder } from '../api/orders.mutations';
 	import { useOrder } from '../api/orders.queries';
 	import { asOrderSubject } from '../permissions';
 	import type { Order } from '../model/orders.schema';
+	import { orderPaths } from '../routes';
 	import { orderStatusLabel } from './order-status';
 
 	let { id, ondeleted }: { id: string; ondeleted?: () => void } = $props();
@@ -37,10 +38,10 @@
 				<ErrorState error={remove.error} />
 			{/if}
 			<div class="actions">
-				{#if record && ability.can('update', record)}
-					<a href={resolve('/orders/[id]/edit', { id })}>{m.orders_action_edit()}</a>
+				{#if record && ability.can(Action.Update, record)}
+					<a href={resolve(orderPaths.edit, { id })}>{m.orders_action_edit()}</a>
 				{/if}
-				{#if record && ability.can('delete', record)}
+				{#if record && ability.can(Action.Delete, record)}
 					<Button variant="danger" onclick={() => (pending = current)}>
 						{m.orders_action_delete()}
 					</Button>

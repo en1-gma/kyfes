@@ -1,15 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
-
-	type Variant = 'primary' | 'secondary' | 'danger';
+	import { BUTTON_VARIANT, type ButtonVariant } from './button';
 
 	let {
-		variant = 'secondary',
+		variant = BUTTON_VARIANT.secondary,
 		type = 'button',
 		children,
 		...rest
-	}: HTMLButtonAttributes & { variant?: Variant; children: Snippet } = $props();
+	}: HTMLButtonAttributes & { variant?: ButtonVariant; children: Snippet } = $props();
 </script>
 
 <button {type} class="btn btn-{variant}" {...rest}>

@@ -1,4 +1,5 @@
 export { default as Button } from './Button.svelte';
+export { BUTTON_VARIANT, type ButtonVariant } from './button';
 export { default as ConfirmDialog } from './ConfirmDialog.svelte';
 export { default as ConfirmDeleteDialog } from './ConfirmDeleteDialog.svelte';
 export { default as EmptyState } from './EmptyState.svelte';

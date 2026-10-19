@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { ORDER_SUBJECT } from '$lib/features/orders';
+	import { ORDER_SUBJECT, orderPaths } from '$lib/features/orders';
 	import { useLogout, useSession } from '$lib/shared/auth';
 	import { initLocale, LocaleSelect, m } from '$lib/shared/i18n';
-	import { useAbility } from '$lib/shared/rbac';
+	import { Action, useAbility } from '$lib/shared/rbac';
 	import { Button } from '$lib/shared/ui';
 
 	let { children }: { children: Snippet } = $props();
@@ -27,8 +27,8 @@
 	<nav aria-label={m.common_nav_label()}>
 		<ul>
 			<li><a href={resolve('/')}>{m.common_nav_home()}</a></li>
-			{#if ability.can('read', ORDER_SUBJECT)}
-				<li><a href={resolve('/orders')}>{m.orders_nav()}</a></li>
+			{#if ability.can(Action.Read, ORDER_SUBJECT)}
+				<li><a href={resolve(orderPaths.list)}>{m.orders_nav()}</a></li>
 			{/if}
 		</ul>
 	</nav>

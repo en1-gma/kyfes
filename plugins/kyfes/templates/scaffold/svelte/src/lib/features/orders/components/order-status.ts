@@ -1,17 +1,15 @@
 import { m } from '$lib/shared/i18n';
 import type { OrderStatus, OrderValidationCode } from '../model/orders.schema';
 
+const statusLabels: Record<OrderStatus, () => string> = {
+	draft: () => m.orders_status_draft(),
+	confirmed: () => m.orders_status_confirmed(),
+	shipped: () => m.orders_status_shipped(),
+	cancelled: () => m.orders_status_cancelled()
+};
+
 export function orderStatusLabel(status: OrderStatus): string {
-	switch (status) {
-		case 'draft':
-			return m.orders_status_draft();
-		case 'confirmed':
-			return m.orders_status_confirmed();
-		case 'shipped':
-			return m.orders_status_shipped();
-		case 'cancelled':
-			return m.orders_status_cancelled();
-	}
+	return statusLabels[status]();
 }
 
 export function validationMessage(code: string | undefined): string | undefined {

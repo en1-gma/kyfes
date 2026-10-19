@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/shared/i18n';
 	import Button from './Button.svelte';
+	import { BUTTON_VARIANT } from './button';
 
 	let {
 		open = $bindable(false),
@@ -39,7 +40,7 @@
 	<p>{message}</p>
 	<div class="actions">
 		<Button onclick={() => (open = false)}>{m.common_cancel()}</Button>
-		<Button variant={danger ? 'danger' : 'primary'} onclick={confirm}>
+		<Button variant={danger ? BUTTON_VARIANT.danger : BUTTON_VARIANT.primary} onclick={confirm}>
 			{confirmLabel ?? m.common_confirm()}
 		</Button>
 	</div>

@@ -8,6 +8,10 @@ import {
 	type OrderStats
 } from '../model/orders.schema';
 
+/** API path of the orders resource (relative to PUBLIC_API_BASE_URL). */
+export const ORDERS_ENDPOINT = '/orders';
+const orderEndpoint = (id: string) => `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`;
+
 export const OrderPageSchema = pageSchema(OrderSchema);
 export type OrderPage = { items: Order[]; nextCursor: string | null; limit: number };
 
@@ -17,7 +21,7 @@ export type OrderPage = { items: Order[]; nextCursor: string | null; limit: numb
  */
 export const ordersApi = {
 	async list(params: PageParams, signal?: AbortSignal): Promise<OrderPage> {
-		const { data } = await http.get<unknown>('/orders', {
+		const { data } = await http.get<unknown>(ORDERS_ENDPOINT, {
 			params: toPageQuery(params),
 			signal
 		});
@@ -25,31 +29,31 @@ export const ordersApi = {
 	},
 
 	async get(id: string, signal?: AbortSignal): Promise<Order> {
-		const { data } = await http.get<unknown>(`/orders/${encodeURIComponent(id)}`, { signal });
+		const { data } = await http.get<unknown>(orderEndpoint(id), { signal });
 		return OrderSchema.parse(data);
 	},
 
 	/** Only the writable fields: a field the user may not set is omitted (server default). */
 	async create(payload: OrderPayload): Promise<Order> {
-		const { data } = await http.post<unknown>('/orders', OrderPayloadSchema.parse(payload));
+		const { data } = await http.post<unknown>(ORDERS_ENDPOINT, OrderPayloadSchema.parse(payload));
 		return OrderSchema.parse(data);
 	},
 
 	/** Partial update (PATCH): only the fields the user may write on this record. */
 	async update(id: string, payload: OrderPayload): Promise<Order> {
 		const { data } = await http.patch<unknown>(
-			`/orders/${encodeURIComponent(id)}`,
+			orderEndpoint(id),
 			OrderPayloadSchema.parse(payload)
 		);
 		return OrderSchema.parse(data);
 	},
 
 	async remove(id: string): Promise<void> {
-		await http.delete(`/orders/${encodeURIComponent(id)}`);
+		await http.delete(orderEndpoint(id));
 	},
 
 	async stats(signal?: AbortSignal): Promise<OrderStats> {
-		const { data } = await http.get<unknown>('/orders/stats', { signal });
+		const { data } = await http.get<unknown>(`${ORDERS_ENDPOINT}/stats`, { signal });
 		return OrderStatsSchema.parse(data);
 	}
 };
