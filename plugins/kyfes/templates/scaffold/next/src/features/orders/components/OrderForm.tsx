@@ -6,8 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { isApiError } from '@/shared/api';
 import { useTranslations } from '@/shared/i18n';
 import { useAbility } from '@/shared/rbac';
-import { Button, ErrorState } from '@/shared/ui';
+import { BUTTON_VARIANT, Button, ErrorState } from '@/shared/ui';
+import { ORDERS_NS } from '../locales/namespace';
 import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELD,
   ORDER_FIELDS,
   ORDER_STATUSES,
   OrderInputSchema,
@@ -28,7 +31,7 @@ export interface OrderFormProps {
 
 /** Create/edit form validated with Zod; fields without write permission are read-only and never sent. */
 export function OrderForm({ order, onSubmit, isSubmitting = false, error }: OrderFormProps) {
-  const t = useTranslations('orders');
+  const t = useTranslations(ORDERS_NS);
   const ability = useAbility();
   const ids = { customer: useId(), status: useId(), total: useId() };
   const writable = useMemo(() => writableOrderFields(ability, order), [ability, order]);
@@ -43,7 +46,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
     resolver: zodResolver(OrderInputSchema),
     defaultValues: {
       customerName: order?.customerName ?? '',
-      status: order?.status ?? 'draft',
+      status: order?.status ?? DEFAULT_ORDER_STATUS,
       total: order?.total ?? 0,
     },
   });
@@ -74,10 +77,10 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
           id={ids.customer}
           autoComplete="off"
           placeholder={t('form.customerPlaceholder')}
-          readOnly={!writable.has('customerName')}
+          readOnly={!writable.has(ORDER_FIELD.customerName)}
           aria-invalid={errors.customerName ? true : undefined}
           aria-describedby={errors.customerName ? `${ids.customer}-error` : undefined}
-          {...register('customerName')}
+          {...register(ORDER_FIELD.customerName)}
         />
         {errors.customerName ? (
           <span id={`${ids.customer}-error`} className={styles.error}>
@@ -88,12 +91,12 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
 
       <div className={styles.field}>
         <label htmlFor={ids.status}>{t('form.status')}</label>
-        {writable.has('status') ? (
+        {writable.has(ORDER_FIELD.status) ? (
           <select
             id={ids.status}
             aria-invalid={errors.status ? true : undefined}
             aria-describedby={errors.status ? `${ids.status}-error` : undefined}
-            {...register('status')}
+            {...register(ORDER_FIELD.status)}
           >
             {ORDER_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -106,7 +109,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
             <input
               id={ids.status}
               readOnly
-              value={t(`status.${getValues('status')}`)}
+              value={t(`status.${getValues(ORDER_FIELD.status)}`)}
               aria-describedby={`${ids.status}-hint`}
             />
             <span id={`${ids.status}-hint`} className={styles.hint}>
@@ -129,10 +132,10 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
           inputMode="decimal"
           step="0.01"
           min="0"
-          readOnly={!writable.has('total')}
+          readOnly={!writable.has(ORDER_FIELD.total)}
           aria-invalid={errors.total ? true : undefined}
           aria-describedby={errors.total ? `${ids.total}-error` : undefined}
-          {...register('total', { valueAsNumber: true })}
+          {...register(ORDER_FIELD.total, { valueAsNumber: true })}
         />
         {errors.total ? (
           <span id={`${ids.total}-error`} className={styles.error}>
@@ -144,7 +147,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
       {error && !onFields ? <ErrorState error={error} /> : null}
 
       <div>
-        <Button type="submit" variant="primary" disabled={isSubmitting}>
+        <Button type="submit" variant={BUTTON_VARIANT.primary} disabled={isSubmitting}>
           {isSubmitting ? t('form.saving') : t('form.submit')}
         </Button>
       </div>

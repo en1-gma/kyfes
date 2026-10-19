@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import { buttonClassName } from './Button';
 import styles from './ui.module.css';
 
 function StatusPage({ titleKey, descriptionKey }: { titleKey: string; descriptionKey: string }) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   return (
     <section className={styles.state}>
       <h1>{t(titleKey)}</h1>

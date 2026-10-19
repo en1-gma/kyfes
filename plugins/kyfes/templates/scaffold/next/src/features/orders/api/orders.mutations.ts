@@ -41,9 +41,6 @@ export function useUpdateOrder(id: string) {
 
 type ListSnapshot = Array<[QueryKey, InfiniteData<OrderPage> | undefined]>;
 
-/** Shared by every delete: lets each one know whether others are still in flight. */
-export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const;
-
 /**
  * Optimistic delete: removes the row from every cached list. With concurrent deletes a failure
  * never restores a snapshot that may still contain another in-flight row: only the last one
@@ -51,9 +48,9 @@ export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const;
  */
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
-  const othersInFlight = () => queryClient.isMutating({ mutationKey: deleteOrderMutationKey }) > 1;
+  const othersInFlight = () => queryClient.isMutating({ mutationKey: orderKeys.remove() }) > 1;
   return useMutation<void, Error, Order['id'], { previous: ListSnapshot }>({
-    mutationKey: deleteOrderMutationKey,
+    mutationKey: orderKeys.remove(),
     mutationFn: (id) => ordersApi.remove(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: orderKeys.lists() });

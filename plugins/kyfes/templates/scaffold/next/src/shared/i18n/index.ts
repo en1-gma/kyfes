@@ -1,8 +1,9 @@
 // Client-safe entry. Server helpers (I18nNamespaces, getTranslations) are in ./server.
 export { useTranslations, NextIntlClientProvider } from 'next-intl';
 export { useLocale, useFormatters, useHtmlLang, useSwitchLocale } from './hooks';
-export { formatDate, formatNumber, formatCurrency, type DateInput } from './format';
+export { DATE_FORMAT, formatDate, formatNumber, formatCurrency, type DateInput } from './format';
 export {
+  COMMON_NS,
   LOCALES,
   DEFAULT_LOCALE,
   TIME_ZONE,

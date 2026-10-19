@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { ACTION } from '@/shared/rbac';
 import { renderWithProviders } from '@/test/render';
-import type { Order } from '../model/orders.schema';
+import { ORDER_FIELD, type Order } from '../model/orders.schema';
+import { ORDER_SUBJECT } from '../permissions';
 import { OrderForm } from './OrderForm';
 
 const order: Order = {
@@ -32,8 +34,12 @@ describe('OrderForm', () => {
     const onSubmit = vi.fn();
     renderWithProviders(<OrderForm order={order} onSubmit={onSubmit} />, {
       rules: [
-        { action: 'read', subject: 'Order' },
-        { action: 'update', subject: 'Order', fields: ['customerName', 'total'] },
+        { action: ACTION.read, subject: ORDER_SUBJECT },
+        {
+          action: ACTION.update,
+          subject: ORDER_SUBJECT,
+          fields: [ORDER_FIELD.customerName, ORDER_FIELD.total],
+        },
       ],
     });
     const status = screen.getByRole('textbox', { name: 'Stato' });

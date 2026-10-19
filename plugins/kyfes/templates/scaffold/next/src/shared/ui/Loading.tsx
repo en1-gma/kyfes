@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import styles from './ui.module.css';
 
 export function Spinner() {
@@ -9,7 +9,7 @@ export function Spinner() {
 
 /** Loading state; `messageKey` is a key of the `common` namespace. */
 export function Loading({ messageKey = 'states.loading' }: { messageKey?: string }) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   return (
     <div className={styles.loading} role="status" aria-live="polite">
       <Spinner />

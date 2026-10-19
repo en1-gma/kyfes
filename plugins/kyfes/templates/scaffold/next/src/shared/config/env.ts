@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
+/** Supported locales; the first one is the default when NEXT_PUBLIC_DEFAULT_LOCALE is unset. */
 export const LOCALES = ['it', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
+
+/** Boolean env flags are the strings `'true'` / `'false'`. */
+const FLAG = { on: 'true', off: 'false' } as const;
 
 /** Same-origin path ("/api", never protocol-relative "//host", no backslashes) or an https URL. */
 export function isValidApiBaseUrl(value: string): boolean {
@@ -18,11 +22,11 @@ const EnvSchema = z.object({
       message: 'API_BASE_URL must be a same-origin path or an https URL',
     })
     .default('/api'),
-  DEFAULT_LOCALE: z.enum(LOCALES).default('it'),
+  DEFAULT_LOCALE: z.enum(LOCALES).default(LOCALES[0]),
   API_MOCKS: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
+    .enum([FLAG.on, FLAG.off])
+    .default(FLAG.off)
+    .transform((v) => v === FLAG.on),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

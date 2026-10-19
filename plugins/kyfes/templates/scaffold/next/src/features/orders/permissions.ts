@@ -1,8 +1,14 @@
-import { subject, type AppAbility, type SubjectName } from '@/shared/rbac';
-import { ORDER_FIELDS, type Order, type OrderField, type OrderWrite } from './model/orders.schema';
+import { ACTION, SUBJECT, subject, type AppAbility } from '@/shared/rbac';
+import {
+  ORDER_FIELD,
+  ORDER_FIELDS,
+  type Order,
+  type OrderField,
+  type OrderWrite,
+} from './model/orders.schema';
 
-/** CASL subject of the orders feature (registered in shared/rbac SUBJECTS). */
-export const ORDER_SUBJECT = 'Order' as const satisfies SubjectName;
+/** CASL subject of the orders feature (registered in shared/rbac SUBJECT). */
+export const ORDER_SUBJECT = SUBJECT.Order;
 
 /** Tags a record so that conditions (e.g. `{ status: 'draft' }`) are evaluated on it. */
 export function orderSubject(order: Order) {
@@ -10,15 +16,15 @@ export function orderSubject(order: Order) {
 }
 
 export function canEditOrder(ability: AppAbility, order: Order): boolean {
-  return ability.can('update', orderSubject(order));
+  return ability.can(ACTION.update, orderSubject(order));
 }
 
 export function canDeleteOrder(ability: AppAbility, order: Order): boolean {
-  return ability.can('delete', orderSubject(order));
+  return ability.can(ACTION.delete, orderSubject(order));
 }
 
 export function canEditOrderStatus(ability: AppAbility, order: Order): boolean {
-  return ability.can('update', orderSubject(order), 'status');
+  return ability.can(ACTION.update, orderSubject(order), ORDER_FIELD.status);
 }
 
 /** Fields the user may write: `create` on the type for a new order, `update` on the record otherwise. */
@@ -26,8 +32,8 @@ export function writableOrderFields(ability: AppAbility, order?: Order): Readonl
   return new Set(
     ORDER_FIELDS.filter((field) =>
       order
-        ? ability.can('update', orderSubject(order), field)
-        : ability.can('create', ORDER_SUBJECT, field),
+        ? ability.can(ACTION.update, orderSubject(order), field)
+        : ability.can(ACTION.create, ORDER_SUBJECT, field),
     ),
   );
 }

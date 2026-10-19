@@ -2,11 +2,21 @@ import { http, HttpResponse } from 'msw';
 import { z } from 'zod';
 // Model only (not the feature index): loading the components here would load them before
 // the tests can mock their dependencies (e.g. next/navigation).
-import { ORDER_FIELDS, OrderInputSchema, type Order } from '@/features/orders/model/orders.schema';
-import { buildAbility, subject } from '@/shared/rbac';
+import { ORDERS_ENDPOINT } from '@/features/orders/api/orders.api';
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELDS,
+  OrderInputSchema,
+  type Order,
+} from '@/features/orders/model/orders.schema';
+import { ORDER_SUBJECT } from '@/features/orders/permissions';
+import { orderPaths } from '@/features/orders/routes';
+import { AUTH_ENDPOINTS } from '@/shared/api';
+import { ACTION, buildAbility, subject } from '@/shared/rbac';
 import { db, mockState, sessions, type MockUser } from './data';
 
 const API = '/api';
+const ORDERS = `${API}${ORDERS_ENDPOINT}`;
 
 /** Error body with the backend contract: `{ code, message, correlationId, fieldErrors? }`. */
 function apiError(
@@ -39,7 +49,7 @@ function sentFields(body: unknown): string[] {
 
 // Create: the status is optional and defaults to draft (users without the field omit it).
 const OrderCreateSchema = OrderInputSchema.extend({
-  status: OrderInputSchema.shape.status.default('draft'),
+  status: OrderInputSchema.shape.status.default(DEFAULT_ORDER_STATUS),
 });
 const OrderPatchSchema = OrderInputSchema.partial();
 
@@ -61,24 +71,26 @@ function monthlyStats() {
 
 /** GET /api/auth/me for a given user (null = anonymous → 401). */
 export function sessionHandler(user: MockUser | null) {
-  return http.get(`${API}/auth/me`, () =>
+  return http.get(`${API}${AUTH_ENDPOINTS.me}`, () =>
     user ? HttpResponse.json(sessions[user]) : apiError(401, 'UNAUTHENTICATED', 'Not signed in'),
   );
 }
 
 export const handlers = [
-  http.get(`${API}/auth/me`, () =>
+  http.get(`${API}${AUTH_ENDPOINTS.me}`, () =>
     mockState.user
       ? HttpResponse.json(sessions[mockState.user])
       : apiError(401, 'UNAUTHENTICATED', 'Not signed in'),
   ),
-  http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
-  http.post(`${API}/auth/refresh`, () => apiError(401, 'UNAUTHENTICATED', 'No session')),
-  http.get(`${API}/auth/login`, () => HttpResponse.redirect('/orders', 302)),
+  http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () =>
+    apiError(401, 'UNAUTHENTICATED', 'No session'),
+  ),
+  http.get(`${API}${AUTH_ENDPOINTS.login}`, () => HttpResponse.redirect(orderPaths.list, 302)),
 
-  http.get(`${API}/orders/stats`, () => HttpResponse.json({ months: monthlyStats() })),
+  http.get(`${ORDERS}/stats`, () => HttpResponse.json({ months: monthlyStats() })),
 
-  http.get(`${API}/orders`, ({ request }) => {
+  http.get(ORDERS, ({ request }) => {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100);
     const offset = Number(url.searchParams.get('cursor') ?? 0);
@@ -93,17 +105,17 @@ export const handlers = [
     });
   }),
 
-  http.get(`${API}/orders/:id`, ({ params }) => {
+  http.get(`${ORDERS}/:id`, ({ params }) => {
     const order = db.orders.find((o) => o.id === params.id);
     return order ? HttpResponse.json(order) : apiError(404, 'NOT_FOUND', 'Order not found');
   }),
 
-  http.post(`${API}/orders`, async ({ request }) => {
+  http.post(ORDERS, async ({ request }) => {
     const body: unknown = await request.json();
     const can = ability();
     if (
-      can.cannot('create', 'Order') ||
-      sentFields(body).some((field) => can.cannot('create', 'Order', field))
+      can.cannot(ACTION.create, ORDER_SUBJECT) ||
+      sentFields(body).some((field) => can.cannot(ACTION.create, ORDER_SUBJECT, field))
     ) {
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     }
@@ -120,16 +132,16 @@ export const handlers = [
     return HttpResponse.json(order, { status: 201 });
   }),
 
-  http.patch(`${API}/orders/:id`, async ({ params, request }) => {
+  http.patch(`${ORDERS}/:id`, async ({ params, request }) => {
     const index = db.orders.findIndex((o) => o.id === params.id);
     const current = db.orders[index];
     if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
     const body: unknown = await request.json();
     const can = ability();
-    const record = subject('Order', { ...current });
+    const record = subject(ORDER_SUBJECT, { ...current });
     if (
-      can.cannot('update', record) ||
-      sentFields(body).some((field) => can.cannot('update', record, field))
+      can.cannot(ACTION.update, record) ||
+      sentFields(body).some((field) => can.cannot(ACTION.update, record, field))
     ) {
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     }
@@ -140,10 +152,10 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
-  http.delete(`${API}/orders/:id`, ({ params }) => {
+  http.delete(`${ORDERS}/:id`, ({ params }) => {
     const current = db.orders.find((o) => o.id === params.id);
     if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-    if (ability().cannot('delete', subject('Order', { ...current }))) {
+    if (ability().cannot(ACTION.delete, subject(ORDER_SUBJECT, { ...current }))) {
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     }
     db.orders = db.orders.filter((o) => o.id !== params.id);
@@ -153,6 +165,6 @@ export const handlers = [
 
 /** Overrides for error-state tests: `server.use(errorHandlers.ordersServerError)`. */
 export const errorHandlers = {
-  ordersForbidden: http.get(`${API}/orders`, () => apiError(403, 'FORBIDDEN', 'Not allowed')),
-  ordersServerError: http.get(`${API}/orders`, () => apiError(500, 'INTERNAL', 'Unexpected error')),
+  ordersForbidden: http.get(ORDERS, () => apiError(403, 'FORBIDDEN', 'Not allowed')),
+  ordersServerError: http.get(ORDERS, () => apiError(500, 'INTERNAL', 'Unexpected error')),
 };

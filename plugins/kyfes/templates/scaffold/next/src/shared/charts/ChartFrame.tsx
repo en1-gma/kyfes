@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, type ReactNode } from 'react';
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import type { ChartDatum, ChartSeries } from './types';
 import styles from './charts.module.css';
 
@@ -30,7 +30,7 @@ export function ChartFrame({
   formatValue,
   children,
 }: ChartFrameProps) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   const captionId = useId();
   return (
     <figure className={styles.figure} aria-labelledby={captionId}>

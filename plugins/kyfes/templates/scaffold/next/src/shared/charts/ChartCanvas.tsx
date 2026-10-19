@@ -14,7 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 import { readChartPalette } from './palette';
-import type { ChartCanvasProps } from './types';
+import { CHART_KIND, type ChartCanvasProps } from './types';
 
 /** The only module importing Recharts (loaded lazily by ./Charts). */
 export default function ChartCanvas({
@@ -43,7 +43,7 @@ export default function ChartCanvas({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      {kind === 'bar' ? (
+      {kind === CHART_KIND.bar ? (
         <BarChart data={rows} accessibilityLayer={false}>
           {axes}
           {series.map((s, i) => (

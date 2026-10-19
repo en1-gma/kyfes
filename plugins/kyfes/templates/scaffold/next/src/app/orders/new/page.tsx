@@ -1,11 +1,11 @@
 'use client';
 
 import { NewOrder, ORDER_SUBJECT } from '@/features/orders';
-import { RequirePermission } from '@/shared/rbac';
+import { ACTION, RequirePermission } from '@/shared/rbac';
 
 export default function NewOrderPage() {
   return (
-    <RequirePermission action="create" subject={ORDER_SUBJECT}>
+    <RequirePermission action={ACTION.create} subject={ORDER_SUBJECT}>
       <NewOrder />
     </RequirePermission>
   );

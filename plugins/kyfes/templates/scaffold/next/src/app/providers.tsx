@@ -6,10 +6,11 @@ import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { getQueryClient, setOnUnauthorized } from '@/shared/api';
 import { invalidateSession, useSession } from '@/shared/auth';
 import { env } from '@/shared/config/env';
+import { IS_DEV } from '@/shared/config/runtime';
 import { isLocale, useHtmlLang, useLocale, useSwitchLocale } from '@/shared/i18n';
 import { AbilityProvider } from '@/shared/rbac';
 
-const mocksEnabled = process.env.NODE_ENV === 'development' && env.API_MOCKS;
+const mocksEnabled = IS_DEV && env.API_MOCKS;
 
 function Passthrough({ children }: { children: ReactNode }) {
   return <>{children}</>;

@@ -1,4 +1,10 @@
-export { Button, buttonClassName, type ButtonProps, type ButtonVariant } from './Button';
+export {
+  BUTTON_VARIANT,
+  Button,
+  buttonClassName,
+  type ButtonProps,
+  type ButtonVariant,
+} from './Button';
 export { Loading, Spinner } from './Loading';
 export { ErrorState } from './ErrorState';
 export { EmptyState } from './EmptyState';

@@ -2,7 +2,14 @@
 
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
-import { DEFAULT_LOCALE, TIME_ZONE, isLocale, matchAcceptLanguage, type Locale } from './config';
+import {
+  COMMON_NS,
+  DEFAULT_LOCALE,
+  TIME_ZONE,
+  isLocale,
+  matchAcceptLanguage,
+  type Locale,
+} from './config';
 import commonEn from './locales/en.json';
 import commonIt from './locales/it.json';
 
@@ -39,7 +46,7 @@ export function StandaloneI18nProvider({
     <NextIntlClientProvider
       locale={locale}
       timeZone={TIME_ZONE}
-      messages={{ common: COMMON[locale] }}
+      messages={{ [COMMON_NS]: COMMON[locale] }}
     >
       {children}
     </NextIntlClientProvider>

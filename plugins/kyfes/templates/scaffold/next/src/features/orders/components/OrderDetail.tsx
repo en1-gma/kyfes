@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useFormatters, useTranslations } from '@/shared/i18n';
+import { DATE_FORMAT, useFormatters, useTranslations } from '@/shared/i18n';
 import { useAbility } from '@/shared/rbac';
-import { QueryState, buttonClassName } from '@/shared/ui';
+import { BUTTON_VARIANT, QueryState, buttonClassName } from '@/shared/ui';
 import { useOrder } from '../api/orders.queries';
+import { ORDERS_NS } from '../locales/namespace';
 import type { Order } from '../model/orders.schema';
 import { canEditOrder } from '../permissions';
+import { orderPaths } from '../routes';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import styles from './orders.module.css';
 
@@ -18,7 +20,7 @@ export function OrderDetail({ id }: { id: string }) {
 }
 
 function OrderView({ order }: { order: Order }) {
-  const t = useTranslations('orders');
+  const t = useTranslations(ORDERS_NS);
   const { formatCurrency, formatDate } = useFormatters();
   const ability = useAbility();
 
@@ -35,14 +37,17 @@ function OrderView({ order }: { order: Order }) {
         <dt>{t('columns.total')}</dt>
         <dd>{formatCurrency(order.total)}</dd>
         <dt>{t('columns.createdAt')}</dt>
-        <dd>{formatDate(order.createdAt, { dateStyle: 'long', timeStyle: 'short' })}</dd>
+        <dd>{formatDate(order.createdAt, DATE_FORMAT.dateTime)}</dd>
       </dl>
       <p className={styles.actions}>
-        <Link href="/orders" className={buttonClassName()}>
+        <Link href={orderPaths.list} className={buttonClassName()}>
           {t('detail.back')}
         </Link>
         {canEditOrder(ability, order) ? (
-          <Link href={`/orders/${order.id}/edit`} className={buttonClassName('primary')}>
+          <Link
+            href={orderPaths.edit(order.id)}
+            className={buttonClassName(BUTTON_VARIANT.primary)}
+          >
             {t('actions.edit')}
           </Link>
         ) : null}

@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getTranslations, hasExplicitLocale } from '@/shared/i18n/server';
+import { COMMON_NS, getLocale, getTranslations, hasExplicitLocale } from '@/shared/i18n/server';
 import { AppShell } from './AppShell';
 import { Providers } from './providers';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('common');
+  const t = await getTranslations(COMMON_NS);
   return { title: { default: t('app.title'), template: `%s · ${t('app.title')}` } };
 }
 

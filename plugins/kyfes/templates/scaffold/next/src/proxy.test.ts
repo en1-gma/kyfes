@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildCsp, config } from './proxy';
+import { buildCsp } from '@/shared/config/csp';
+import { config } from './proxy';
 
 describe('CSP', () => {
   it('is strict in production', () => {

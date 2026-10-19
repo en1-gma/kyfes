@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useId, useRef } from 'react';
-import { useTranslations } from '@/shared/i18n';
-import { Button } from './Button';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
+import { BUTTON_VARIANT, Button } from './Button';
 import styles from './ui.module.css';
 
 export interface ConfirmDialogProps {
@@ -25,7 +25,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const messageId = useId();
@@ -55,7 +55,10 @@ export function ConfirmDialog({
       <p id={messageId}>{message}</p>
       <div className={styles.dialogActions}>
         <Button onClick={onCancel}>{t('actions.cancel')}</Button>
-        <Button variant={destructive ? 'danger' : 'primary'} onClick={onConfirm}>
+        <Button
+          variant={destructive ? BUTTON_VARIANT.danger : BUTTON_VARIANT.primary}
+          onClick={onConfirm}
+        >
           {confirmLabel ?? t('actions.confirm')}
         </Button>
       </div>

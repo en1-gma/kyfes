@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { LOCALE_COOKIE, isLocale, type Locale, type NamespaceLoader } from './config';
 
+export { COMMON_NS } from './config';
 export { getLocale, getMessages, getTranslations };
 
 /** Whether the user (or a previous session sync) already chose a locale explicitly. */

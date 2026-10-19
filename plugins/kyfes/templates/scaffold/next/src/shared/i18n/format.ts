@@ -8,10 +8,17 @@ function toDate(value: DateInput): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
+/** Date presets shared by every screen: `formatDate(value, DATE_FORMAT.dateTime)`. */
+export const DATE_FORMAT = {
+  date: { dateStyle: 'medium' },
+  dateTime: { dateStyle: 'long', timeStyle: 'short' },
+  monthYear: { month: 'short', year: 'numeric' },
+} as const satisfies Record<string, Intl.DateTimeFormatOptions>;
+
 export function formatDate(
   value: DateInput,
   locale: Locale,
-  options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' },
+  options: Intl.DateTimeFormatOptions = DATE_FORMAT.date,
 ): string {
   return new Intl.DateTimeFormat(locale, options).format(toDate(value));
 }

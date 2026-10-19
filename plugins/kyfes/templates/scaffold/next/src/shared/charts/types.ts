@@ -1,3 +1,9 @@
+export const CHART_KIND = {
+  bar: 'bar',
+  line: 'line',
+} as const;
+export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND];
+
 export type ChartDatum = Record<string, string | number>;
 
 export interface ChartSeries {
@@ -27,7 +33,7 @@ export interface ChartProps {
 export interface ChartCanvasProps extends Required<
   Pick<ChartProps, 'formatX' | 'formatValue' | 'height'>
 > {
-  kind: 'bar' | 'line';
+  kind: ChartKind;
   data: readonly ChartDatum[];
   xKey: string;
   series: readonly ChartSeries[];

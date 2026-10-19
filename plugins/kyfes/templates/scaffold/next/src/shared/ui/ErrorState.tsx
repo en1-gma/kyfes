@@ -1,7 +1,7 @@
 'use client';
 
 import { isApiError } from '@/shared/api';
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import { Button } from './Button';
 import styles from './ui.module.css';
 
@@ -10,7 +10,7 @@ import styles from './ui.module.css';
  * 403 shows "not authorized" instead, without retry: retrying would fail the same way.
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   const correlationId = isApiError(error) ? error.correlationId : undefined;
   const forbidden = isApiError(error) && error.isForbidden;
   return (

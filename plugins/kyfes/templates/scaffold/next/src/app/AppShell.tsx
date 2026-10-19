@@ -3,9 +3,17 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ORDER_SUBJECT, orderPaths } from '@/features/orders';
 import { useLogout, useSession } from '@/shared/auth';
-import { LOCALES, isLocale, useLocale, useSwitchLocale, useTranslations } from '@/shared/i18n';
-import { useAbility, type SubjectName } from '@/shared/rbac';
+import {
+  COMMON_NS,
+  LOCALES,
+  isLocale,
+  useLocale,
+  useSwitchLocale,
+  useTranslations,
+} from '@/shared/i18n';
+import { ACTION, useAbility, type SubjectName } from '@/shared/rbac';
 import { Button } from '@/shared/ui';
 import styles from './app.module.css';
 
@@ -16,10 +24,12 @@ interface NavItem {
 }
 
 /** Menu entries: each one is visible only with `read` on its subject. */
-const NAV: readonly NavItem[] = [{ href: '/orders', labelKey: 'nav.orders', subject: 'Order' }];
+const NAV: readonly NavItem[] = [
+  { href: orderPaths.list, labelKey: 'nav.orders', subject: ORDER_SUBJECT },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   const ability = useAbility();
   const pathname = usePathname();
   const locale = useLocale();
@@ -38,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <nav aria-label={t('nav.main')}>
           <ul className={styles.nav}>
-            {NAV.filter((item) => ability.can('read', item.subject)).map((item) => (
+            {NAV.filter((item) => ability.can(ACTION.read, item.subject)).map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

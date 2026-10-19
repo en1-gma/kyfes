@@ -3,7 +3,10 @@ import { http as mswHttp, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { errorHandlers } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
+import { ACTION } from '@/shared/rbac';
 import { renderWithProviders } from '@/test/render';
+import { ORDER_FIELD, ORDER_STATUS } from '../model/orders.schema';
+import { ORDER_SUBJECT } from '../permissions';
 import { OrdersTable } from './OrdersTable';
 
 describe('OrdersTable RBAC', () => {
@@ -26,8 +29,12 @@ describe('OrdersTable RBAC', () => {
   it('applies record conditions (update only drafts)', async () => {
     renderWithProviders(<OrdersTable />, {
       rules: [
-        { action: 'read', subject: 'Order' },
-        { action: 'update', subject: 'Order', conditions: { status: 'draft' } },
+        { action: ACTION.read, subject: ORDER_SUBJECT },
+        {
+          action: ACTION.update,
+          subject: ORDER_SUBJECT,
+          conditions: { [ORDER_FIELD.status]: ORDER_STATUS.draft },
+        },
       ],
     });
     const table = await screen.findByRole('table');

@@ -9,6 +9,7 @@ import { server } from '@/mocks/node';
 import { ApiError } from '@/shared/api';
 import { createTestQueryClient } from '@/test/render';
 import { useCreateOrder, useDeleteOrder } from './orders.mutations';
+import { ORDERS_ENDPOINT } from './orders.api';
 import { orderKeys, ordersInfiniteQueryOptions, useOrderStats } from './orders.queries';
 
 function setup() {
@@ -22,11 +23,11 @@ function setup() {
 describe('orders queries', () => {
   it('builds hierarchical keys', () => {
     expect(orderKeys.list({ limit: 20, status: 'draft' })).toEqual([
-      'orders',
+      ORDERS_ENDPOINT,
       'list',
       { limit: 20, status: 'draft' },
     ]);
-    expect(orderKeys.detail('1')).toEqual(['orders', 'detail', '1']);
+    expect(orderKeys.detail('1')).toEqual([ORDERS_ENDPOINT, 'detail', '1']);
   });
 
   it('loads cursor pages parsed with Zod', async () => {

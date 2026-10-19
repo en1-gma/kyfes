@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import { Button } from './Button';
 import styles from './ui.module.css';
 
@@ -16,7 +16,7 @@ export interface LoadMoreProps {
 
 /** Footer of a cursor-paginated list: loaded count + "load more" while `nextCursor` is present. */
 export function LoadMore({ summary, query }: LoadMoreProps) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   return (
     <div className={styles.loadMore}>
       <p className={styles.muted} aria-live="polite">

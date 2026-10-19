@@ -1,15 +1,15 @@
 'use client';
 
 import { isApiError } from '@/shared/api';
-import { useTranslations } from '@/shared/i18n';
+import { COMMON_NS, useTranslations } from '@/shared/i18n';
 import { StandaloneI18nProvider, useStandaloneLocale } from '@/shared/i18n/standalone';
-import { Button } from '@/shared/ui';
+import { BUTTON_VARIANT, Button } from '@/shared/ui';
 import './globals.css';
 
 type GlobalErrorProps = { error: Error & { digest?: string }; reset: () => void };
 
 function GlobalErrorBody({ error, reset }: GlobalErrorProps) {
-  const t = useTranslations('common');
+  const t = useTranslations(COMMON_NS);
   // Reference for support: the backend correlationId, or the digest Next logs server-side.
   const reference = (isApiError(error) ? error.correlationId : undefined) ?? error.digest;
   return (
@@ -21,7 +21,7 @@ function GlobalErrorBody({ error, reset }: GlobalErrorProps) {
           <p className="global-error__meta">{t('errors.correlation', { id: reference })}</p>
         ) : null}
       </div>
-      <Button variant="primary" onClick={reset}>
+      <Button variant={BUTTON_VARIANT.primary} onClick={reset}>
         {t('actions.retry')}
       </Button>
     </main>

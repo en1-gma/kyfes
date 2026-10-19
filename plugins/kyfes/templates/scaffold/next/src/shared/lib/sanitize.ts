@@ -1,7 +1,10 @@
 import DOMPurify from 'dompurify';
 
+/** Forbidden both as a tag (<style>) and as an attribute (style="…"). */
+const STYLE = 'style';
+
 const FORBID_TAGS = [
-  'style',
+  STYLE,
   'form',
   'input',
   'button',
@@ -21,7 +24,7 @@ export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     USE_PROFILES: { html: true },
     FORBID_TAGS,
-    FORBID_ATTR: ['style'],
+    FORBID_ATTR: [STYLE],
     ALLOW_DATA_ATTR: false,
   });
 }

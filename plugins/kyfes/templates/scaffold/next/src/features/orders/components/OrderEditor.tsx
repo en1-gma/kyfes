@@ -6,13 +6,15 @@ import { useAbility } from '@/shared/rbac';
 import { ForbiddenPage, QueryState } from '@/shared/ui';
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations';
 import { useOrder } from '../api/orders.queries';
+import { ORDERS_NS } from '../locales/namespace';
 import type { Order } from '../model/orders.schema';
 import { canEditOrder } from '../permissions';
+import { orderPaths } from '../routes';
 import { OrderForm } from './OrderForm';
 
 /** New order: form + create mutation, then navigation to the detail. */
 export function NewOrder() {
-  const t = useTranslations('orders');
+  const t = useTranslations(ORDERS_NS);
   const router = useRouter();
   const create = useCreateOrder();
   return (
@@ -23,7 +25,7 @@ export function NewOrder() {
         error={create.error}
         // Only writable fields: the server defaults the others (e.g. status = draft).
         onSubmit={(input) =>
-          create.mutate(input, { onSuccess: (order) => router.push(`/orders/${order.id}`) })
+          create.mutate(input, { onSuccess: (order) => router.push(orderPaths.detail(order.id)) })
         }
       />
     </section>
@@ -31,7 +33,7 @@ export function NewOrder() {
 }
 
 function OrderEditForm({ order }: { order: Order }) {
-  const t = useTranslations('orders');
+  const t = useTranslations(ORDERS_NS);
   const router = useRouter();
   const ability = useAbility();
   const update = useUpdateOrder(order.id);
@@ -47,7 +49,7 @@ function OrderEditForm({ order }: { order: Order }) {
         isSubmitting={update.isPending}
         error={update.error}
         onSubmit={(input) =>
-          update.mutate(input, { onSuccess: () => router.push(`/orders/${order.id}`) })
+          update.mutate(input, { onSuccess: () => router.push(orderPaths.detail(order.id)) })
         }
       />
     </section>

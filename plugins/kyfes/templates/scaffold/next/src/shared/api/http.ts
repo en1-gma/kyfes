@@ -8,13 +8,21 @@ type RetriableConfig = InternalAxiosRequestConfig & {
   _refreshGeneration?: number;
 };
 
+/** BFF auth endpoints (relative to API_BASE_URL). */
+export const AUTH_ENDPOINTS = {
+  me: '/auth/me',
+  login: '/auth/login',
+  logout: '/auth/logout',
+  refresh: '/auth/refresh',
+} as const;
+
 /** Never refreshed nor reported as unauthorized: they are the auth flow itself (avoids loops). */
-const AUTH_FLOW_PATHS = ['/auth/login', '/auth/logout', '/auth/refresh'];
+const AUTH_FLOW_PATHS = [AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout, AUTH_ENDPOINTS.refresh];
 /** The session probe: refreshed on 401, but its failure is not reported (RequireAuth handles it). */
-const SESSION_PATH = '/auth/me';
+const SESSION_PATH = AUTH_ENDPOINTS.me;
 
 let onUnauthorized: (() => void) | null = null;
-let refreshPath: string | null = '/auth/refresh';
+let refreshPath: string | null = AUTH_ENDPOINTS.refresh;
 let refreshInFlight: Promise<boolean> | null = null;
 /** Logical clock of completed refresh attempts and the outcome of the last one. */
 let refreshGeneration = 0;

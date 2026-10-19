@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useFormatters } from '@/shared/i18n';
 import { Spinner } from '@/shared/ui';
 import { ChartFrame } from './ChartFrame';
-import type { ChartCanvasProps, ChartProps } from './types';
+import { CHART_KIND, type ChartCanvasProps, type ChartKind, type ChartProps } from './types';
 
 // Recharts is code-split and client-only (no SSR markup with inline styles under the CSP).
 const ChartCanvas = dynamic<ChartCanvasProps>(() => import('./ChartCanvas'), {
@@ -14,7 +14,7 @@ const ChartCanvas = dynamic<ChartCanvasProps>(() => import('./ChartCanvas'), {
 
 const DEFAULT_HEIGHT = 280;
 
-function Chart({ kind, ...props }: ChartProps & { kind: ChartCanvasProps['kind'] }) {
+function Chart({ kind, ...props }: ChartProps & { kind: ChartKind }) {
   const { formatNumber } = useFormatters();
   const formatX = props.formatX ?? ((v: string | number) => String(v));
   const formatValue = props.formatValue ?? ((v: number) => formatNumber(v));
@@ -35,10 +35,10 @@ function Chart({ kind, ...props }: ChartProps & { kind: ChartCanvasProps['kind']
 
 /** Accessible, lazily-loaded bar chart (palette from CSS tokens, Intl formatting). */
 export function BarChart(props: ChartProps) {
-  return <Chart kind="bar" {...props} />;
+  return <Chart kind={CHART_KIND.bar} {...props} />;
 }
 
 /** Accessible, lazily-loaded line / time-series chart. */
 export function LineChart(props: ChartProps) {
-  return <Chart kind="line" {...props} />;
+  return <Chart kind={CHART_KIND.line} {...props} />;
 }

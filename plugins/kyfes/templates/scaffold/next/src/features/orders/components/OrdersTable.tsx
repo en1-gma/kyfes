@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useFormatters, useTranslations } from '@/shared/i18n';
-import { useAbility } from '@/shared/rbac';
+import { ACTION, useAbility } from '@/shared/rbac';
 import {
+  BUTTON_VARIANT,
   Button,
   ConfirmDeleteDialog,
   ErrorState,
@@ -14,15 +15,17 @@ import {
 } from '@/shared/ui';
 import { useDeleteOrder } from '../api/orders.mutations';
 import { useOrdersInfinite } from '../api/orders.queries';
+import { ORDERS_NS } from '../locales/namespace';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '../model/orders.schema';
 import { ORDER_SUBJECT, canDeleteOrder, canEditOrder } from '../permissions';
+import { orderPaths } from '../routes';
 import { useOrdersUiStore } from '../stores/orders-ui.store';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import styles from './orders.module.css';
 
 /** Infinite list of orders; CRUD actions rendered only when allowed (per record). */
 export function OrdersTable() {
-  const t = useTranslations('orders');
+  const t = useTranslations(ORDERS_NS);
   const { formatCurrency, formatDate } = useFormatters();
   const ability = useAbility();
   const status = useOrdersUiStore((s) => s.status);
@@ -31,7 +34,8 @@ export function OrdersTable() {
   const deleteOrder = useDeleteOrder();
   const [toDelete, setToDelete] = useState<Order | null>(null);
 
-  const showActions = ability.can('update', ORDER_SUBJECT) || ability.can('delete', ORDER_SUBJECT);
+  const showActions =
+    ability.can(ACTION.update, ORDER_SUBJECT) || ability.can(ACTION.delete, ORDER_SUBJECT);
   const orders = query.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
@@ -73,7 +77,7 @@ export function OrdersTable() {
               <tr key={order.id}>
                 <td>
                   <Link
-                    href={`/orders/${order.id}`}
+                    href={orderPaths.detail(order.id)}
                     aria-label={t('actions.view', { number: order.number })}
                   >
                     {order.number}
@@ -90,7 +94,7 @@ export function OrdersTable() {
                     <div className={styles.actions}>
                       {canEditOrder(ability, order) ? (
                         <Link
-                          href={`/orders/${order.id}/edit`}
+                          href={orderPaths.edit(order.id)}
                           className={buttonClassName()}
                           aria-label={t('actions.editLabel', { number: order.number })}
                         >
@@ -99,7 +103,7 @@ export function OrdersTable() {
                       ) : null}
                       {canDeleteOrder(ability, order) ? (
                         <Button
-                          variant="danger"
+                          variant={BUTTON_VARIANT.danger}
                           onClick={() => setToDelete(order)}
                           aria-label={t('actions.deleteLabel', { number: order.number })}
                         >

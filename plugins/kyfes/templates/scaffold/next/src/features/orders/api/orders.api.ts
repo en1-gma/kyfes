@@ -10,14 +10,13 @@ import {
   type OrderWrite,
 } from '../model/orders.schema';
 
-const BASE = '/orders';
+/** REST resource of the orders feature (relative to API_BASE_URL); also the root of its query keys. */
+export const ORDERS_ENDPOINT = '/orders';
+const BASE = ORDERS_ENDPOINT;
 
 /** Endpoints of the orders feature: every response is parsed with Zod. */
 export const ordersApi = {
-  async list(
-    params: PageParams & Pick<OrderListFilters, 'status'>,
-    signal?: AbortSignal,
-  ): Promise<OrderPage> {
+  async list(params: PageParams & OrderListFilters, signal?: AbortSignal): Promise<OrderPage> {
     const query = { ...toPageQuery(params), ...(params.status ? { status: params.status } : {}) };
     const { data } = await http.get(BASE, { params: query, signal });
     return OrderPageSchema.parse(data);

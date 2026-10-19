@@ -1,6 +1,13 @@
 import { cookies, headers } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
-import { DEFAULT_LOCALE, LOCALE_COOKIE, TIME_ZONE, isLocale, matchAcceptLanguage } from './config';
+import {
+  COMMON_NS,
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  TIME_ZONE,
+  isLocale,
+  matchAcceptLanguage,
+} from './config';
 
 /**
  * next-intl request config (registered in next.config.ts). No locale in the URL:
@@ -15,5 +22,5 @@ export default getRequestConfig(async () => {
     : (matchAcceptLanguage((await headers()).get('accept-language')) ?? DEFAULT_LOCALE);
 
   const common = (await import(`./locales/${locale}.json`)).default;
-  return { locale, timeZone: TIME_ZONE, messages: { common } };
+  return { locale, timeZone: TIME_ZONE, messages: { [COMMON_NS]: common } };
 });

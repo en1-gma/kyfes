@@ -6,16 +6,18 @@ import {
 } from '@tanstack/react-query';
 import { DEFAULT_PAGE_SIZE } from '@/shared/api';
 import type { OrderListFilters } from '../model/orders.schema';
-import { ordersApi } from './orders.api';
+import { ORDERS_ENDPOINT, ordersApi } from './orders.api';
 
 /** Key factory: the only way to build orders query keys. */
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_ENDPOINT] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (filters: OrderListFilters & { limit: number }) => [...orderKeys.lists(), filters] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  /** Shared by every delete: lets each one know whether others are still in flight. */
+  remove: () => [...orderKeys.all, 'remove'] as const,
 };
 
 export function ordersInfiniteQueryOptions(

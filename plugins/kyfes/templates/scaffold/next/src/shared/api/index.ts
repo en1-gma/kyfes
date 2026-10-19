@@ -1,4 +1,4 @@
-export { http, setOnUnauthorized, setRefreshPath, shouldSendXsrf } from './http';
+export { AUTH_ENDPOINTS, http, setOnUnauthorized, setRefreshPath, shouldSendXsrf } from './http';
 export { ApiError, isApiError, toApiError, type ApiErrorInit, type FieldErrors } from './api-error';
 export {
   createQueryClient,

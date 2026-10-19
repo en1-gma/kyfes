@@ -6,14 +6,25 @@ import {
 } from '@casl/ability';
 import type { RawRule } from '@/shared/auth';
 
-export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage';
+/** CASL actions: the only place their names are written (`ACTION.update`, never `'update'`). */
+export const ACTION = {
+  create: 'create',
+  read: 'read',
+  update: 'update',
+  delete: 'delete',
+  manage: 'manage',
+} as const;
+export type Actions = (typeof ACTION)[keyof typeof ACTION];
 
 /**
  * Registry of the CASL subjects of every feature (one singular PascalCase noun each).
- * A new feature declares its subject in `features/<f>/permissions.ts` and adds it here.
+ * A new feature adds its subject here and re-exports it from `features/<f>/permissions.ts`.
  */
-export const SUBJECTS = ['Order'] as const;
-export type SubjectName = (typeof SUBJECTS)[number];
+export const SUBJECT = {
+  Order: 'Order',
+} as const;
+export type SubjectName = (typeof SUBJECT)[keyof typeof SUBJECT];
+export const SUBJECTS: readonly SubjectName[] = Object.values(SUBJECT);
 
 /** A record tagged with `subject('Order', order)` for condition checks. */
 export type SubjectRecord = ForcedSubject<SubjectName>;

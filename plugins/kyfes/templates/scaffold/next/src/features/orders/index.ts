@@ -1,5 +1,3 @@
-import type { Locale, NamespaceLoader } from '@/shared/i18n';
-
 // Public API of the orders feature: the only entry point for pages/app.
 export { OrdersTable } from './components/OrdersTable';
 export { OrderForm, type OrderFormProps } from './components/OrderForm';
@@ -15,6 +13,7 @@ export {
   useOrder,
   useOrderStats,
 } from './api/orders.queries';
+export { ORDERS_ENDPOINT } from './api/orders.api';
 export { useCreateOrder, useUpdateOrder, useDeleteOrder } from './api/orders.mutations';
 export {
   ORDER_SUBJECT,
@@ -28,7 +27,10 @@ export {
 export {
   OrderSchema,
   OrderInputSchema,
+  ORDER_STATUS,
   ORDER_STATUSES,
+  DEFAULT_ORDER_STATUS,
+  ORDER_FIELD,
   ORDER_FIELDS,
   type Order,
   type OrderField,
@@ -37,13 +39,5 @@ export {
   type OrderStatus,
 } from './model/orders.schema';
 
-const loaders: Record<Locale, () => Promise<{ default: Record<string, unknown> }>> = {
-  it: () => import('./locales/it.json'),
-  en: () => import('./locales/en.json'),
-};
-
-/** `orders` namespace, loaded lazily per route (see shared/i18n I18nNamespaces). */
-export const ordersMessages: NamespaceLoader = {
-  namespace: 'orders',
-  load: async (locale) => (await loaders[locale]()).default,
-};
+export { orderPaths } from './routes';
+export { ORDERS_NS, ordersMessages } from './locales/namespace';

@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { http, isApiError } from '@/shared/api';
+import { AUTH_ENDPOINTS, http, isApiError } from '@/shared/api';
 import { env } from '@/shared/config/env';
 import { safeRedirect } from '@/shared/lib';
 import { SessionSchema, type Session } from './session.schema';
@@ -13,7 +13,7 @@ export const sessionQueryOptions = queryOptions({
   queryKey: sessionKeys.all,
   queryFn: async ({ signal }): Promise<Session | null> => {
     try {
-      const { data } = await http.get('/auth/me', { signal });
+      const { data } = await http.get(AUTH_ENDPOINTS.me, { signal });
       return SessionSchema.parse(data);
     } catch (error) {
       if (isApiError(error) && error.status === 401) return null;
@@ -41,14 +41,14 @@ function apiUrl(path: string): URL {
 /** Full-page navigation to the BFF login (OIDC code + PKCE happens server-side). */
 export function login(returnTo: string = '/'): void {
   const target = safeRedirect(returnTo);
-  const url = apiUrl('/auth/login');
+  const url = apiUrl(AUTH_ENDPOINTS.login);
   url.searchParams.set('returnTo', target);
   window.location.assign(url.href);
 }
 
 export async function logout(queryClient: QueryClient, redirectTo = '/'): Promise<void> {
   try {
-    await http.post('/auth/logout');
+    await http.post(AUTH_ENDPOINTS.logout);
   } finally {
     queryClient.clear();
     // Full reload: drops every in-memory state of the previous user.

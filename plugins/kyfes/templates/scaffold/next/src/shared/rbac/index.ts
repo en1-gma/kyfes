@@ -1,6 +1,8 @@
 export { subject } from '@casl/ability';
 export {
+  ACTION,
   buildAbility,
+  SUBJECT,
   SUBJECTS,
   type Actions,
   type AppAbility,
