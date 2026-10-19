@@ -1,0 +1,55 @@
+{
+  "title": "Ordini",
+  "list": {
+    "title": "Elenco ordini",
+    "caption": "Ordini, dal più recente",
+    "empty": "Nessun ordine trovato.",
+    "filterStatus": "Filtra per stato",
+    "allStatuses": "Tutti gli stati",
+    "actions": "Azioni",
+    "count_one": "{{count}} ordine caricato",
+    "count_other": "{{count}} ordini caricati"
+  },
+  "columns": {
+    "number": "Numero",
+    "customer": "Cliente",
+    "status": "Stato",
+    "total": "Totale",
+    "createdAt": "Data"
+  },
+  "status": {
+    "draft": "Bozza",
+    "confirmed": "Confermato",
+    "shipped": "Spedito",
+    "cancelled": "Annullato"
+  },
+  "actions": {
+    "new": "Nuovo ordine",
+    "view": "Apri l'ordine {{number}}",
+    "edit": "Modifica l'ordine {{number}}",
+    "delete": "Elimina l'ordine {{number}}"
+  },
+  "delete": {
+    "title": "Eliminare l'ordine?",
+    "message": "L'ordine {{number}} sarà eliminato definitivamente.",
+    "confirm": "Elimina ordine"
+  },
+  "form": {
+    "titleNew": "Nuovo ordine",
+    "titleEdit": "Modifica ordine {{number}}",
+    "customerName": "Cliente",
+    "status": "Stato",
+    "total": "Totale (EUR)",
+    "statusReadOnly": "Non hai i permessi per modificare lo stato.",
+    "saved": "Ordine salvato."
+  },
+  "detail": {
+    "title": "Ordine {{number}}",
+    "notFound": "L'ordine richiesto non esiste."
+  },
+  "chart": {
+    "title": "Totale ordini per mese",
+    "description": "Somma degli importi degli ordini negli ultimi {{count}} mesi.",
+    "series": "Totale"
+  }
+}

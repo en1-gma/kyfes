@@ -1,0 +1,61 @@
+{
+  "app": {
+    "name": "Back office",
+    "skipToContent": "Skip to main content"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "orders": "Orders"
+  },
+  "language": {
+    "label": "Language",
+    "it": "Italiano",
+    "en": "English"
+  },
+  "auth": {
+    "logout": "Sign out",
+    "signedInAs": "Signed in as {{name}}",
+    "redirecting": "Redirecting to the sign-in page…"
+  },
+  "actions": {
+    "new": "New",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "back": "Back",
+    "close": "Close"
+  },
+  "state": {
+    "loading": "Loading…",
+    "empty": "Nothing to show.",
+    "errorTitle": "Something went wrong",
+    "errorMessage": "Please try again in a moment. If the problem persists, contact support quoting the error code.",
+    "networkError": "The server cannot be reached. Check your connection and try again.",
+    "correlationId": "Error code: {{id}}",
+    "saved": "Changes saved."
+  },
+  "forbidden": {
+    "title": "Not authorized",
+    "message": "You do not have the permissions required for this page. If you think this is a mistake, contact your administrator."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "The requested page does not exist or has been moved.",
+    "home": "Back to the home page"
+  },
+  "charts": {
+    "showData": "Show chart data",
+    "category": "Period",
+    "value": "Value"
+  },
+  "validation": {
+    "required": "This field is required.",
+    "maxLength": "The text is too long.",
+    "nonNegative": "The value cannot be negative.",
+    "invalid": "Invalid value."
+  }
+}

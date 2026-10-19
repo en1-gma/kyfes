@@ -1,0 +1,61 @@
+{
+  "app": {
+    "name": "Gestionale",
+    "skipToContent": "Vai al contenuto principale"
+  },
+  "nav": {
+    "main": "Navigazione principale",
+    "orders": "Ordini"
+  },
+  "language": {
+    "label": "Lingua",
+    "it": "Italiano",
+    "en": "English"
+  },
+  "auth": {
+    "logout": "Esci",
+    "signedInAs": "Accesso effettuato come {{name}}",
+    "redirecting": "Reindirizzamento alla pagina di accesso…"
+  },
+  "actions": {
+    "new": "Nuovo",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "retry": "Riprova",
+    "loadMore": "Carica altri",
+    "back": "Indietro",
+    "close": "Chiudi"
+  },
+  "state": {
+    "loading": "Caricamento…",
+    "empty": "Nessun elemento da mostrare.",
+    "errorTitle": "Si è verificato un errore",
+    "errorMessage": "Riprova tra qualche istante. Se il problema persiste contatta l'assistenza indicando il codice errore.",
+    "networkError": "Impossibile contattare il server. Controlla la connessione e riprova.",
+    "correlationId": "Codice errore: {{id}}",
+    "saved": "Modifiche salvate."
+  },
+  "forbidden": {
+    "title": "Accesso non autorizzato",
+    "message": "Non hai i permessi necessari per questa pagina. Se pensi sia un errore, contatta l'amministratore."
+  },
+  "notFound": {
+    "title": "Pagina non trovata",
+    "message": "La pagina richiesta non esiste o è stata spostata.",
+    "home": "Torna alla pagina iniziale"
+  },
+  "charts": {
+    "showData": "Mostra i dati del grafico",
+    "category": "Periodo",
+    "value": "Valore"
+  },
+  "validation": {
+    "required": "Campo obbligatorio.",
+    "maxLength": "Il testo è troppo lungo.",
+    "nonNegative": "Il valore non può essere negativo.",
+    "invalid": "Valore non valido."
+  }
+}

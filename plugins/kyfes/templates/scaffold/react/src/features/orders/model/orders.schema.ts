@@ -1,0 +1,52 @@
+import { z } from 'zod';
+import { pageSchema } from '@/shared/api';
+
+export const ORDER_STATUSES = ['draft', 'confirmed', 'shipped', 'cancelled'] as const;
+export const OrderStatusSchema = z.enum(ORDER_STATUSES);
+export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+
+export const OrderSchema = z.object({
+  id: z.uuid(),
+  number: z.string(),
+  customerName: z.string(),
+  status: OrderStatusSchema,
+  total: z.number(),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+export type Order = z.infer<typeof OrderSchema>;
+
+export const OrderPageSchema = pageSchema(OrderSchema);
+export type OrderPage = z.infer<typeof OrderPageSchema>;
+
+/**
+ * Create/update payload. Error messages are i18n keys of the `common` namespace
+ * (`validation.*`): the form translates them.
+ */
+export const OrderInputSchema = z.object({
+  customerName: z
+    .string()
+    .trim()
+    .min(1, { error: 'validation.required' })
+    .max(120, { error: 'validation.maxLength' }),
+  status: OrderStatusSchema,
+  total: z
+    .number({ error: 'validation.invalid' })
+    .nonnegative({ error: 'validation.nonNegative' })
+    .multipleOf(0.01, { error: 'validation.invalid' }),
+});
+export type OrderInput = z.infer<typeof OrderInputSchema>;
+
+export const OrderStatsSchema = z.object({
+  /** Totals per month, `month` = "YYYY-MM", oldest first. */
+  months: z.array(
+    z.object({ month: z.string().regex(/^\d{4}-\d{2}$/), total: z.number(), count: z.number().int() }),
+  ),
+});
+export type OrderStats = z.infer<typeof OrderStatsSchema>;
+
+/** List filters: part of the query key. */
+export interface OrderListFilters {
+  status?: OrderStatus | undefined;
+  sort?: 'createdAt:desc' | 'createdAt:asc' | 'total:desc' | undefined;
+  limit?: number | undefined;
+}

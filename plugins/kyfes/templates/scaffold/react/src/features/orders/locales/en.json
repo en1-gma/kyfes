@@ -1,0 +1,55 @@
+{
+  "title": "Orders",
+  "list": {
+    "title": "Order list",
+    "caption": "Orders, newest first",
+    "empty": "No orders found.",
+    "filterStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "actions": "Actions",
+    "count_one": "{{count}} order loaded",
+    "count_other": "{{count}} orders loaded"
+  },
+  "columns": {
+    "number": "Number",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "createdAt": "Date"
+  },
+  "status": {
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "cancelled": "Cancelled"
+  },
+  "actions": {
+    "new": "New order",
+    "view": "Open order {{number}}",
+    "edit": "Edit order {{number}}",
+    "delete": "Delete order {{number}}"
+  },
+  "delete": {
+    "title": "Delete the order?",
+    "message": "Order {{number}} will be permanently deleted.",
+    "confirm": "Delete order"
+  },
+  "form": {
+    "titleNew": "New order",
+    "titleEdit": "Edit order {{number}}",
+    "customerName": "Customer",
+    "status": "Status",
+    "total": "Total (EUR)",
+    "statusReadOnly": "You are not allowed to change the status.",
+    "saved": "Order saved."
+  },
+  "detail": {
+    "title": "Order {{number}}",
+    "notFound": "The requested order does not exist."
+  },
+  "chart": {
+    "title": "Order totals per month",
+    "description": "Sum of order amounts over the last {{count}} months.",
+    "series": "Total"
+  }
+}
