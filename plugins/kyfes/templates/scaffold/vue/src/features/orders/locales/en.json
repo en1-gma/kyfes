@@ -1,0 +1,49 @@
+{
+  "title": "Orders",
+  "nav": "Orders",
+  "status": {
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "cancelled": "Cancelled"
+  },
+  "fields": {
+    "number": "Number",
+    "customerName": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "createdAt": "Created on"
+  },
+  "list": {
+    "caption": "Order list",
+    "new": "New order",
+    "empty": "No orders found.",
+    "actions": "Actions",
+    "count": "no orders | 1 order | {count} orders",
+    "sortByDate": "Sort by creation date",
+    "filterStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "editOrder": "Edit order {number}",
+    "deleteOrder": "Delete order {number}"
+  },
+  "detail": {
+    "title": "Order {number}",
+    "edit": "Edit order",
+    "notFound": "Order not found."
+  },
+  "form": {
+    "newTitle": "New order",
+    "editTitle": "Edit order {number}",
+    "statusReadOnly": "You are not allowed to change the status.",
+    "saved": "Order saved."
+  },
+  "delete": {
+    "title": "Delete the order?",
+    "message": "Order {number} will be permanently deleted.",
+    "confirm": "Delete"
+  },
+  "chart": {
+    "title": "Order totals per month",
+    "series": "Total"
+  }
+}

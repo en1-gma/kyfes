@@ -1,0 +1,49 @@
+{
+  "title": "Ordini",
+  "nav": "Ordini",
+  "status": {
+    "draft": "Bozza",
+    "confirmed": "Confermato",
+    "shipped": "Spedito",
+    "cancelled": "Annullato"
+  },
+  "fields": {
+    "number": "Numero",
+    "customerName": "Cliente",
+    "status": "Stato",
+    "total": "Totale",
+    "createdAt": "Creato il"
+  },
+  "list": {
+    "caption": "Elenco ordini",
+    "new": "Nuovo ordine",
+    "empty": "Nessun ordine trovato.",
+    "actions": "Azioni",
+    "count": "nessun ordine | 1 ordine | {count} ordini",
+    "sortByDate": "Ordina per data di creazione",
+    "filterStatus": "Filtra per stato",
+    "allStatuses": "Tutti gli stati",
+    "editOrder": "Modifica l'ordine {number}",
+    "deleteOrder": "Elimina l'ordine {number}"
+  },
+  "detail": {
+    "title": "Ordine {number}",
+    "edit": "Modifica ordine",
+    "notFound": "Ordine non trovato."
+  },
+  "form": {
+    "newTitle": "Nuovo ordine",
+    "editTitle": "Modifica ordine {number}",
+    "statusReadOnly": "Non hai i permessi per modificare lo stato.",
+    "saved": "Ordine salvato."
+  },
+  "delete": {
+    "title": "Eliminare l'ordine?",
+    "message": "L'ordine {number} sarà eliminato definitivamente.",
+    "confirm": "Elimina"
+  },
+  "chart": {
+    "title": "Totale ordini per mese",
+    "series": "Totale"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "Back office",
+    "skipToContent": "Skip to content",
+    "mainNav": "Main navigation",
+    "language": "Language",
+    "logout": "Sign out",
+    "signedInAs": "Signed in as {name}",
+    "pageTitle": "{page} · Back office"
+  },
+  "locales": {
+    "it": "Italiano",
+    "en": "English"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "close": "Close"
+  },
+  "state": {
+    "loading": "Loading…",
+    "empty": "Nothing to show.",
+    "error": "Something went wrong. Please try again later.",
+    "correlationId": "Reference code: {id}"
+  },
+  "errors": {
+    "forbiddenTitle": "Not authorized",
+    "forbiddenText": "You do not have permission to view this page.",
+    "notFoundTitle": "Page not found",
+    "notFoundText": "The requested page does not exist.",
+    "goHome": "Back to home"
+  },
+  "validation": {
+    "required": "Required field",
+    "tooLong": "Text too long",
+    "positive": "Enter a number greater than or equal to zero",
+    "invalid": "Invalid value"
+  },
+  "chart": {
+    "dataTable": "Chart data",
+    "category": "Category",
+    "value": "Value"
+  },
+  "nav": {
+    "orders": "Orders"
+  }
+}

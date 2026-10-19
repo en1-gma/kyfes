@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "Gestionale",
+    "skipToContent": "Vai al contenuto",
+    "mainNav": "Navigazione principale",
+    "language": "Lingua",
+    "logout": "Esci",
+    "signedInAs": "Accesso effettuato come {name}",
+    "pageTitle": "{page} · Gestionale"
+  },
+  "locales": {
+    "it": "Italiano",
+    "en": "English"
+  },
+  "actions": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "back": "Indietro",
+    "retry": "Riprova",
+    "loadMore": "Carica altri",
+    "close": "Chiudi"
+  },
+  "state": {
+    "loading": "Caricamento in corso…",
+    "empty": "Nessun elemento da mostrare.",
+    "error": "Si è verificato un errore. Riprova più tardi.",
+    "correlationId": "Codice di riferimento: {id}"
+  },
+  "errors": {
+    "forbiddenTitle": "Accesso non autorizzato",
+    "forbiddenText": "Non hai i permessi per visualizzare questa pagina.",
+    "notFoundTitle": "Pagina non trovata",
+    "notFoundText": "La pagina richiesta non esiste.",
+    "goHome": "Torna alla home"
+  },
+  "validation": {
+    "required": "Campo obbligatorio",
+    "tooLong": "Testo troppo lungo",
+    "positive": "Inserisci un numero maggiore o uguale a zero",
+    "invalid": "Valore non valido"
+  },
+  "chart": {
+    "dataTable": "Dati del grafico",
+    "category": "Categoria",
+    "value": "Valore"
+  },
+  "nav": {
+    "orders": "Ordini"
+  }
+}
