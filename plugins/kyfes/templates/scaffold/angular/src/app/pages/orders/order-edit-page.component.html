@@ -1,0 +1,3 @@
+<a class="back-link" [routerLink]="['/orders', id()]">{{ 'common.actions.back' | transloco }}</a>
+<h1>{{ 'orders.page.editTitle' | transloco }}</h1>
+<app-order-form [orderId]="id()" (saved)="onSaved($event)" />

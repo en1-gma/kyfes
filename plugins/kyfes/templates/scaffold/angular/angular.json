@@ -1,0 +1,148 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": {
+    "packageManager": "npm"
+  },
+  "newProjectRoot": "projects",
+  "projects": {
+    "scaffold-angular": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "type": "component",
+          "addTypeToClassName": false,
+          "changeDetection": "OnPush",
+          "style": "css"
+        },
+        "@schematics/angular:directive": {
+          "type": "directive",
+          "addTypeToClassName": false
+        },
+        "@schematics/angular:service": {
+          "type": "service",
+          "addTypeToClassName": false
+        },
+        "@schematics/angular:guard": {
+          "typeSeparator": "."
+        },
+        "@schematics/angular:interceptor": {
+          "typeSeparator": "."
+        },
+        "@schematics/angular:module": {
+          "typeSeparator": "."
+        },
+        "@schematics/angular:pipe": {
+          "typeSeparator": "."
+        },
+        "@schematics/angular:resolver": {
+          "typeSeparator": "."
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": ["src/styles.css"],
+            "define": {
+              "NG_APP_API_BASE_URL": "'/api'",
+              "NG_APP_DEFAULT_LOCALE": "'it'",
+              "NG_APP_API_MOCKS": "'false'"
+            },
+            "security": {
+              "autoCsp": true
+            },
+            "sourceMap": false
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "800kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all",
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": ["mockServiceWorker.js"]
+                }
+              ],
+              "sourceMap": {
+                "scripts": true,
+                "styles": false,
+                "hidden": true
+              }
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "security": {
+                "autoCsp": false
+              }
+            },
+            "mocks": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "security": {
+                "autoCsp": false
+              },
+              "define": {
+                "NG_APP_API_BASE_URL": "'/api'",
+                "NG_APP_DEFAULT_LOCALE": "'it'",
+                "NG_APP_API_MOCKS": "'true'"
+              }
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "scaffold-angular:build:production"
+            },
+            "development": {
+              "buildTarget": "scaffold-angular:build:development"
+            },
+            "mocks": {
+              "buildTarget": "scaffold-angular:build:mocks"
+            }
+          },
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "setupFiles": ["src/mocks/test-setup.ts"],
+            "tsConfig": "tsconfig.spec.json"
+          }
+        }
+      }
+    }
+  }
+}

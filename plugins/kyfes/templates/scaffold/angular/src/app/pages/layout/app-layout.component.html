@@ -1,0 +1,30 @@
+<a class="skip-link" href="#main">{{ 'common.app.skipToContent' | transloco }}</a>
+<header class="topbar">
+  <a class="topbar__brand" routerLink="/">{{ 'common.app.name' | transloco }}</a>
+  <nav class="topbar__nav" [attr.aria-label]="'common.nav.main' | transloco">
+    <ul>
+      <li *appCan="'read'; on: 'Order'">
+        <a routerLink="/orders" routerLinkActive="is-active" ariaCurrentWhenActive="page">{{
+          'common.nav.orders' | transloco
+        }}</a>
+      </li>
+    </ul>
+  </nav>
+  <div class="topbar__tools">
+    <label class="visually-hidden" for="lang-select">{{ 'common.language.label' | transloco }}</label>
+    <select id="lang-select" [value]="i18n.lang()" (change)="onLangChange($event)">
+      @for (lang of i18n.locales; track lang) {
+        <option [value]="lang">{{ 'common.language.' + lang | transloco }}</option>
+      }
+    </select>
+    @if (session.user(); as user) {
+      <span class="topbar__user">{{ 'common.user.signedInAs' | transloco: { name: user.name } }}</span>
+    }
+    <button appButton type="button" variant="ghost" (click)="logout()">
+      {{ 'common.actions.logout' | transloco }}
+    </button>
+  </div>
+</header>
+<main id="main" class="container" tabindex="-1">
+  <router-outlet />
+</main>

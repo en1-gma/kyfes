@@ -1,0 +1,60 @@
+{
+  "app": {
+    "name": "Back office",
+    "pageTitle": "{{page}} · Back office",
+    "skipToContent": "Skip to content"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "orders": "Orders"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "retry": "Retry",
+    "logout": "Sign out",
+    "back": "Back"
+  },
+  "language": {
+    "label": "Language",
+    "it": "Italiano",
+    "en": "English"
+  },
+  "user": {
+    "signedInAs": "User: {{name}}"
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing to show"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again later.",
+    "network": "Unable to reach the server. Check your connection.",
+    "forbidden": "You are not allowed to perform this action.",
+    "notFound": "The requested item does not exist.",
+    "correlationId": "Reference code: {{id}}"
+  },
+  "pages": {
+    "forbidden": {
+      "title": "Access denied",
+      "message": "You are not allowed to view this page.",
+      "home": "Back to home"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "message": "The page you are looking for does not exist or has moved.",
+      "home": "Back to home"
+    }
+  },
+  "validation": {
+    "invalid": "Invalid value"
+  },
+  "chart": {
+    "category": "Period",
+    "value": "Value",
+    "tableCaption": "Chart data: {{title}}"
+  }
+}

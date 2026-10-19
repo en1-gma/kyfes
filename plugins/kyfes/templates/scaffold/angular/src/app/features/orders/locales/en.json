@@ -1,0 +1,63 @@
+{
+  "page": {
+    "title": "Orders",
+    "new": "New order",
+    "newTitle": "New order",
+    "editTitle": "Edit order",
+    "detailTitle": "Order details"
+  },
+  "list": {
+    "caption": "Order list",
+    "empty": "There are no orders.",
+    "loadMore": "Load more orders"
+  },
+  "columns": {
+    "number": "Number",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "createdAt": "Created on",
+    "actions": "Actions"
+  },
+  "actions": {
+    "edit": "Edit",
+    "editAria": "Edit order {{number}}",
+    "delete": "Delete",
+    "deleteAria": "Delete order {{number}}",
+    "view": "Open order {{number}}"
+  },
+  "delete": {
+    "title": "Delete the order?",
+    "message": "Order {{number}} will be permanently deleted.",
+    "confirm": "Delete order"
+  },
+  "status": {
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "cancelled": "Cancelled"
+  },
+  "form": {
+    "label": "Order data",
+    "customerName": "Customer",
+    "total": "Total (EUR)",
+    "status": "Status",
+    "statusReadonly": "You are not allowed to change the status.",
+    "submitCreate": "Create order",
+    "submitUpdate": "Save changes",
+    "errors": {
+      "customerRequired": "Customer is required.",
+      "customerTooLong": "Customer name is too long.",
+      "totalInvalid": "Enter a valid amount.",
+      "totalNegative": "Total cannot be negative."
+    }
+  },
+  "chart": {
+    "title": "Order totals by month",
+    "series": "Total",
+    "empty": "No data available for the chart."
+  },
+  "detail": {
+    "title": "Order {{number}}"
+  }
+}

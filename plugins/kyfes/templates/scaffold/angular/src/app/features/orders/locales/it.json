@@ -1,0 +1,63 @@
+{
+  "page": {
+    "title": "Ordini",
+    "new": "Nuovo ordine",
+    "newTitle": "Nuovo ordine",
+    "editTitle": "Modifica ordine",
+    "detailTitle": "Dettaglio ordine"
+  },
+  "list": {
+    "caption": "Elenco ordini",
+    "empty": "Non ci sono ordini.",
+    "loadMore": "Carica altri ordini"
+  },
+  "columns": {
+    "number": "Numero",
+    "customer": "Cliente",
+    "status": "Stato",
+    "total": "Totale",
+    "createdAt": "Creato il",
+    "actions": "Azioni"
+  },
+  "actions": {
+    "edit": "Modifica",
+    "editAria": "Modifica ordine {{number}}",
+    "delete": "Elimina",
+    "deleteAria": "Elimina ordine {{number}}",
+    "view": "Apri ordine {{number}}"
+  },
+  "delete": {
+    "title": "Eliminare l'ordine?",
+    "message": "L'ordine {{number}} sarà eliminato definitivamente.",
+    "confirm": "Elimina ordine"
+  },
+  "status": {
+    "draft": "Bozza",
+    "confirmed": "Confermato",
+    "shipped": "Spedito",
+    "cancelled": "Annullato"
+  },
+  "form": {
+    "label": "Dati dell'ordine",
+    "customerName": "Cliente",
+    "total": "Totale (EUR)",
+    "status": "Stato",
+    "statusReadonly": "Non hai il permesso di modificare lo stato.",
+    "submitCreate": "Crea ordine",
+    "submitUpdate": "Salva modifiche",
+    "errors": {
+      "customerRequired": "Il cliente è obbligatorio.",
+      "customerTooLong": "Il nome del cliente è troppo lungo.",
+      "totalInvalid": "Inserisci un importo valido.",
+      "totalNegative": "Il totale non può essere negativo."
+    }
+  },
+  "chart": {
+    "title": "Totale ordini per mese",
+    "series": "Totale",
+    "empty": "Nessun dato disponibile per il grafico."
+  },
+  "detail": {
+    "title": "Ordine {{number}}"
+  }
+}

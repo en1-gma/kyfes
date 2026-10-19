@@ -1,0 +1,27 @@
+@if (order.isPending()) {
+  <app-spinner />
+} @else if (order.isError()) {
+  <app-error-state [error]="order.error()" [retryable]="true" (retry)="order.refetch()" />
+} @else {
+  @let o = order.data();
+  @if (o) {
+    <article class="card">
+      <h2>{{ 'orders.detail.title' | transloco: { number: o.number } }}</h2>
+      <dl class="details">
+        <dt>{{ 'orders.columns.customer' | transloco }}</dt>
+        <dd>{{ o.customerName }}</dd>
+        <dt>{{ 'orders.columns.status' | transloco }}</dt>
+        <dd>{{ 'orders.status.' + o.status | transloco }}</dd>
+        <dt>{{ 'orders.columns.total' | transloco }}</dt>
+        <dd>{{ o.total | localeCurrency }}</dd>
+        <dt>{{ 'orders.columns.createdAt' | transloco }}</dt>
+        <dd>{{ o.createdAt | localeDate: { dateStyle: 'long', timeStyle: 'short' } }}</dd>
+      </dl>
+      @if (can('update', orderSubject(o))) {
+        <a appButton variant="primary" [routerLink]="['/orders', o.id, 'edit']">{{
+          'orders.actions.edit' | transloco
+        }}</a>
+      }
+    </article>
+  }
+}

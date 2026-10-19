@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gestionale</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <!--
+      ngCspNonce: segnaposto sostituito per ogni risposta dal server (deploy/security-headers.conf,
+      sub_filter con $request_id). Angular lo usa per gli <style> dei componenti; la build lo applica
+      anche a <script>/<link> generati.
+    -->
+    <app-root ngCspNonce="__CSP_NONCE__"></app-root>
+  </body>
+</html>

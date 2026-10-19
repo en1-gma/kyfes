@@ -1,0 +1,60 @@
+{
+  "app": {
+    "name": "Gestionale",
+    "pageTitle": "{{page}} · Gestionale",
+    "skipToContent": "Vai al contenuto"
+  },
+  "nav": {
+    "main": "Navigazione principale",
+    "orders": "Ordini"
+  },
+  "actions": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "retry": "Riprova",
+    "logout": "Esci",
+    "back": "Indietro"
+  },
+  "language": {
+    "label": "Lingua",
+    "it": "Italiano",
+    "en": "English"
+  },
+  "user": {
+    "signedInAs": "Utente: {{name}}"
+  },
+  "states": {
+    "loading": "Caricamento in corso…",
+    "empty": "Nessun elemento da mostrare"
+  },
+  "errors": {
+    "generic": "Si è verificato un errore. Riprova più tardi.",
+    "network": "Impossibile contattare il server. Controlla la connessione.",
+    "forbidden": "Non hai i permessi per questa operazione.",
+    "notFound": "L'elemento richiesto non esiste.",
+    "correlationId": "Codice di riferimento: {{id}}"
+  },
+  "pages": {
+    "forbidden": {
+      "title": "Accesso negato",
+      "message": "Non hai i permessi per visualizzare questa pagina.",
+      "home": "Torna alla home"
+    },
+    "notFound": {
+      "title": "Pagina non trovata",
+      "message": "La pagina che cerchi non esiste o è stata spostata.",
+      "home": "Torna alla home"
+    }
+  },
+  "validation": {
+    "invalid": "Valore non valido"
+  },
+  "chart": {
+    "category": "Periodo",
+    "value": "Valore",
+    "tableCaption": "Dati del grafico: {{title}}"
+  }
+}

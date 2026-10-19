@@ -1,0 +1,92 @@
+@if (orders.isPending()) {
+  <app-spinner />
+} @else if (orders.isError()) {
+  <app-error-state [error]="orders.error()" [retryable]="true" (retry)="orders.refetch()" />
+} @else if (rows().length === 0) {
+  <app-empty-state [message]="'orders.list.empty' | transloco" />
+} @else {
+  @if (deleteOrder.isError()) {
+    <app-error-state [error]="deleteOrder.error()" />
+  }
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">
+        {{
+          'orders.list.caption' | transloco
+        }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ 'orders.columns.number' | transloco }}</th>
+          <th scope="col">{{ 'orders.columns.customer' | transloco }}</th>
+          <th scope="col">{{ 'orders.columns.status' | transloco }}</th>
+          <th scope="col" class="num">{{ 'orders.columns.total' | transloco }}</th>
+          <th scope="col">{{ 'orders.columns.createdAt' | transloco }}</th>
+          @if (showActions()) {
+            <th scope="col">{{ 'orders.columns.actions' | transloco }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of rows(); track order.id) {
+          <tr>
+            <td>
+              <a
+                [routerLink]="['/orders', order.id]"
+                [attr.aria-label]="'orders.actions.view' | transloco: { number: order.number }"
+                >{{ order.number }}</a
+              >
+            </td>
+            <td>{{ order.customerName }}</td>
+            <td>
+              <span class="badge" [attr.data-status]="order.status">{{
+                'orders.status.' + order.status | transloco
+              }}</span>
+            </td>
+            <td class="num">{{ order.total | localeCurrency }}</td>
+            <td>{{ order.createdAt | localeDate }}</td>
+            @if (showActions()) {
+              <td class="actions">
+                @if (can('update', orderSubject(order))) {
+                  <a
+                    appButton
+                    variant="ghost"
+                    [routerLink]="['/orders', order.id, 'edit']"
+                    [attr.aria-label]="'orders.actions.editAria' | transloco: { number: order.number }"
+                    >{{ 'orders.actions.edit' | transloco }}</a
+                  >
+                }
+                @if (can('delete', orderSubject(order))) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="danger"
+                    [attr.aria-label]="'orders.actions.deleteAria' | transloco: { number: order.number }"
+                    (click)="pendingDelete.set(order)"
+                  >
+                    {{ 'orders.actions.delete' | transloco }}
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (orders.hasNextPage()) {
+    <button appButton type="button" [disabled]="orders.isFetchingNextPage()" (click)="orders.fetchNextPage()">
+      {{ 'orders.list.loadMore' | transloco }}
+    </button>
+  }
+}
+
+@let toDelete = pendingDelete();
+<app-confirm-dialog
+  [open]="toDelete !== null"
+  [title]="'orders.delete.title' | transloco"
+  [message]="'orders.delete.message' | transloco: { number: toDelete?.number ?? '' }"
+  [confirmLabel]="'orders.delete.confirm' | transloco"
+  (confirmed)="confirmDelete()"
+  (cancelled)="pendingDelete.set(null)"
+/>

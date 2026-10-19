@@ -1,0 +1,69 @@
+@if (isEdit() && order.isPending()) {
+  <app-spinner />
+} @else if (isEdit() && order.isError()) {
+  <app-error-state [error]="order.error()" />
+} @else {
+  <form
+    class="form"
+    [formGroup]="form"
+    [attr.aria-label]="'orders.form.label' | transloco"
+    (ngSubmit)="submit()"
+    novalidate
+  >
+    @if (saveError(); as error) {
+      <app-error-state [error]="error" />
+    }
+
+    <div class="field">
+      <label for="order-customer">{{ 'orders.form.customerName' | transloco }}</label>
+      <input
+        id="order-customer"
+        type="text"
+        formControlName="customerName"
+        autocomplete="organization"
+        [attr.aria-invalid]="errorKey('customerName') !== null"
+        [attr.aria-describedby]="errorKey('customerName') ? 'order-customer-error' : null"
+      />
+      @if (errorKey('customerName'); as key) {
+        <p id="order-customer-error" class="field__error">{{ key | transloco }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="order-total">{{ 'orders.form.total' | transloco }}</label>
+      <input
+        id="order-total"
+        type="number"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        formControlName="total"
+        [attr.aria-invalid]="errorKey('total') !== null"
+        [attr.aria-describedby]="errorKey('total') ? 'order-total-error' : null"
+      />
+      @if (errorKey('total'); as key) {
+        <p id="order-total-error" class="field__error">{{ key | transloco }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="order-status">{{ 'orders.form.status' | transloco }}</label>
+      <select
+        id="order-status"
+        formControlName="status"
+        [attr.aria-describedby]="canEditStatus() ? null : 'order-status-hint'"
+      >
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ 'orders.status.' + status | transloco }}</option>
+        }
+      </select>
+      @if (!canEditStatus()) {
+        <p id="order-status-hint" class="field__hint">{{ 'orders.form.statusReadonly' | transloco }}</p>
+      }
+    </div>
+
+    <button appButton type="submit" variant="primary" [disabled]="saving()">
+      {{ (isEdit() ? 'orders.form.submitUpdate' : 'orders.form.submitCreate') | transloco }}
+    </button>
+  </form>
+}

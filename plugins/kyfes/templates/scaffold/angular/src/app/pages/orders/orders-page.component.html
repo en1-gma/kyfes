@@ -1,0 +1,8 @@
+<div class="page-header">
+  <h1>{{ 'orders.page.title' | transloco }}</h1>
+  <a *appCan="'create'; on: 'Order'" appButton variant="primary" routerLink="/orders/new">{{
+    'orders.page.new' | transloco
+  }}</a>
+</div>
+<app-orders-chart />
+<app-orders-table />
