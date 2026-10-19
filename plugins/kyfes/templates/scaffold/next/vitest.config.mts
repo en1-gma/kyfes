@@ -13,6 +13,8 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // No persistent module cache on disk: stale transforms must never hide a change.
+    fsModuleCache: false,
     // next-intl ships ESM that imports 'next/navigation' without extension
     server: { deps: { inline: ['next-intl'] } },
   },

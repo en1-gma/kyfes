@@ -1,40 +1,43 @@
 'use client';
 
-import { useId } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { isApiError } from '@/shared/api';
 import { useTranslations } from '@/shared/i18n';
 import { useAbility } from '@/shared/rbac';
 import { Button, ErrorState } from '@/shared/ui';
 import {
+  ORDER_FIELDS,
   ORDER_STATUSES,
   OrderInputSchema,
   type Order,
   type OrderInput,
+  type OrderWrite,
 } from '../model/orders.schema';
-import { ORDER_SUBJECT, canEditOrderStatus } from '../permissions';
+import { pickWritable, writableOrderFields } from '../permissions';
 import styles from './orders.module.css';
 
 export interface OrderFormProps {
   order?: Order;
-  onSubmit: (input: OrderInput | Omit<OrderInput, 'status'>) => void;
+  /** Receives only the fields the user may write (field-level permissions). */
+  onSubmit: (input: OrderWrite) => void;
   isSubmitting?: boolean;
   error?: unknown;
 }
 
-/** Create/edit form validated with Zod; `status` is read-only without field permission. */
+/** Create/edit form validated with Zod; fields without write permission are read-only and never sent. */
 export function OrderForm({ order, onSubmit, isSubmitting = false, error }: OrderFormProps) {
   const t = useTranslations('orders');
   const ability = useAbility();
   const ids = { customer: useId(), status: useId(), total: useId() };
-  const statusEditable = order
-    ? canEditOrderStatus(ability, order)
-    : ability.can('create', ORDER_SUBJECT, 'status');
+  const writable = useMemo(() => writableOrderFields(ability, order), [ability, order]);
 
   const {
     register,
     handleSubmit,
     getValues,
+    setError,
     formState: { errors },
   } = useForm<OrderInput>({
     resolver: zodResolver(OrderInputSchema),
@@ -45,14 +48,23 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
     },
   });
 
-  const submit = handleSubmit((values) => {
-    if (statusEditable) return onSubmit(values);
-    // Read-only field: never sent, the server keeps the current value.
-    return onSubmit({ customerName: values.customerName, total: values.total });
-  });
+  // Server-side validation (422 fieldErrors) lands on its fields.
+  const fieldErrors = isApiError(error) ? error.fieldErrors : undefined;
+  const onFields = ORDER_FIELDS.some((field) => (fieldErrors?.[field]?.length ?? 0) > 0);
+  useEffect(() => {
+    if (!fieldErrors) return;
+    for (const field of ORDER_FIELDS) {
+      const message = fieldErrors[field]?.[0];
+      if (message) setError(field, { type: 'server', message });
+    }
+  }, [fieldErrors, setError]);
 
+  const submit = handleSubmit((values) => onSubmit(pickWritable(values, writable)));
+
+  // Zod messages are keys of the `orders` namespace; anything else (e.g. a server message)
+  // gets a generic, translated text: raw backend strings are never shown.
   const message = (key: string | undefined) =>
-    key && t.has(key) ? t(key) : key ? t('validation.totalInvalid') : null;
+    key ? (t.has(key) ? t(key) : t('validation.invalid')) : null;
 
   return (
     <form className={styles.form} onSubmit={submit} noValidate>
@@ -62,6 +74,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
           id={ids.customer}
           autoComplete="off"
           placeholder={t('form.customerPlaceholder')}
+          readOnly={!writable.has('customerName')}
           aria-invalid={errors.customerName ? true : undefined}
           aria-describedby={errors.customerName ? `${ids.customer}-error` : undefined}
           {...register('customerName')}
@@ -75,8 +88,13 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
 
       <div className={styles.field}>
         <label htmlFor={ids.status}>{t('form.status')}</label>
-        {statusEditable ? (
-          <select id={ids.status} {...register('status')}>
+        {writable.has('status') ? (
+          <select
+            id={ids.status}
+            aria-invalid={errors.status ? true : undefined}
+            aria-describedby={errors.status ? `${ids.status}-error` : undefined}
+            {...register('status')}
+          >
             {ORDER_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {t(`status.${s}`)}
@@ -96,6 +114,11 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
             </span>
           </>
         )}
+        {errors.status ? (
+          <span id={`${ids.status}-error`} className={styles.error}>
+            {message(errors.status.message)}
+          </span>
+        ) : null}
       </div>
 
       <div className={styles.field}>
@@ -106,6 +129,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
           inputMode="decimal"
           step="0.01"
           min="0"
+          readOnly={!writable.has('total')}
           aria-invalid={errors.total ? true : undefined}
           aria-describedby={errors.total ? `${ids.total}-error` : undefined}
           {...register('total', { valueAsNumber: true })}
@@ -117,7 +141,7 @@ export function OrderForm({ order, onSubmit, isSubmitting = false, error }: Orde
         ) : null}
       </div>
 
-      {error ? <ErrorState error={error} /> : null}
+      {error && !onFields ? <ErrorState error={error} /> : null}
 
       <div>
         <Button type="submit" variant="primary" disabled={isSubmitting}>

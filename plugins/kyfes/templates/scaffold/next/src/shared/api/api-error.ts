@@ -5,15 +5,18 @@ export const ApiErrorBodySchema = z.object({
   code: z.string().optional(),
   message: z.string().optional(),
   correlationId: z.string().optional(),
-  fieldErrors: z.record(z.string(), z.string()).optional(),
+  fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
 });
+
+/** Server-side validation messages per field (`{ total: ['…'] }`), same contract as kybes. */
+export type FieldErrors = Record<string, string[]>;
 
 export interface ApiErrorInit {
   status: number;
   code: string;
   message: string;
   correlationId?: string;
-  fieldErrors?: Record<string, string>;
+  fieldErrors?: FieldErrors;
 }
 
 /** The only error shape components ever see (never axios' `error.response`). */
@@ -21,7 +24,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly correlationId?: string;
-  readonly fieldErrors?: Record<string, string>;
+  readonly fieldErrors?: FieldErrors;
 
   constructor(init: ApiErrorInit) {
     super(init.message);
@@ -34,6 +37,10 @@ export class ApiError extends Error {
 
   get isClientError(): boolean {
     return this.status >= 400 && this.status < 500;
+  }
+
+  get isForbidden(): boolean {
+    return this.status === 403;
   }
 }
 

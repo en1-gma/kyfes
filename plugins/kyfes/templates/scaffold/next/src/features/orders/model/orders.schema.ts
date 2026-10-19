@@ -26,8 +26,9 @@ export const OrderInputSchema = z.object({
 
 export const OrderPageSchema = pageSchema(OrderSchema);
 
+/** GET /orders/stats: `{ months: [{ month: 'YYYY-MM', total, count }] }` (same as every scaffold). */
 export const OrderStatsSchema = z.object({
-  items: z.array(
+  months: z.array(
     z.object({
       month: z.string().regex(/^\d{4}-\d{2}$/),
       total: z.number(),
@@ -39,6 +40,15 @@ export const OrderStatsSchema = z.object({
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 export type Order = z.infer<typeof OrderSchema>;
 export type OrderInput = z.infer<typeof OrderInputSchema>;
+export type OrderField = keyof OrderInput;
+/** Write payload: only the fields the user may write (create omits what the server defaults). */
+export type OrderWrite = Partial<OrderInput>;
+
+export const ORDER_FIELDS = [
+  'customerName',
+  'status',
+  'total',
+] as const satisfies readonly OrderField[];
 export type OrderPage = z.infer<typeof OrderPageSchema>;
 export type OrderStats = z.infer<typeof OrderStatsSchema>;
 

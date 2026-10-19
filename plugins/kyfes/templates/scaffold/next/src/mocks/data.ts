@@ -1,12 +1,27 @@
 import type { Order } from '@/features/orders';
 import type { Session } from '@/shared/auth';
 
-export type MockUser = 'manager' | 'viewer';
+export type MockUser = 'manager' | 'operator' | 'viewer';
 
 export const sessions: Record<MockUser, Session> = {
   manager: {
     user: { id: 'u-manager', name: 'Maria Manager', email: 'manager@example.com' },
     rules: [{ action: 'manage', subject: 'Order' }],
+    locale: 'it',
+  },
+  // Field and record conditions: writes customer and total, updates drafts only, never the status.
+  operator: {
+    user: { id: 'u-operator', name: 'Oscar Operator', email: 'operator@example.com' },
+    rules: [
+      { action: 'read', subject: 'Order' },
+      { action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+      {
+        action: 'update',
+        subject: 'Order',
+        fields: ['customerName', 'total'],
+        conditions: { status: 'draft' },
+      },
+    ],
     locale: 'it',
   },
   viewer: {

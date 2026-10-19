@@ -86,3 +86,15 @@ a {
 .skip-link:focus {
   top: var(--space-2);
 }
+
+.global-error {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+.global-error__meta {
+  color: var(--color-muted);
+}

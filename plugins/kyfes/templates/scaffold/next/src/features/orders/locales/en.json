@@ -3,7 +3,8 @@
     "title": "Orders",
     "caption": "List of orders",
     "empty": "There are no orders.",
-    "new": "New order"
+    "new": "New order",
+    "loaded": "{count, plural, =0 {No orders loaded} one {# order loaded} other {# orders loaded}}"
   },
   "filters": {
     "status": "Filter by status",
@@ -48,7 +49,8 @@
   "validation": {
     "customerRequired": "Customer is required.",
     "tooLong": "The text is too long.",
-    "totalInvalid": "Enter a valid amount, zero or greater."
+    "totalInvalid": "Enter a valid amount, zero or greater.",
+    "invalid": "Invalid value."
   },
   "detail": {
     "title": "Order {number}",

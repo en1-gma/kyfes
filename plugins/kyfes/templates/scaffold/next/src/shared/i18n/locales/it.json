@@ -36,6 +36,7 @@
     "correlation": "Codice di riferimento: {id}",
     "forbiddenTitle": "Accesso non autorizzato",
     "forbiddenDescription": "Non hai i permessi per visualizzare questa pagina.",
+    "forbidden": "Non hai i permessi per eseguire questa operazione.",
     "notFoundTitle": "Pagina non trovata",
     "notFoundDescription": "La pagina richiesta non esiste o è stata spostata."
   },

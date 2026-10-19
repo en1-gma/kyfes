@@ -36,6 +36,7 @@
     "correlation": "Reference code: {id}",
     "forbiddenTitle": "Not authorized",
     "forbiddenDescription": "You don't have permission to view this page.",
+    "forbidden": "You don't have permission to perform this operation.",
     "notFoundTitle": "Page not found",
     "notFoundDescription": "The requested page doesn't exist or has been moved."
   },

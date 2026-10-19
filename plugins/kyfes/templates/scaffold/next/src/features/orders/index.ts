@@ -22,13 +22,18 @@ export {
   canEditOrder,
   canDeleteOrder,
   canEditOrderStatus,
+  writableOrderFields,
+  pickWritable,
 } from './permissions';
 export {
   OrderSchema,
   OrderInputSchema,
   ORDER_STATUSES,
+  ORDER_FIELDS,
   type Order,
+  type OrderField,
   type OrderInput,
+  type OrderWrite,
   type OrderStatus,
 } from './model/orders.schema';
 

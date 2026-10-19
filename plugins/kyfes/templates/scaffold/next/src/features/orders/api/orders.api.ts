@@ -4,10 +4,10 @@ import {
   OrderSchema,
   OrderStatsSchema,
   type Order,
-  type OrderInput,
   type OrderListFilters,
   type OrderPage,
   type OrderStats,
+  type OrderWrite,
 } from '../model/orders.schema';
 
 const BASE = '/orders';
@@ -28,12 +28,12 @@ export const ordersApi = {
     return OrderSchema.parse(data);
   },
 
-  async create(input: OrderInput): Promise<Order> {
+  async create(input: OrderWrite): Promise<Order> {
     const { data } = await http.post(BASE, input);
     return OrderSchema.parse(data);
   },
 
-  async update(id: string, input: Partial<OrderInput>): Promise<Order> {
+  async update(id: string, input: OrderWrite): Promise<Order> {
     const { data } = await http.patch(`${BASE}/${encodeURIComponent(id)}`, input);
     return OrderSchema.parse(data);
   },

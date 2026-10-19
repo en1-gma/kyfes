@@ -18,7 +18,9 @@ npm run dev                     # http://localhost:3000
 npm run dev:mocks               # NEXT_PUBLIC_API_MOCKS=true: MSW intercepts /api in the browser
 ```
 
-Mock users live in `src/mocks/data.ts`: `manager` (manage Order) and `viewer` (read Order).
+Mock users live in `src/mocks/data.ts`: `manager` (manage Order), `operator` (create/update only
+`customerName` and `total`, update only drafts) and `viewer` (read Order). The handlers enforce the
+same CASL rules (conditions and fields) and answer 422 with `fieldErrors: Record<string, string[]>`.
 Switch with `setMockUser()` or override the `/api/auth/me` handler (`sessionHandler('viewer')`).
 
 ## Scripts

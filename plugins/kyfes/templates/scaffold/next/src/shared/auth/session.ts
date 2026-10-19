@@ -21,6 +21,8 @@ export const sessionQueryOptions = queryOptions({
     }
   },
   staleTime: 5 * 60_000,
+  // A 403 here must not invalidate the session itself (it would refetch /auth/me forever).
+  meta: { ignoreForbidden: true },
 });
 
 export function useSession() {

@@ -39,8 +39,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      // Pages only: not /api (proxied to the backend), static assets or prefetches.
-      source: '/((?!api|_next/static|_next/image|favicon.ico|mockServiceWorker.js).*)',
+      // Pages only: not /api and /api/* (proxied to the backend), static assets or prefetches.
+      // `api(?:/|$)` keeps pages such as /apidocs or /api-keys under the CSP.
+      source: '/((?!api(?:/|$)|_next/static|_next/image|favicon.ico|mockServiceWorker.js).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

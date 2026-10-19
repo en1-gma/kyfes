@@ -61,6 +61,7 @@ export function useOrder(id: string) {
 export function useOrderStats() {
   return useQuery({
     ...orderStatsQueryOptions(),
-    select: (stats) => stats.items.map((i) => ({ month: i.month, total: i.total, count: i.count })),
+    select: (stats) =>
+      stats.months.map((i) => ({ month: i.month, total: i.total, count: i.count })),
   });
 }

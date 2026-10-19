@@ -1,7 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { delay, http as mswHttp, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
+import { db } from '@/mocks/data';
 import { errorHandlers } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
 import { ApiError } from '@/shared/api';
@@ -95,5 +97,53 @@ describe('orders mutations', () => {
     await waitFor(() =>
       expect(queryClient.getQueryData(listKey)?.pages[0]?.items[0]?.id).toBe(first.id),
     );
+  });
+
+  it('concurrent deletes: the first fails, the second row does not reappear', async () => {
+    const { queryClient, wrapper } = setup();
+    const list = renderHook(() => useInfiniteQuery(ordersInfiniteQueryOptions()), { wrapper });
+    await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
+    const [a, b] = list.result.current.data!.pages[0]!.items;
+    const listKey = ordersInfiniteQueryOptions().queryKey;
+    const ids = () =>
+      queryClient.getQueryData(listKey)?.pages.flatMap((p) => p.items.map((o) => o.id));
+
+    server.use(
+      mswHttp.delete('/api/orders/:id', async ({ params }) => {
+        if (params.id === a!.id) {
+          await delay(20);
+          return HttpResponse.json({ code: 'INTERNAL' }, { status: 500 });
+        }
+        await delay(150);
+        db.orders = db.orders.filter((o) => o.id !== params.id);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const first = renderHook(() => useDeleteOrder(), { wrapper });
+    const second = renderHook(() => useDeleteOrder(), { wrapper });
+    const failing = first.result.current.mutateAsync(a!.id).catch(() => undefined);
+    const succeeding = second.result.current.mutateAsync(b!.id);
+
+    await failing;
+    expect(ids()).not.toContain(b!.id);
+
+    await succeeding;
+    await waitFor(() => expect(ids()).toContain(a!.id));
+    expect(ids()).not.toContain(b!.id);
+  });
+
+  it('removes the detail cache only when the delete succeeds', async () => {
+    const { queryClient, wrapper } = setup();
+    const order = db.orders[0]!;
+    queryClient.setQueryData(orderKeys.detail(order.id), order);
+    const { setMockUser } = await import('@/mocks/data');
+    setMockUser('viewer');
+    const del = renderHook(() => useDeleteOrder(), { wrapper });
+    await act(() => del.result.current.mutateAsync(order.id).catch(() => undefined));
+    expect(queryClient.getQueryData(orderKeys.detail(order.id))).toEqual(order);
+
+    setMockUser('manager');
+    await act(() => del.result.current.mutateAsync(order.id));
+    expect(queryClient.getQueryData(orderKeys.detail(order.id))).toBeUndefined();
   });
 });

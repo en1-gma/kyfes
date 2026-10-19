@@ -13,7 +13,14 @@ export function safeRedirect(target: unknown, fallback = '/'): string {
     const base = 'https://kyfes.invalid';
     const url = new URL(target, base);
     if (url.origin !== base) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
+    const result = `${url.pathname}${url.search}${url.hash}`;
+    // Dot segments can collapse into "//host" (e.g. "/.//evil.example") and encoded slashes may be
+    // decoded downstream ("/%2F/evil.example"): re-check the normalised path, decoded and not.
+    const decoded = url.pathname.replace(/%2f/gi, '/').replace(/%5c/gi, '\\');
+    for (const path of [result, decoded]) {
+      if (path.startsWith('//') || path.includes('\\')) return fallback;
+    }
+    return result;
   } catch {
     return fallback;
   }

@@ -5,7 +5,7 @@ import {
   type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
-import type { Order, OrderInput, OrderPage } from '../model/orders.schema';
+import type { Order, OrderPage, OrderWrite } from '../model/orders.schema';
 import { ordersApi } from './orders.api';
 import { orderKeys } from './orders.queries';
 
@@ -20,7 +20,7 @@ function invalidateOrderAggregates(queryClient: QueryClient) {
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: OrderInput) => ordersApi.create(input),
+    mutationFn: (input: OrderWrite) => ordersApi.create(input),
     onSuccess: (order) => {
       queryClient.setQueryData(orderKeys.detail(order.id), order);
       return invalidateOrderAggregates(queryClient);
@@ -31,7 +31,7 @@ export function useCreateOrder() {
 export function useUpdateOrder(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<OrderInput>) => ordersApi.update(id, input),
+    mutationFn: (input: OrderWrite) => ordersApi.update(id, input),
     onSuccess: (order) => {
       queryClient.setQueryData(orderKeys.detail(id), order);
       return invalidateOrderAggregates(queryClient);
@@ -41,10 +41,19 @@ export function useUpdateOrder(id: string) {
 
 type ListSnapshot = Array<[QueryKey, InfiniteData<OrderPage> | undefined]>;
 
-/** Optimistic delete: removes the row from every cached list, rolls back on error. */
+/** Shared by every delete: lets each one know whether others are still in flight. */
+export const deleteOrderMutationKey = [...orderKeys.all, 'delete'] as const;
+
+/**
+ * Optimistic delete: removes the row from every cached list. With concurrent deletes a failure
+ * never restores a snapshot that may still contain another in-flight row: only the last one
+ * settling refetches, and the snapshot is restored only when no other delete is pending.
+ */
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
+  const othersInFlight = () => queryClient.isMutating({ mutationKey: deleteOrderMutationKey }) > 1;
   return useMutation<void, Error, Order['id'], { previous: ListSnapshot }>({
+    mutationKey: deleteOrderMutationKey,
     mutationFn: (id) => ordersApi.remove(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: orderKeys.lists() });
@@ -64,10 +73,17 @@ export function useDeleteOrder() {
       return { previous };
     },
     onError: (_error, _id, context) => {
+      if (othersInFlight()) {
+        // Mark stale only: the last delete to settle refetches the real state.
+        return queryClient.invalidateQueries({ queryKey: orderKeys.lists(), refetchType: 'none' });
+      }
       context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
     },
-    onSettled: (_data, _error, id) => {
+    onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: orderKeys.detail(id) });
+    },
+    onSettled: () => {
+      if (othersInFlight()) return;
       return invalidateOrderAggregates(queryClient);
     },
   });

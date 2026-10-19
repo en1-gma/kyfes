@@ -3,11 +3,18 @@ import { z } from 'zod';
 export const LOCALES = ['it', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 
+/** Same-origin path ("/api", never protocol-relative "//host", no backslashes) or an https URL. */
+export function isValidApiBaseUrl(value: string): boolean {
+  if (value.includes('\\')) return false;
+  if (value.startsWith('/')) return !value.startsWith('//');
+  return value.startsWith('https://');
+}
+
 const EnvSchema = z.object({
   API_BASE_URL: z
     .string()
     .min(1)
-    .refine((v) => v.startsWith('/') || v.startsWith('https://'), {
+    .refine(isValidApiBaseUrl, {
       message: 'API_BASE_URL must be a same-origin path or an https URL',
     })
     .default('/api'),

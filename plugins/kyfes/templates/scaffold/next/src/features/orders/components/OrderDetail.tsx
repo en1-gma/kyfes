@@ -3,20 +3,24 @@
 import Link from 'next/link';
 import { useFormatters, useTranslations } from '@/shared/i18n';
 import { useAbility } from '@/shared/rbac';
-import { ErrorState, Loading, buttonClassName } from '@/shared/ui';
+import { QueryState, buttonClassName } from '@/shared/ui';
 import { useOrder } from '../api/orders.queries';
+import type { Order } from '../model/orders.schema';
 import { canEditOrder } from '../permissions';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import styles from './orders.module.css';
 
 export function OrderDetail({ id }: { id: string }) {
+  const query = useOrder(id);
+  return (
+    <QueryState query={query}>{query.data ? <OrderView order={query.data} /> : null}</QueryState>
+  );
+}
+
+function OrderView({ order }: { order: Order }) {
   const t = useTranslations('orders');
   const { formatCurrency, formatDate } = useFormatters();
   const ability = useAbility();
-  const { data: order, isPending, isError, error, refetch } = useOrder(id);
-
-  if (isPending) return <Loading />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   return (
     <article>

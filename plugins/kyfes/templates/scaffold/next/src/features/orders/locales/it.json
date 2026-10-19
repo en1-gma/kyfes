@@ -3,7 +3,8 @@
     "title": "Ordini",
     "caption": "Elenco degli ordini",
     "empty": "Non ci sono ordini.",
-    "new": "Nuovo ordine"
+    "new": "Nuovo ordine",
+    "loaded": "{count, plural, =0 {Nessun ordine caricato} one {# ordine caricato} other {# ordini caricati}}"
   },
   "filters": {
     "status": "Filtra per stato",
@@ -48,7 +49,8 @@
   "validation": {
     "customerRequired": "Il cliente è obbligatorio.",
     "tooLong": "Il testo è troppo lungo.",
-    "totalInvalid": "Inserisci un importo valido, maggiore o uguale a zero."
+    "totalInvalid": "Inserisci un importo valido, maggiore o uguale a zero.",
+    "invalid": "Valore non valido."
   },
   "detail": {
     "title": "Ordine {number}",
