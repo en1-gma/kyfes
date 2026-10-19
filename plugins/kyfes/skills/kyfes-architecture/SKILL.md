@@ -44,7 +44,8 @@ src/
 │       ├── components/        ← componenti della feature (presentazione + uso degli hook di api/)
 │       ├── model/             ← <feature>.schema.ts: schemi Zod e tipi derivati (z.infer)
 │       ├── locales/           ← it.json, en.json: namespace = nome della feature
-│       ├── permissions.ts     ← soggetto CASL della feature e helper (es. Subject 'Order')
+│       ├── constants.ts       ← TUTTE le costanti di dominio della feature (nome, namespace, soggetto, campi, stati, ordinamenti, segmenti di rotta, endpoint…)
+│       ├── permissions.ts     ← helper CASL della feature (`orderSubject(order)`), importa soggetto e campi da constants.ts
 │       └── index.ts           ← API pubblica della feature: unico punto importabile da pages/app
 └── shared/
     ├── api/                   ← UNICO punto con il client HTTP: istanza axios, interceptor, ApiError, QueryClient, paginazione
@@ -54,7 +55,7 @@ src/
     ├── charts/                ← wrapper dei grafici (unico punto con la libreria di chart)
     ├── ui/                    ← design system: componenti senza logica di business
     ├── lib/                   ← funzioni pure (sanitizeHtml, safeRedirect, formatter, …)
-    └── config/                ← env.ts: variabili pubbliche validate con Zod
+    └── config/                ← env.ts: variabili pubbliche validate con Zod; constants.ts: TUTTE le costanti trasversali
 ```
 
 Mappatura per framework (i nomi interni restano gli stessi):
@@ -72,7 +73,11 @@ Regole:
 3. Le pagine sono sottili: leggono parametri di rotta, compongono componenti delle feature, impostano titolo e permesso della rotta.
 4. In `shared/` esistono solo le sottocartelle elencate. Una nuova sottocartella è una decisione architetturale: va proposta all'utente.
 5. Nomi file: componenti `PascalCase.tsx|vue|svelte` (Angular: `kebab-case.component.ts`), il resto `kebab-case.ts` o `<feature>.<ruolo>.ts`. Test accanto al file (`*.test.ts`) o in `e2e/`.
-6. Niente codice duplicato: un blocco di 8+ righe uguale in due punti blocca la chiusura del lavoro. Si estrae: dati → `features/<f>/api`, trasformazione pura → `shared/lib`, UI generica → `shared/ui`. Per stati di caricamento/errore/vuoto, paginazione e conferme si usano i componenti esistenti di `shared/ui` (4.3), non una copia del markup della feature `orders`.
+6. Costanti esplicite solo in `constants.ts`: ogni costante di dominio (`export const X = 'v'`, oggetti e array
+   `as const` di stringhe, `export enum`, e ogni `const NOME_MAIUSCOLO = 'v'` anche locale) si definisce in
+   `features/<f>/constants.ts` o in `shared/config/constants.ts`; gli altri moduli la importano (regola
+   `constants-location`, bloccante in scrittura e allo stop gate). Dettagli e schema in 9.1.
+7. Niente codice duplicato: un blocco di 8+ righe uguale in due punti blocca la chiusura del lavoro. Si estrae: dati → `features/<f>/api`, trasformazione pura → `shared/lib`, UI generica → `shared/ui`. Per stati di caricamento/errore/vuoto, paginazione e conferme si usano i componenti esistenti di `shared/ui` (4.3), non una copia del markup della feature `orders`.
 
 ## 3. Sicurezza (bloccante)
 
@@ -123,7 +128,7 @@ Regole:
 ### 4.3 Errori e UX
 - Error boundary per rotta; stati `loading`/`error`/`empty` espliciti in ogni vista che legge dati.
 - Componenti standard di `shared/ui` (React/Next `.tsx`, Vue `.vue`, Svelte `.svelte`, Angular `*Component`): `QueryState` per caricamento → errore con "riprova" → vuoto → contenuto, `LoadMore` per il piè di pagina delle liste a cursore (conteggio + "carica altri"), `ConfirmDeleteDialog` per confermare l'eliminazione di un record. Ogni nuova feature li usa invece di riscrivere il markup: copiare quello di `orders` fa scattare `duplicates`.
-- Riuso delle costanti (regola `constant-reuse`, misurata da `arch_check`, bloccante oltre il 10% di valori duplicati): ogni valore di dominio è definito una volta e referenziato. Azioni RBAC dalle costanti di `shared/rbac`; soggetto e nomi dei campi nel `permissions.ts` della feature; namespace i18n come costanti (`COMMON_NS`, namespace della feature); stati, filtri, ordinamenti, colonne e default nel `model/`; percorsi UI in `routes.ts`, endpoint nell'`api/`; query key solo nella key factory; mapping come `Record<…>` tipizzati. Mai aggirare la metrica (stringhe costruite, `ignore_values` senza un vero falso positivo, codice spostato nei test).
+- Riuso delle costanti (regole `constants-location` e `constant-reuse`, bloccanti): ogni valore di dominio è definito una volta in `features/<f>/constants.ts` o `shared/config/constants.ts` (sez. 9.1) e referenziato ovunque; query key solo nella key factory; mapping come `Record<…>` tipizzati; oltre il 10% di valori duplicati lo stop gate blocca. Mai aggirare la metrica (stringhe costruite, `ignore_values` senza un vero falso positivo, codice spostato nei test).
 - 403 → messaggio "non autorizzato" (senza "riprova") e invalidazione di `sessionQuery` (i permessi potrebbero essere cambiati), senza ciclo se è `/auth/me` a rispondere 403; 404 → pagina non trovata; 5xx → messaggio generico + `correlationId`.
 
 ## 5. RBAC sul CRUD (CASL)
@@ -170,33 +175,41 @@ Ogni piano di una funzionalità contiene:
 5. **Testi**: namespace e chiavi i18n nuove, in tutte le lingue.
 6. **Sicurezza**: input utente renderizzati, URL esterni, upload, redirect — e come sono neutralizzati.
 7. **Test**: unità, RBAC, errori, e2e/axe.
-8. **Costanti**: tabella `valore → costante → modulo proprietario → nuova/riusata` per ogni valore di dominio
+8. **Costanti**: tabella `valore → costante → file constants.ts (della feature o `shared/config`) → nuova/riusata` per ogni valore di dominio
    introdotto o usato (azioni, soggetto, campi, namespace, stati, filtri, ordinamenti, colonne, rotte, endpoint,
-   chiavi di query, mapping). Ogni valore già esistente si riusa; quelli nuovi nascono nel modulo indicato nella
-   sez. 9.1. Nessun letterale ripetuto nel codice previsto.
+   chiavi di query, mapping). Ogni valore già esistente si riusa; quelli nuovi nascono nel `constants.ts`
+   indicato nella sez. 9.1. Nessun letterale ripetuto nel codice previsto.
 9. **Violazioni e alternative**: se la richiesta viola una regola, l'alternativa conforme.
 
 Chiudi con task piccoli e indipendenti, ciascuno con i file coinvolti.
 
 ### 9.1 Nuova feature: dove nasce ogni costante
 
-Ogni feature futura segue lo stesso schema, così il riuso è garantito per costruzione e `constant-reuse` resta verde:
+Ogni costante di dominio vive in **un solo file**: `features/<f>/constants.ts` per la feature,
+`shared/config/constants.ts` per i valori trasversali. Gli altri moduli importano e compongono; non definiscono.
+Così il riuso è garantito per costruzione, `constants-location` e `constant-reuse` restano verdi.
 
-| Valore | Costante | Dove |
+| Valore | Costante (in `constants.ts`) | Chi la usa |
 |---|---|---|
-| nome della feature | `<F>_FEATURE` (es. `CUSTOMERS_FEATURE = 'customers'`) | `model/` della feature; namespace i18n, segmento di rotta, endpoint e radice delle query key **derivano** da qui (template `` `/${CUSTOMERS_FEATURE}` ``), non si riscrivono |
-| soggetto CASL | `<F>_SUBJECT` | `permissions.ts` (registrato nel registro dei soggetti di `shared/rbac`) |
-| campi con permesso | `<F>_FIELDS` (mappa `campo → campo`, `satisfies` sulle chiavi del modello) | `permissions.ts` |
-| azioni | costanti delle azioni di `shared/rbac` (mai nuove stringhe `'update'`) | `shared/rbac` |
-| namespace i18n | `<F>_NS` derivato dal nome della feature | `locales/` o `model/` della feature |
-| stati, filtri, ordinamenti, colonne, default | mappe `as const` + tipi derivati (`<F>_STATUS`, `<F>_SORT`, `DEFAULT_<F>_SORT`, `<F>_COLUMNS`) | `model/<f>.schema.ts` o `model/<f>.constants.ts` |
-| percorsi UI | `<f>Paths` | `routes.ts` |
+| nome della feature | `<F>_FEATURE` (es. `CUSTOMERS_FEATURE = 'customers'`) | namespace i18n, segmento di rotta, endpoint e radice delle query key **derivano** da qui (`` `/${CUSTOMERS_FEATURE}` ``), non si riscrivono |
+| soggetto CASL | `<F>_SUBJECT` (dal registro dei soggetti di `shared/config/constants.ts`) | `permissions.ts`, guard, `can()` |
+| campi con permesso | `<F>_FIELDS` (mappa `campo → campo`) | `permissions.ts`, form, mock |
+| azioni | costanti delle azioni in `shared/config/constants.ts` (mai nuove stringhe `'update'`) | ovunque si controlla un permesso |
+| namespace i18n | `<F>_NS` derivato dal nome della feature | componenti, setup i18n |
+| stati, filtri, ordinamenti, colonne, default | mappe `as const` (`<F>_STATUS`, `<F>_SORT`, `DEFAULT_<F>_SORT`, `<F>_COLUMNS`) | `model/` (`z.enum(<F>_STATUS)`, tipi derivati), store, tabelle |
+| segmenti e parametri di rotta | `<F>_ROUTE_SEGMENTS`, `<F>_ID_PARAM` | `routes.ts` compone `<f>Paths` |
 | endpoint | `<F>_ENDPOINT` | `api/<f>.api.ts` |
-| query e mutation key | key factory `<f>Keys` | `api/<f>.queries.ts` |
-| mapping (stato → variante, colonna → etichetta) | `Record<Tipo, …>` tipizzato | componente o `model/` della feature |
-| valori trasversali (valuta, varianti dei pulsanti, tipi di grafico, flag di env, header) | costante esportata | modulo `shared/*` che li possiede |
+| chiavi di validazione, modalità, mapping | mappe `as const` / `Record<Tipo, …>` | `model/`, componenti |
+| valori trasversali (azioni, registro soggetti, endpoint auth, namespace comune, lingue, valuta, varianti dei pulsanti, tipi di grafico, flag di env, header, cookie) | costante esportata | moduli di `shared/*`, che la importano e se serve la ri-esportano |
+
+Le query e mutation key restano nella key factory `<f>Keys` (`api/<f>.queries.ts`), costruite a partire da
+`<F>_FEATURE`. Tipi derivati (`OrderStatus = (typeof ORDER_STATUS)[keyof typeof ORDER_STATUS]`) stanno accanto alla
+costante o nel modulo che li usa. `constants.ts` della feature è una foglia: importa al più
+`shared/config/constants.ts`.
 
 Regole operative:
+- Una costante nuova si scrive **solo** in `constants.ts`: altrove l'hook in scrittura la rifiuta e indica il file
+  giusto (`constants-location`).
 - Prima di scrivere un letterale di dominio, cerca se esiste già (`grep` sul valore): se esiste, importa la costante.
   L'hook in scrittura rifiuta un letterale (o una nuova costante) uguale a una costante esportata che il file può
   importare (di `shared`, della stessa feature, o di una feature se scrivi in pagine/app) e indica quale; lo stop
@@ -218,5 +231,5 @@ Regole operative:
 - [ ] Ogni azione CRUD condizionata da `can()`; payload con i soli campi scrivibili; nessun controllo su nomi di ruolo; 403 gestito.
 - [ ] Ogni testo visibile tradotto, in tutte le lingue; formattazioni con `Intl`.
 - [ ] Stati loading/error/empty con `QueryState`, liste con `LoadMore`, eliminazioni con `ConfirmDeleteDialog`; error boundary; accessibilità.
-- [ ] Valori di dominio (azioni, soggetti, campi, namespace, stati, filtri, colonne, rotte, endpoint) definiti una volta e referenziati: `arch_check` riporta il riuso costanti sotto il 10%.
+- [ ] Valori di dominio (azioni, soggetti, campi, namespace, stati, filtri, colonne, rotte, endpoint) definiti una volta, solo in `constants.ts` (feature o `shared/config`), e referenziati: nessuna `[constants-location]`, riuso costanti sotto il 10%.
 - [ ] Test RBAC, errori e query presenti e verdi; `stop_gate.commands` verdi.

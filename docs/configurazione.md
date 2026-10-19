@@ -35,6 +35,7 @@ In un monorepo ogni progetto ha la sua `.kyfes/config.json`: gli hook usano quel
 | `stop_gate.max_blocks` | `3` | blocchi di fila nella stessa catena di stop, poi chiusura consentita con avviso "NON è conforme" |
 | `stop_gate.commands` | `[]` (l'installer scrive lint, typecheck, test) | comandi eseguiti nella radice del progetto |
 | `duplicates.min_lines` | `8` | righe significative uguali che contano come duplicato |
+| `constants_files` | `<features>/*/constants.ts`, `<shared>/config/constants.ts` | glob dei soli file in cui si possono definire costanti di dominio (vedi [controlli](controlli.md#costanti-esplicite-in-constantsts)) |
 | `constant_reuse.max_duplicate_ratio` | `0.10` | quota massima di valori letterali di dominio duplicati (vedi [controlli](controlli.md#riuso-delle-costanti)) |
 | `constant_reuse.min_values` | `20` | sotto questo numero di valori distinti la metrica non si applica |
 | `constant_reuse.ignore_values` | `[]` | valori esclusi dal conteggio (da usare per veri falsi positivi, non per rientrare nella soglia) |

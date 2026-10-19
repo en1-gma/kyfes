@@ -22,7 +22,7 @@ Il piano DEVE seguire il "Formato obbligatorio del piano" (sez. 9 della skill):
 - chiavi i18n nuove in tutte le lingue configurate;
 - analisi di sicurezza: input renderizzati, URL esterni, redirect, upload, dati sensibili;
 - test: unità, RBAC (stessa vista con ability diverse), errori 401/403/5xx, e2e con axe;
-- costanti: tabella `valore → costante → modulo proprietario → nuova/riusata` per ogni valore di dominio (sez. 9.1 della skill): nessun letterale ripetuto nel codice previsto, i valori esistenti si riusano.
+- costanti: tabella `valore → costante → file constants.ts (della feature o `shared/config`) → nuova/riusata` per ogni valore di dominio (sez. 9.1 della skill): nessun letterale ripetuto nel codice previsto, i valori esistenti si riusano.
 
 Se la richiesta viola una regola (token nel browser, controlli sui nomi dei ruoli, HTML grezzo, chiamate HTTP nei componenti, import tra feature), dichiaralo in "Violazioni e alternative" e pianifica l'alternativa conforme.
 

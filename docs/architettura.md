@@ -6,13 +6,14 @@
 flowchart TD
     app["app — provider, router, layout, error boundary"] --> pages
     pages["pages — una per rotta, compone le feature"] --> features
-    features["features/&lt;f&gt; — api · components · model · locales · permissions · index"] --> shared
+    features["features/&lt;f&gt; — api · components · model · locales · constants · permissions · index"] --> shared
     shared["shared — api · auth · rbac · i18n · charts · ui · lib · config"]
 ```
 
 - `shared` non conosce le feature. Le feature non conoscono le pagine. Le pagine non contengono logica di dati.
 - Una feature si usa solo tramite il suo `index.ts`. Gli import nei file interni di un'altra feature sono rifiutati: se due feature condividono qualcosa, quel qualcosa scende in `shared`.
 - In `shared` esistono solo otto sottocartelle. Aggiungerne una è una decisione architetturale, da proporre all'utente.
+- Le costanti di dominio hanno due sole sedi: `features/<f>/constants.ts` (valori della feature) e `shared/config/constants.ts` (valori trasversali). Ogni altro modulo le importa; una costante definita altrove è rifiutata (`constants-location`, vedi [controlli](controlli.md#costanti-esplicite-in-constantsts)).
 
 ## Perché questa forma
 

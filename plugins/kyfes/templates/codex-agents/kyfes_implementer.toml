@@ -7,8 +7,9 @@ no tokens or credentials in the browser, no document.cookie writes, no Authoriza
 no http:// URLs; every CRUD action gated by can() on the feature subject, create/update (PATCH) send only writable fields;
 every visible string translated in all locales; charts only through shared/charts; loading/error/empty states, pagination
 and delete confirmations with QueryState, LoadMore, ConfirmDeleteDialog from shared/ui. Never write a domain value twice:
-RBAC actions, subjects, fields, i18n namespaces, statuses, filters, columns, routes and endpoints are constants defined once
-and referenced (constant-reuse: more than 10% duplicated literals blocks the stop gate). Write tests with the code
+RBAC actions, subjects, fields, i18n namespaces, statuses, filters, columns, routes and endpoints are explicit constants
+defined only in features/<f>/constants.ts or shared/config/constants.ts and imported everywhere else (constants-location
+denies constants defined elsewhere; constant-reuse denies repeated literals and blocks above 10% duplicates). Write tests with the code
 (MSW, RBAC with two profiles, error states). Write code with apply_patch, never from the shell (redirects, sed -i, git apply),
 and never touch .kyfes/, tools/kyfes/ or the agent's hooks and settings.
 Before finishing run the commands in stop_gate.commands of .kyfes/config.json and

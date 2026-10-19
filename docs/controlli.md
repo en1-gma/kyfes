@@ -43,6 +43,7 @@ Senza `.kyfes/config.json` ogni hook non fa nulla: il plugin si può tenere inst
 | `role-string-check` | block | `role === '…'` (anche invertito, `'admin' === role`), `roles.includes('…')`, `['admin'].includes(role)`, `switch (role)`, `role.startsWith(…)`, `isAdmin`, `hasRole()` | `can(azione, soggetto)` |
 | `folder-layout` | block | sottocartelle non previste in `shared` o nelle feature, nomi non kebab-case, feature senza `index.ts` | struttura canonica |
 | `duplicates` | block | blocchi di 8+ righe uguali | estrai in `api/`, `shared/lib`, `shared/ui` |
+| `constants-location` | block | costante di dominio definita fuori da `features/<f>/constants.ts` o `shared/config/constants.ts` (vedi [sotto](#costanti-esplicite-in-constantsts)) | sposta la definizione nel file indicato e importala |
 | `constant-reuse` | block | più del 10% dei valori letterali di dominio scritto più di una volta (vedi [sotto](#riuso-delle-costanti)) | costante, enum o mappa nel modulo che possiede il valore, poi referenziata |
 | `hardcoded-text` | warn | testo visibile non tradotto | chiave i18n |
 | `console` | warn | `console.log/debug/trace` | rimuovi o usa un logger |
@@ -69,6 +70,23 @@ Prima che l'agente (o un sottoagente) chiuda il lavoro, `stop_gate.py` esegue `a
 - Blocca fino a `max_blocks` volte di fila nella stessa catena di stop, anche mentre l'agente sta continuando per un blocco precedente (`stop_hook_active`); poi lascia chiudere con un avviso esplicito ("il lavoro NON è conforme"), per non bloccare la sessione all'infinito. Una catena nuova riparte da zero.
 - Con `only_if_changes` (default) non fa nulla solo se non c'è niente da controllare: `git status` pulito **e** `HEAD` uguale alla baseline registrata a inizio sessione. Senza baseline contano i commit non presenti su nessun remote. Committare quindi non spegne il gate. Fuori da un repository git controlla sempre.
 - Lanciato da una cartella che non è un progetto kyfes (radice di un monorepo), controlla i progetti kyfes sotto il cwd e riporta gli errori di ciascuno.
+
+## Costanti esplicite in `constants.ts`
+
+Ogni costante di dominio ha due sole sedi: `features/<f>/constants.ts` per i valori di una feature e
+`shared/config/constants.ts` per quelli trasversali (le cartelle seguono il preset: `src/app/...` in Angular,
+`src/lib/...` in SvelteKit; si possono cambiare con `constants_files`). La regola `constants-location` considera
+costante di dominio:
+
+- ogni `export const X = …` il cui valore è una stringa letterale, un oggetto con valori stringa (`{ draft: 'draft' }`)
+  o un array di sole stringhe (`['it', 'en']`), e ogni `export enum`;
+- ogni `const NOME_MAIUSCOLO = …` di primo livello con gli stessi valori, anche non esportata (una costante locale non
+  aggira la regola).
+
+Non sono costanti di dominio: valori non stringa (`MAX_ITEMS = 50`), riferimenti ad altre costanti
+(`ORDERS_NS = ORDERS_FEATURE`), array di oggetti o di chiamate (configurazione di rotte), variabili in minuscolo. Test,
+mock, `.d.ts` e codice server sono esenti. In scrittura conta solo ciò che la modifica introduce; `arch_check` (stop
+gate e CI) controlla tutto il progetto. Il messaggio indica il file in cui spostare la costante.
 
 ## Riuso delle costanti
 
@@ -108,9 +126,10 @@ quando la soglia è rispettata; con `--json` la trovi in `metrics.constant_reuse
 segnala all'agente i valori del file appena scritto che esistono già altrove, con le posizioni, prima che lo stop gate
 blocchi.
 
-Dove vivono le costanti: azioni in `shared/rbac`, soggetto e campi nel `permissions.ts` della feature, namespace in
-`shared/i18n` (`COMMON_NS`) e nella feature, stati/ordinamenti/filtri/colonne nel suo `model/`, percorsi UI in
-`routes.ts`, endpoint nel suo `api/`, query key nella key factory. Le mappe (stato → variante, colonna → etichetta)
+Dove vivono le costanti: tutte in `features/<f>/constants.ts` (nome della feature, namespace, soggetto, campi,
+stati, ordinamenti, filtri, colonne, segmenti di rotta, endpoint) o in `shared/config/constants.ts` (azioni RBAC,
+registro dei soggetti, endpoint auth, namespace comune, valuta, varianti, tipi di grafico, flag); le query key nella
+key factory, costruite dal nome della feature. Le mappe (stato → variante, colonna → etichetta)
 sono `Record<…>` tipizzati, non `switch` con letterali ripetuti.
 
 ## Da terminale

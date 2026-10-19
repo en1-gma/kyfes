@@ -36,7 +36,8 @@ src/features/orders/
   api/            orders.api.ts · orders.queries.ts · orders.mutations.ts
   components/     OrdersTable · OrderForm · OrderDetail · OrdersChart · OrderStatusBadge
   model/          orders.schema.ts        stores/ orders-ui.store.ts (Zustand, filtri)
-  locales/        it.json · en.json       permissions.ts · routes.ts (orderPaths) · index.ts
+  locales/        it.json · en.json
+                  constants.ts (tutte le costanti della feature, foglia) · permissions.ts · routes.ts (orderPaths) · index.ts
 src/shared/
   api/            http.ts · api-error.ts · query-client.ts · pagination.ts · index.ts
   auth/           session.schema.ts · session.ts · RequireAuth.tsx
@@ -46,7 +47,7 @@ src/shared/
   ui/             Button · Spinner · ErrorState · EmptyState · ForbiddenState · ConfirmDialog (<dialog>)
                   QueryState · LoadMore · ConfirmDeleteDialog (usati da OrdersTable, OrdersChart, OrderDetail)
   lib/            sanitize.ts · safe-redirect.ts · safe-url.ts (+ test)
-  config/         env.ts (unico lettore di import.meta.env)
+  config/         constants.ts (tutte le costanti trasversali, foglia) · env.ts (unico lettore di import.meta.env) · index.ts
 src/mocks/        data.ts · handlers.ts · browser.ts · node.ts      src/test/ setup.ts · render.tsx
 e2e/orders.spec.ts · playwright.config.ts · deploy/security-headers.conf · vite.config.ts
 ```
@@ -90,8 +91,11 @@ logout(qc)        // POST /auth/logout → qc.clear() → redirect
 ## RBAC (`shared/rbac`)
 
 ```ts
+// shared/config/constants.ts (ACTIONS e Actions ri-esportati da shared/rbac)
 export const ACTIONS = { create: 'create', read: 'read', update: 'update', delete: 'delete', manage: 'manage' } as const;
 export type Actions = (typeof ACTIONS)[keyof typeof ACTIONS];
+export const SUBJECT = { Order: 'Order' } as const;  // registro dei nomi dei soggetti
+// shared/rbac/ability.ts
 export interface SubjectRegistry {}               // registro aumentato dalle feature
 export type Subjects = 'all' | { [K in keyof SubjectRegistry]: K | (SubjectRegistry[K] & ForcedSubject<K>) }[keyof SubjectRegistry];
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
@@ -100,12 +104,15 @@ export const buildAbility = (rules) => createMongoAbility<AppAbility>(rules);
 
 - Registrazione del soggetto **senza** che `shared` importi da `features` (module augmentation in `features/orders/permissions.ts`):
   ```ts
-  export const ORDER_SUBJECT = 'Order' as const;
+  // features/orders/constants.ts
+  export const ORDER_SUBJECT = SUBJECT.Order;
+  export const ORDER_FIELDS = { customerName: 'customerName', status: 'status', total: 'total' } as const;
+  // features/orders/permissions.ts
   declare module '@/shared/rbac/ability' { interface SubjectRegistry { Order: Order } }
   export function orderSubject(order: Order) {
     return subject(ORDER_SUBJECT, { ...order });  // copia: la cache resta intatta
   }
-  export const ORDER_FIELDS = { customerName: 'customerName', status: 'status', total: 'total' } as const satisfies Record<string, keyof Order>;
+  export const ORDER_EDITABLE_FIELDS = [ORDER_FIELDS.customerName, ORDER_FIELDS.status, ORDER_FIELDS.total] as const satisfies readonly (keyof Order)[];
   ```
 - `AbilityProvider` (in `app/providers.tsx`) costruisce l'Ability con `useMemo` sulle `rules` della sessione: quando `/auth/me` viene rifatta cambia l'istanza e tutto si ri-renderizza. Prop `ability` per i test.
 - `Can` è il `Can` di `@casl/react` tipizzato su `AppAbility` (`CanProps<AppAbility>`), legge il contesto: `<Can I={ACTIONS.create} a={ORDER_SUBJECT}>`, `<Can I={ACTIONS.update} this={orderSubject(order)}>`. `useCan()` restituisce `ability.can` legato: `can(ACTIONS.update, orderSubject(order), ORDER_FIELDS.status)`.
@@ -131,7 +138,7 @@ infiniteQueryOptions({
 });
 ```
 
-- `orders.api.ts`: ogni endpoint fa `Schema.parse(data)`; `http.get<unknown>` (mai `any`).
+- `orders.api.ts` (`ORDERS_ENDPOINT`, `ORDERS_STATS_ENDPOINT` da `constants.ts`): ogni endpoint fa `Schema.parse(data)`; `http.get<unknown>` (mai `any`).
 - `create(input: Partial<OrderInput>)` (POST) e `update` (PATCH) ricevono solo i campi scrivibili: `OrderForm` filtra `ORDER_EDITABLE_FIELDS` con `can(ACTIONS.create, ORDER_SUBJECT, field)` o `can(ACTIONS.update, orderSubject(order), field)`; i default dei campi omessi (es. `status`) li applica il server.
 - Mutation: create/update → `setQueryData(detail)` + invalidazione di `lists()` e `stats()`. Delete ottimistico con `mutationKey: DELETE_ORDER_KEY` condivisa: `onMutate` (`cancelQueries`, `getQueriesData`, `setQueriesData` che filtra le pagine); `onError` ripristina lo snapshot solo se `isMutating({ mutationKey }) <= 1` (ultima delete in volo), altrimenti `invalidateQueries(lists, refetchType: 'none')`; `onSuccess` rimuove il dettaglio dalla cache; `onSettled` invalida liste e `stats()` solo dall'ultima delete in volo.
 - Zustand (`stores/orders-ui.store.ts`) tiene solo filtri/ordinamento, che entrano nella chiave della query.
@@ -143,7 +150,7 @@ infiniteQueryOptions({
 - Nei componenti: `const { t } = useTranslation(ORDERS_NS)`; chiavi comuni con prefisso `t('common:actions.save')` (il fallback `common` non basta se la chiave esiste anche nel namespace della feature). Plurali i18next (`count_one`/`count_other`, `Intl.PluralRules`).
 - Lingua: browser → `VITE_DEFAULT_LOCALE`, poi `changeLocale(session.locale)`; `<html lang>` aggiornato sull'evento `languageChanged`.
 - Formatter: `formatDate`, `formatNumber`, `formatCurrency(value)` (valuta `DEFAULT_CURRENCY`), `formatMonth('2026-03')`.
-- Messaggi Zod = chiavi i18n (`{ error: VALIDATION_KEYS.required }`, valore `'validation.required'`), tradotte nel form con `t(\`common:${message}\`)`.
+- Messaggi Zod = chiavi i18n (`{ error: VALIDATION_KEYS.required }`, valore `'validation.required'`), tradotte nel form con `t(\`common:${message}\`)`. `COMMON_NS`, `DEFAULT_CURRENCY`, `VALIDATION_KEYS`, `FALLBACK_LOCALE` e `SUPPORTED_LOCALES` stanno in `shared/config/constants.ts`; `shared/i18n` ri-esporta i primi tre.
 - Test di parità: `shared/i18n/locales.test.ts` confronta le chiavi di ogni namespace in tutte le lingue, ignorando i suffissi plurali (`_zero|_one|_two|_few|_many|_other`).
 
 ## Grafici (`shared/charts`)
@@ -170,28 +177,37 @@ infiniteQueryOptions({
 - Coperti anche: refresh 401 (richiesta lenta partita prima del refresh, `onUnauthorized` una volta, cancellazioni), `shouldRetry` su `ZodError`/`TypeError`, delete concorrenti con errore, `safeRedirect` su percorsi normalizzati.
 - e2e: `playwright.config.ts` avvia `npm run dev` con `VITE_API_MOCKS=true`; `AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'])`.
 
-## Costanti e riuso (`constant-reuse`)
+## Costanti (`constants.ts`) e riuso
 
-Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold:
+Ogni costante di dominio è scritta una volta, solo in uno dei due `constants.ts` (regola `constants-location`, schema generale in `SKILL.md` sez. 9.1); gli altri moduli importano e compongono. Entrambi i file sono foglie: `shared/config/constants.ts` non importa nulla, `features/orders/constants.ts` importa solo `SUBJECT` da `@/shared/config/constants`.
 
-| Valore | Costante | File |
+| Costante | File | Ri-esportata da (compatibilità) |
 |---|---|---|
-| azioni CASL | `ACTIONS` (`ACTIONS.update`, mai `'update'`) | `shared/rbac/ability.ts` |
-| registro soggetti | `interface SubjectRegistry` (module augmentation dalla feature) | `shared/rbac/ability.ts` |
-| soggetto e campi | `ORDER_SUBJECT`, `ORDER_FIELDS`, `ORDER_EDITABLE_FIELDS`, `orderSubject()` | `features/orders/permissions.ts` |
-| nome feature e namespace | `ORDERS_FEATURE = 'orders'`, `ORDERS_NS = ORDERS_FEATURE`; comune `COMMON_NS` | `model/orders.feature.ts`; `shared/i18n/i18n.ts` |
-| stati, ordinamenti, default | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` | `model/orders.schema.ts` |
-| modalità del dettaglio | `ORDER_DETAIL_MODE` | `components/order-detail-mode.ts` |
-| percorsi UI | `orderRoutes` (relativi, per il router) e `orderPaths` (assoluti, per i link), derivati da `ORDERS_FEATURE` | `features/orders/routes.ts` |
-| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME` | `api/orders.api.ts`; `shared/api/http.ts` |
-| query/mutation key | `orderKeys` (radice `[ORDERS_FEATURE]`, `remove()` per `DELETE_ORDER_KEY`) | `api/orders.queries.ts` |
-| trasversali | `BUTTON_VARIANT` (`shared/ui/button-variant.ts`), `CHART_VARIANT`/`CHART_DATUM_KEY` (`shared/charts/types.ts`), `DEFAULT_CURRENCY` (`shared/i18n/formatters.ts`), `VALIDATION_KEYS` (`shared/i18n/validation.ts`), `SUPPORTED_LOCALES` (`shared/config/env.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`) | `shared/*` |
+| `ORDERS_FEATURE`, `ORDERS_NS` | `features/orders/constants.ts` | `index.ts` (solo `ORDERS_NS`) |
+| `ORDER_SUBJECT` (= `SUBJECT.Order`), `ORDER_FIELDS` | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_STATUS`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` (+ tipi `OrderStatus`, `OrderSort`) | `features/orders/constants.ts` | `index.ts`; i tipi anche da `model/orders.schema.ts` |
+| `ORDERS_ENDPOINT`, `ORDERS_STATS_ENDPOINT` | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_ID_PARAM`, `ORDER_ROUTE_SEGMENT` | `features/orders/constants.ts` | (interni: li compone `routes.ts`) |
+| `ORDER_DETAIL_MODE` (+ `OrderDetailMode`) | `features/orders/constants.ts` | `index.ts` |
+| `ACTIONS` (+ `Actions`), `SUBJECT` | `shared/config/constants.ts` | `shared/rbac` (`ACTIONS`, `Actions`) |
+| `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`, `XSRF_HEADER_NAME`, `CORRELATION_HEADER` | `shared/config/constants.ts` | `shared/api` (i primi tre) |
+| `FLAG_ON`, `FLAG_OFF` | `shared/config/constants.ts` | (usati da `shared/config/env.ts`) |
+| `FALLBACK_LOCALE`, `SUPPORTED_LOCALES` | `shared/config/constants.ts` | `shared/config` (`SUPPORTED_LOCALES`) |
+| `COMMON_NS`, `VALIDATION_KEYS`, `DEFAULT_CURRENCY` | `shared/config/constants.ts` | `shared/i18n` |
+| `BUTTON_VARIANT` (+ `ButtonVariant`), `OPEN_ATTR` | `shared/config/constants.ts` | `shared/ui` (`BUTTON_VARIANT`, `ButtonVariant`) |
+| `CHART_DATUM_KEY`, `CHART_VARIANT`, `CHART_COLORS` | `shared/config/constants.ts` | (tipi derivati in `shared/charts/types.ts`) |
+| `STYLE`, `TARGET_ATTR` (DOMPurify) | `shared/config/constants.ts` | (usati da `shared/lib/sanitize.ts`) |
 
-Uso tipico: `<Can I={ACTIONS.update} this={orderSubject(order)}>`, `<RequirePermission action={ACTIONS.read} subject={ORDER_SUBJECT} />` in `app/router.tsx` con `path: orderRoutes.section`, `<NavLink to={orderPaths.list}>`, `useTranslation(ORDERS_NS)`, `can(ACTIONS.update, orderSubject(order), field)` su `ORDER_EDITABLE_FIELDS`. App e pagine importano tutto dal barrel `features/orders/index.ts`; i mock (`mocks/data.ts`) costruiscono le regole con `ACTIONS.*` e `ORDER_SUBJECT`. Il flag di env `'true'` è la costante privata `FLAG_ON` di `shared/config/env.ts`.
+Restano fuori da `constants.ts` i valori composti o derivati dalle costanti e i numeri (la regola guarda le stringhe letterali): `orderRoutes`/`orderPaths` (`routes.ts`, da `ORDERS_FEATURE`, `ORDER_ROUTE_SEGMENT`, `ORDER_ID_PARAM`), `orderKeys` (`api/orders.queries.ts`, radice `[ORDERS_FEATURE]`; `DELETE_ORDER_KEY = orderKeys.remove()` privata in `orders.mutations.ts`), `ORDER_EDITABLE_FIELDS` e `orderSubject()` (`permissions.ts`, da `ORDER_FIELDS`), `ORDER_STATUSES` (`model/orders.schema.ts`, `OrderStatusSchema.options`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`), l'interfaccia `SubjectRegistry` (`shared/rbac/ability.ts`, aumentata dalla feature).
 
-Nuova feature (`customers`): `model/customers.feature.ts` con `CUSTOMERS_FEATURE` e `CUSTOMERS_NS`; `permissions.ts` con `CUSTOMER_SUBJECT = 'Customer' as const`, augmentation di `SubjectRegistry` e `CUSTOMER_FIELDS`; stati/ordinamenti in `model/customers.schema.ts`; `routes.ts` con `customerRoutes`/`customerPaths` derivati da `CUSTOMERS_FEATURE`; `CUSTOMERS_ENDPOINT` in `api/customers.api.ts`; `customerKeys` con radice `[CUSTOMERS_FEATURE]`; tutto riesportato da `index.ts`.
+Uso tipico: `<Can I={ACTIONS.update} this={orderSubject(order)}>`, `<RequirePermission action={ACTIONS.read} subject={ORDER_SUBJECT} />` in `app/router.tsx` con `path: orderRoutes.section`, `<NavLink to={orderPaths.list}>`, `useTranslation(ORDERS_NS)`, `can(ACTIONS.update, orderSubject(order), field)` su `ORDER_EDITABLE_FIELDS`. App e pagine importano dal barrel `features/orders/index.ts`; dentro la feature i moduli importano da `../constants`, in `shared/*` da `@/shared/config/constants`. I mock (`mocks/data.ts`, `mocks/handlers.ts`) costruiscono le regole con `ACTIONS.*` e le costanti della feature.
 
-Eccezioni note: `'short'` compare due volte come opzione `Intl` (`timeStyle` in `OrderDetail.tsx`, `month` in `shared/i18n/formatters.ts`), valore di libreria e non di dominio. Metrica attuale dello scaffold (`arch_check.py`): **1 valore duplicato su 100 (1,0%)**, soglia 10%.
+Nuova feature (`customers`):
+1. `shared/config/constants.ts`: aggiungi `Customer: 'Customer'` a `SUBJECT` (unica modifica a shared).
+2. `features/customers/constants.ts`, foglia (importa al più `@/shared/config/constants`): `CUSTOMERS_FEATURE = 'customers'`, `CUSTOMERS_NS = CUSTOMERS_FEATURE`, `CUSTOMER_SUBJECT = SUBJECT.Customer`, `CUSTOMER_FIELDS`, stati/ordinamenti/default (`CUSTOMER_STATUS`, `CUSTOMER_SORT`, `DEFAULT_CUSTOMER_SORT` + tipi derivati), `CUSTOMERS_ENDPOINT = \`/${CUSTOMERS_FEATURE}\``, `CUSTOMER_ID_PARAM`, `CUSTOMER_ROUTE_SEGMENT`.
+3. Gli altri file importano da `../constants` (o `./constants`): `permissions.ts` (augmentation di `SubjectRegistry`, `customerSubject()`, `CUSTOMER_EDITABLE_FIELDS`), `model/customers.schema.ts` (`z.enum` sugli stati), `routes.ts` (`customerRoutes`/`customerPaths`), `api/customers.api.ts`, `customerKeys` con radice `[CUSTOMERS_FEATURE]`; `index.ts` ri-esporta quello che usano app e pagine.
+
+Eccezioni note: `'short'` compare due volte come opzione `Intl` (`timeStyle` in `OrderDetail.tsx`, `month` in `shared/i18n/formatters.ts`), valore di libreria e non di dominio. Metrica attuale dello scaffold (`python3 -B scripts/arch_check.py`): **nessuna violazione, 1 valore duplicato su 100 (1,0%)**, soglia 10%.
 
 ## Trappole
 

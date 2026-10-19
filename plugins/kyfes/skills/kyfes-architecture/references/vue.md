@@ -29,10 +29,11 @@ src/app/          main.ts (bootstrap, MSW in dev, configureHttp), providers.ts (
                   registrazione namespace, createUnauthorizedHandler), App.vue (lingua iniziale, errore della navigazione
                   con Riprova), router/index.ts (guard), router/navigation-state.ts, router/routes.ts, styles.css
 src/pages/        MainLayout.vue (nav + lingua + logout + ErrorBoundary), OrdersPage, OrderDetailPage, OrderEditPage,
-                  NewOrderPage, ForbiddenPage, NotFoundPage, route-names.ts (nomi rotta usati da pages e app)
-src/features/orders/  api/orders.{api,queries,mutations}.ts, components/{OrdersTable,OrderForm,OrderDetail,OrdersChart}.vue,
+                  NewOrderPage, ForbiddenPage, NotFoundPage
+src/features/orders/  constants.ts (tutte le costanti della feature, foglia; anche nomi e path delle rotte),
+                  api/orders.{api,queries,mutations}.ts, components/{OrdersTable,OrderForm,OrderDetail,OrdersChart}.vue,
                   model/orders.schema.ts, locales/{it,en}.json, stores/orders-ui.store.ts (Pinia, solo UI), permissions.ts, index.ts
-src/shared/       api/ auth/ rbac/ i18n/ charts/ ui/ lib/ config/env.ts
+src/shared/       api/ auth/ rbac/ i18n/ charts/ ui/ lib/ config/{constants.ts (costanti trasversali, foglia), env.ts}
 src/shared/ui/    AppButton, LoadingState/EmptyState/ErrorState, ErrorBoundary, ConfirmDialog, QueryState, LoadMore, ConfirmDeleteDialog,
                   ForbiddenState (.vue, barrel index.ts)
 src/mocks/        data.ts, handlers.ts, browser.ts (worker), node.ts (server), vitest.setup.ts
@@ -79,10 +80,13 @@ createAuthGuard(queryClient)   // router.beforeEach: rotte senza meta.public ric
 ## RBAC (`shared/rbac`)
 
 ```ts
+// shared/config/constants.ts (tutto ri-esportato da shared/rbac/ability.ts e da @/shared/rbac)
 export const ACTION = { create: 'create', read: 'read', update: 'update', delete: 'delete', manage: 'manage' } as const
 export type Actions = (typeof ACTION)[keyof typeof ACTION]
+export const ACTIONS: readonly Actions[] = Object.values(ACTION)
 export const SUBJECT = { Order: 'Order' } as const     // registro: una voce per feature
 export const SUBJECTS: readonly SubjectName[] = Object.values(SUBJECT)
+// shared/rbac/ability.ts
 export type Subjects = SubjectName | ForcedSubject<SubjectName> | 'all'
 export type AppAbility = MongoAbility<[Actions, Subjects]>
 buildAbility(rules)                                    // createMongoAbility<AppAbility>(rules)
@@ -91,13 +95,13 @@ createRbacPlugin(queryClient)                          // app.use(...): abilitie
 
 - La sincronizzazione usa `queryClient.getQueryCache().subscribe(...)` sul `queryHash` della sessione: fetch, invalidazione e `clear()` (logout) aggiornano la stessa istanza con `ability.update(rules)`; `@casl/vue` la rende reattiva.
 - Nei componenti: `const ability = useAbility()` → `ability.can(ACTION.update, orderSubject(order), ORDER_FIELD.status)`; nel template `v-if="ability.can(ACTION.create, ORDER_SUBJECT)"`. Disponibile anche `<Can :I="ACTION.create" :a="ORDER_SUBJECT">` (tipi del componente generici).
-- Feature: `permissions.ts` → `ORDER_SUBJECT = SUBJECT.Order`, `orderSubject(order) = subject(ORDER_SUBJECT, { ...order })` (copia: CASL marca l'oggetto, i dati in cache restano intatti), `ORDER_FIELD = { customerName: 'customerName', status: 'status', total: 'total' } as const` e `ORDER_FIELDS = Object.values(ORDER_FIELD)`.
-- La rotta `ROUTES.orderEdit` controlla solo il tipo (`{ action: ACTION.update, subject: ORDER_SUBJECT }`); `OrderEditPage.vue` controlla il record caricato (`ability.can(ACTION.update, orderSubject(order))`, es. condizioni sullo stato) e altrimenti mostra `ForbiddenState`.
-- **Guard `meta.permission`** (`createPermissionGuard`): legge `to.matched[].meta.permission = { action, subject }`, costruisce l'ability dalla sessione e, se negato, restituisce `{ name: FORBIDDEN_ROUTE, params: { pathMatch: to.path.slice(1).split('/') }, query, hash, replace: true }`: si vede la pagina 403 **con l'URL richiesto** (nessun redirect silenzioso). In `routes.ts` le rotte `not-found` e `forbidden` hanno lo stesso pattern `:pathMatch(.*)*`: l'URL risolve sempre la prima (404), la seconda si raggiunge solo per nome.
+- Feature: `constants.ts` → `ORDER_SUBJECT = SUBJECT.Order`, `ORDER_FIELD = { customerName: 'customerName', status: 'status', total: 'total' } as const` e `ORDER_FIELDS = Object.values(ORDER_FIELD)`; `permissions.ts` → `orderSubject(order) = subject(ORDER_SUBJECT, { ...order })` (copia: CASL marca l'oggetto, i dati in cache restano intatti).
+- La rotta `ORDER_ROUTE.edit` controlla solo il tipo (`{ action: ACTION.update, subject: ORDER_SUBJECT }`); `OrderEditPage.vue` controlla il record caricato (`ability.can(ACTION.update, orderSubject(order))`, es. condizioni sullo stato) e altrimenti mostra `ForbiddenState`.
+- **Guard `meta.permission`** (`createPermissionGuard`): legge `to.matched[].meta.permission = { action, subject }`, costruisce l'ability dalla sessione e, se negato, restituisce `{ name: FORBIDDEN_ROUTE, params: { pathMatch: to.path.slice(1).split('/') }, query, hash, replace: true }`: si vede la pagina 403 **con l'URL richiesto** (nessun redirect silenzioso). In `app/router/routes.ts` le rotte `ROUTE_NAME.notFound` e `FORBIDDEN_ROUTE` (= `ROUTE_NAME.forbidden`) hanno lo stesso pattern `CATCH_ALL_PATH` (`:pathMatch(.*)*`): l'URL risolve sempre la prima (404), la seconda si raggiunge solo per nome.
 
 ```ts
 const ordersMeta = { namespaces: [ORDERS_NAMESPACE], titleKey: 'orders.title' }
-{ path: 'orders/new', name: ROUTES.orderNew, component: () => import('@/pages/NewOrderPage.vue'),
+{ path: ORDER_ROUTE_PATH.create, name: ORDER_ROUTE.create, component: () => import('@/pages/NewOrderPage.vue'),
   meta: { ...ordersMeta, permission: { action: ACTION.create, subject: ORDER_SUBJECT } } }
 ```
 
@@ -124,17 +128,17 @@ const { defineField, handleSubmit, errors, setErrors } = useForm({
 const [customerName, customerNameAttrs] = defineField('customerName')
 ```
 
-I messaggi degli schemi sono chiavi i18n (`z.string().min(1, { error: 'common.validation.required' })`); il template mostra `message(errors.x)` = `te(x) ? t(x) : x` (i messaggi del server sono già testo). Gli `ApiError.fieldErrors` sui campi del form vanno in `setErrors`; chiavi che non sono campi del form → errore generico.
+I messaggi degli schemi sono chiavi i18n (`z.string().min(1, { error: VALIDATION_MESSAGE.required })`, valore `'common.validation.required'`); il template mostra `message(errors.x)` = `te(x) ? t(x) : x` (i messaggi del server sono già testo). Gli `ApiError.fieldErrors` sui campi del form vanno in `setErrors`; chiavi che non sono campi del form → errore generico.
 
 Permessi per campo: `writable` = i campi di `ORDER_FIELDS` per cui `ability.can(ACTION.create, ORDER_SUBJECT, f)` (o `ability.can(ACTION.update, orderSubject(order), f)`); i non scrivibili sono `readonly` (`status` `:disabled`) con un hint, e `writablePayload(values)` invia solo i campi scrivibili, sia in create sia in update (PATCH).
 
 ## i18n (`shared/i18n`)
 
-- `createI18n({ legacy: false, locale: env.DEFAULT_LOCALE, fallbackLocale: SUPPORTED_LOCALES[0], messages: { it: { [COMMON_NS]: commonIt }, en: { [COMMON_NS]: commonEn } } })`: `common` è nel bundle, le feature sono lazy.
+- `createI18n({ legacy: false, locale: env.DEFAULT_LOCALE, fallbackLocale: FALLBACK_LOCALE, messages: { it: { [COMMON_NS]: commonIt }, en: { [COMMON_NS]: commonEn } } })`: `common` è nel bundle, le feature sono lazy.
 - Namespace = chiave di primo livello: `t('orders.list.title')`, `t('common.actions.save')`. Plurali: `t('orders.list.count', n)` con `"nessun ordine | 1 ordine | {count} ordini"`. Mai concatenare: `common.app.pageTitle = "{page} · Gestionale"`.
 - La feature espone `ordersLocales = { it: () => import('./locales/it.json'), en: ... }`; `app/providers.ts` chiama `registerNamespace(ORDERS_NAMESPACE, ordersLocales)`; le rotte dichiarano `meta.namespaces` e `router.beforeResolve` chiama `loadNamespaces(...)` (`mergeLocaleMessage`). Così `shared` non importa mai da `features`.
 - `setLocale(l)` carica i namespace attivi, imposta `i18n.global.locale.value` e `document.documentElement.lang`. Lingua iniziale (App.vue, una volta): `resolveInitialLocale(session.locale)` → sessione → `navigator.language` → default.
-- Componenti: `const { t } = useT()`. Formatter: `formatDate`, `formatNumber`, `formatCurrency(value, 'EUR')`, `formatMonth('2026-03')` (leggono la lingua reattiva).
+- Componenti: `const { t } = useT()`. Formatter: `formatDate`, `formatNumber`, `formatCurrency(value)` (valuta di default `DEFAULT_CURRENCY`), `formatMonth('2026-03')` (leggono la lingua reattiva).
 - Nei messaggi vue-i18n `{`, `}`, `@`, `|` sono sintassi: per un letterale usare `{'@'}`.
 
 ## Grafici (`shared/charts`)
@@ -160,30 +164,39 @@ Permessi per campo: `writable` = i campi di `ORDER_FIELDS` per cui `ability.can(
 - Test presenti: `shared/lib/*` (sanitize, safe-redirect anche dopo normalizzazione, safe-url), `shared/api/http.test.ts` (withCredentials/XSRF, header solo same-origin, ApiError + correlationId, 401, refresh single-flight, richiesta partita prima del refresh ripetuta senza nuovo refresh, `onUnauthorized` una volta per 401 concorrenti, endpoint auth, cancellazioni, `shouldRetry`), `shared/auth/session.schema.test.ts`, `shared/rbac/ability.test.ts`, `shared/config/env.test.ts`, `shared/ui/ErrorState.test.ts` (403 → "non autorizzato"), `OrdersTable.test.ts` e `OrdersPage.test.ts` (manager vs viewer + stato di errore), `OrderForm.test.ts` (operator: solo campi scrivibili in create e update, errori di campo del server), `pages/OrderEditPage.test.ts` (operator: non autorizzato se non bozza), `orders.queries.test.ts` (lista a cursore, Zod, create invalida, delete ottimistico con rollback, delete concorrenti), `app/router/router.test.ts` (403 con URL invariato, login con returnTo, sessione invalidata ricaricata), `app/bootstrap.test.ts` (errore con Riprova alla prima navigazione), `shared/i18n/locales.test.ts` (parità chiavi di tutti i `locales/*.json` via `import.meta.glob`, suffissi plurali `_zero|_one|_two|_few|_many|_other` ignorati).
 - E2E: `playwright.config.ts` avvia `vite` con `VITE_API_MOCKS=true`; `e2e/orders.spec.ts` usa `new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa'])`.
 
-## Costanti e riuso (`constant-reuse`)
+## Costanti (`constants.ts`) e riuso
 
-Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold:
+Ogni costante di dominio è scritta una volta, solo in uno dei due `constants.ts` (regola `constants-location`, schema generale in `SKILL.md` sez. 9.1); gli altri moduli importano e compongono. Entrambi i file sono foglie: `shared/config/constants.ts` non importa nulla, `features/orders/constants.ts` importa solo `SUBJECT` da `@/shared/config/constants`.
 
-| Valore | Costante | File |
+| Costante | File | Ri-esportata da (compatibilità) |
 |---|---|---|
-| azioni CASL | `ACTION` (`ACTION.update`, mai `'update'`), `ACTIONS` | `shared/rbac/ability.ts` |
-| registro soggetti | `SUBJECT = { Order: 'Order' }`, `SUBJECTS` | `shared/rbac/ability.ts` |
-| soggetto e campi | `ORDER_SUBJECT = SUBJECT.Order`, `orderSubject()`, `ORDER_FIELD`/`ORDER_FIELDS` | `features/orders/permissions.ts` |
-| namespace i18n | `ORDERS_NAMESPACE` + `ordersLocales`; comune `COMMON_NS` | `features/orders/index.ts`; `shared/i18n/i18n.ts` |
-| stati, ordinamenti, default | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` | `model/orders.schema.ts` |
-| rotte | nomi `ROUTES` (`pages/route-names.ts`); path e `meta` (`namespaces`, `permission`) in `app/router/routes.ts`; `FORBIDDEN_ROUTE` | `shared/rbac/permission-guard.ts` |
-| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME`, `CORRELATION_HEADER` | `api/orders.api.ts`; `shared/api/http.ts` |
-| query/mutation key | `orderKeys` (`removals()` per le delete) | `api/orders.queries.ts` |
-| trasversali | `CHART_KIND`, `CHART_VALUE_FORMAT` (`shared/charts/types.ts`), `SUPPORTED_LOCALES` e flag privato `FLAG` (`shared/config/env.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`) | `shared/*` |
+| `ORDERS_FEATURE`, `ORDERS_NAMESPACE` (= `ORDERS_FEATURE`) | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_SUBJECT` (= `SUBJECT.Order`), `ORDER_FIELD`, `ORDER_FIELDS` (+ `OrderField`) | `features/orders/constants.ts` | `index.ts` (tranne `ORDER_FIELDS`) |
+| `ORDER_STATUS`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` (+ `OrderSort`) | `features/orders/constants.ts` | `index.ts` |
+| `ORDERS_ENDPOINT`, `ORDERS_STATS_ENDPOINT` | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_ROUTE` (nomi di rotta, `list` = `ORDERS_FEATURE`), `ORDER_ROUTE_PATH` (path figli del layout) | `features/orders/constants.ts` | `index.ts` (li usano `app/router/routes.ts` e le pagine) |
+| `ACTION`, `ACTIONS` (+ `Actions`), `SUBJECT`, `SUBJECTS` (+ `SubjectName`) | `shared/config/constants.ts` | `shared/rbac/ability.ts`, `@/shared/rbac` |
+| `DEFAULT_API_BASE_URL`, `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`, `XSRF_HEADER_NAME`, `CORRELATION_HEADER` | `shared/config/constants.ts` | `@/shared/api` (tranne `DEFAULT_API_BASE_URL`) |
+| `ENV_FLAG` | `shared/config/constants.ts` | (usato da `shared/config/env.ts`) |
+| `SUPPORTED_LOCALES` (+ `Locale`), `FALLBACK_LOCALE` | `shared/config/constants.ts` | `shared/config/env.ts`, `@/shared/i18n` (`SUPPORTED_LOCALES`, `Locale`) |
+| `COMMON_NS`, `DEFAULT_CURRENCY`, `VALIDATION_MESSAGE` | `shared/config/constants.ts` | `@/shared/i18n` (`COMMON_NS`, via `i18n.ts`) |
+| `ROUTE_NAME` (`notFound`, `forbidden`), `FORBIDDEN_ROUTE`, `CATCH_ALL_PATH` | `shared/config/constants.ts` | `shared/rbac/permission-guard.ts` e `@/shared/rbac` (`FORBIDDEN_ROUTE`) |
+| `CHART_KIND`, `CHART_VALUE_FORMAT` (+ tipi), `CHART_PALETTE_VARS`, `CHART_PRIMARY_FALLBACK`, `CHART_FALLBACK_COLORS` | `shared/config/constants.ts` | `shared/charts/types.ts` (`CHART_KIND`, `CHART_VALUE_FORMAT` e tipi) |
+| `SANITIZE_FORBID_TAGS`, `SANITIZE_FORBID_ATTR`, `SAFE_URL_PROTOCOLS` | `shared/config/constants.ts` | (usati da `shared/lib/sanitize.ts`, `safe-url.ts`) |
 
-Uso tipico: in `<script setup>` le costanti importate sono già visibili al template, senza riesporle: `v-if="ability.can(ACTION.create, ORDER_SUBJECT)"`, `:to="{ name: ROUTES.orderDetail, params: { id: order.id } }"`, `:value-format="CHART_VALUE_FORMAT.currency"`, `readOnly(ORDER_FIELD.customerName)`. Nelle rotte `meta: { permission: { action: ACTION.read, subject: ORDER_SUBJECT }, namespaces: [ORDERS_NAMESPACE] }`. Le varianti di `AppButton` sono un'unione di tipo nelle props (`'primary' | 'secondary' | 'danger' | 'link'`), non una costante esportata.
+Restano fuori da `constants.ts` i valori composti o derivati e i numeri (la regola guarda le stringhe letterali): `ORDER_STATUSES = OrderStatusSchema.options` (`model/orders.schema.ts`), `orderKeys` (`api/orders.queries.ts`, radice `[ORDERS_FEATURE]`, `removals()` per le delete), `orderSubject()` (`permissions.ts`), `ordersLocales` (`index.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`). I nomi delle rotte non sono più in `pages/`: quelli della feature sono `ORDER_ROUTE`, quelli generali `ROUTE_NAME`.
 
-Nuova feature (`customers`): `Customer: 'Customer'` in `SUBJECT` di `shared/rbac/ability.ts` e `CUSTOMER_SUBJECT`/`CUSTOMER_FIELD` in `permissions.ts`; `CUSTOMERS_FEATURE` nel `model/` della feature, da cui derivano `CUSTOMERS_NAMESPACE`, la radice di `customerKeys` (`[CUSTOMERS_FEATURE]`), `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``) e il path in `app/router/routes.ts`; stati e ordinamenti in `model/customers.schema.ts`; nomi di rotta aggiunti a `ROUTES`.
+Uso tipico: in `<script setup>` le costanti importate sono già visibili al template, senza riesporle: `v-if="ability.can(ACTION.create, ORDER_SUBJECT)"`, `:to="{ name: ORDER_ROUTE.detail, params: { id: order.id } }"`, `:value-format="CHART_VALUE_FORMAT.currency"`, `readOnly(ORDER_FIELD.customerName)`. Nelle rotte `{ path: ORDER_ROUTE_PATH.list, name: ORDER_ROUTE.list, meta: { permission: { action: ACTION.read, subject: ORDER_SUBJECT }, namespaces: [ORDERS_NAMESPACE] } }`. Pagine e app importano dal barrel `@/features/orders`; dentro la feature i moduli importano da `../constants`. Le varianti di `AppButton` sono un'unione di tipo nelle props (`'primary' | 'secondary' | 'danger' | 'link'`), non una costante esportata.
 
-Eccezioni e debiti noti (metrica attuale dello scaffold con `arch_check.py`: **8 valori duplicati su 115 (7,0%)**, soglia 10%, il margine più stretto tra gli scaffold):
+Nuova feature (`customers`):
+1. `shared/config/constants.ts`: aggiungi `Customer: 'Customer'` a `SUBJECT` (unica modifica a shared).
+2. `features/customers/constants.ts`, foglia (importa al più `@/shared/config/constants`): `CUSTOMERS_FEATURE = 'customers'`, `CUSTOMERS_NAMESPACE = CUSTOMERS_FEATURE`, `CUSTOMER_SUBJECT = SUBJECT.Customer`, `CUSTOMER_FIELD`/`CUSTOMER_FIELDS`, `CUSTOMER_STATUS`/`CUSTOMER_SORT` e default, `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``), `CUSTOMER_ROUTE` (`list: CUSTOMERS_FEATURE`, …) e `CUSTOMER_ROUTE_PATH`.
+3. Gli altri file importano da `../constants`: `permissions.ts` (`customerSubject()`), `model/customers.schema.ts` (`z.enum(CUSTOMER_STATUS)`), `api/customers.api.ts`, `customerKeys` con radice `[CUSTOMERS_FEATURE]`, store e componenti; `index.ts` ri-esporta costanti e `customersLocales`; `app/router/routes.ts` aggiunge le rotte con `CUSTOMER_ROUTE`/`CUSTOMER_ROUTE_PATH` e `app/providers.ts` registra il namespace.
+
+Eccezioni e debiti noti (metrica attuale dello scaffold con `python3 -B scripts/arch_check.py`: **nessuna violazione, 8 valori duplicati su 116 (6,9%)**, soglia 10%, il margine più stretto tra gli scaffold):
 - nomi degli eventi (`'cancel'`, `'confirm'`, `'close'`, `'retry'`): sono il contratto tipizzato di `defineEmits<{ cancel: [] }>()` (macro del compilatore SFC) e devono coincidere con `@cancel` nel template del padre, quindi `emit('cancel')`/`$emit('retry')` restano letterali (`OrderForm.vue`, `ConfirmDialog.vue`, `ConfirmDeleteDialog.vue`, `ErrorState.vue`, `QueryState.vue`);
-- omonimi di libreria: `'post'`/`'patch'` (metodo di `sendParsed` e `flush: 'post'` del `watch` in `ConfirmDialog.vue`), `'button'`/`'style'` (tipo di `AppButton` e liste di DOMPurify in `shared/lib/sanitize.ts`);
-- `'orders'` è scritto una sola volta (`ORDERS_FEATURE` in `features/orders/model/orders.feature.ts`): path della lista in `app/router/routes.ts`, `ROUTES.orders`, `ORDERS_NAMESPACE` e radice di `orderKeys` ne derivano. Una nuova feature fa lo stesso con `<F>_FEATURE` (sez. 9.1), altrimenti ogni feature aggiunge un duplicato e la soglia si supera presto.
+- omonimi di libreria: `'post'`/`'patch'` (metodo di `sendParsed` in `orders.api.ts` e `shared/api/http.ts`, `flush: 'post'` del `watch` in `ConfirmDialog.vue`), `'button'`/`'style'` (tipo di `AppButton` e `SANITIZE_FORBID_TAGS`/`SANITIZE_FORBID_ATTR` di DOMPurify in `shared/config/constants.ts`);
+- `'orders'` è scritto una sola volta (`ORDERS_FEATURE` in `features/orders/constants.ts`): `ORDERS_NAMESPACE`, `ORDER_ROUTE.list`, `ORDER_ROUTE_PATH.list` e la radice di `orderKeys` ne derivano. Una nuova feature fa lo stesso con `<F>_FEATURE` (sez. 9.1), altrimenti ogni feature aggiunge un duplicato e la soglia si supera presto.
 
 ## Trappole Vue
 

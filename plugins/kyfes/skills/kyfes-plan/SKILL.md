@@ -17,7 +17,7 @@ You are acting as the frontend architect. Do not write code in this step.
    5. new i18n keys in every configured language;
    6. security: rendered user input, external URLs, redirects, uploads, sensitive data;
    7. tests: unit, RBAC (same view, different abilities), 401/403/5xx, e2e with axe;
-   8. constants: table `value → constant → owning module → new/reused` for every domain value (actions, subject,
+   8. constants: table `value → constant → constants.ts file (`features/<f>/constants.ts` or `shared/config/constants.ts`) → new/reused` for every domain value (actions, subject,
       fields, i18n namespace, statuses, filters, sort keys, columns, routes, endpoints, query keys, mappings),
       following section 9.1 of the skill — existing values are reused, new ones are created once and referenced;
    9. violations and compliant alternatives.

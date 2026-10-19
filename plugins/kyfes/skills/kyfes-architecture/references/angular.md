@@ -32,15 +32,17 @@ src/app/app.config.ts                provideRouter, provideApi, provideTanStackQ
 src/app/app.routes.ts                pagine lazy, authGuard + permissionGuard, scope i18n della feature
 src/app/app-error-handler.ts         ErrorHandler globale + GlobalErrorState (error boundary)
 src/app/pages/                       layout/, orders/ (lista, dettaglio, modifica, nuovo), forbidden/, not-found/
-src/app/features/orders/             api/, components/<nome>/<nome>.component.{ts,html}, model/, locales/, permissions.ts, index.ts
+src/app/features/orders/             constants.ts (tutte le costanti della feature, foglia), api/, components/<nome>/<nome>.component.{ts,html},
+                                     model/, locales/, permissions.ts, routes.ts (orderPaths), index.ts
 src/app/shared/api/                  http.ts (provideApi, interceptor), api-client.ts (ApiClient), api-error.ts, api-events.ts, query-client.ts, pagination.ts
 src/app/shared/auth/                 session.schema.ts, session.ts, auth.service.ts, auth.guard.ts, provide-auth.ts
-src/app/shared/rbac/                 subjects.ts (Actions, SubjectName), ability.ts, can.directive.ts, permission.guard.ts
+src/app/shared/rbac/                 subjects.ts (riespone ACTION/SUBJECT come Action/Subject; Actions, SubjectName), ability.ts, can.directive.ts, permission.guard.ts
 src/app/shared/i18n/                 i18n.ts, format.ts (formatter + pipe), title-strategy.ts, locales/{it,en}.json (namespace common)
 src/app/shared/charts/               chart-frame.component.ts, bar-chart / line-chart, chart-options.ts, echarts-setup.ts
 src/app/shared/ui/                   button, spinner, empty-state, error-state, confirm-dialog, query-state, load-more,
                                      confirm-delete-dialog, forbidden-state (`*.component.ts`, barrel index.ts)
-src/app/shared/{lib,config}/         sanitize/safe-redirect/safe-url/zod-validator; env.ts
+src/app/shared/lib/                  sanitize, safe-redirect, safe-url, zod-validator
+src/app/shared/config/               constants.ts (tutte le costanti trasversali, foglia), env.ts
 deploy/security-headers.conf         nginx: header, CSP, cache, nonce, proxy `/api/` verso il BFF
 proxy.conf.json                      /api → http://localhost:8080 in `ng serve`
 ```
@@ -93,8 +95,12 @@ export const authGuard: CanActivateFn = async (_r, state) => { /* ensureQueryDat
 ## RBAC (`shared/rbac`)
 
 ```ts
-export const Action = { Create: 'create', Read: 'read', Update: 'update', Delete: 'delete', Manage: 'manage' } as const;
-export const Subject = { Order: 'Order' } as const;             // registro dei soggetti (la feature: ORDER_SUBJECT = Subject.Order)
+// shared/config/constants.ts
+export const ACTION = { Create: 'create', Read: 'read', Update: 'update', Delete: 'delete', Manage: 'manage' } as const;
+export const SUBJECT = { Order: 'Order' } as const;             // registro dei soggetti (la feature: ORDER_SUBJECT = SUBJECT.Order)
+// shared/rbac/subjects.ts: riesposti con i nomi dell'API di @shared/rbac
+export { ACTION as Action, SUBJECT as Subject } from '@shared/config/constants';
+export const ACTIONS: readonly Actions[] = Object.values(ACTION);
 export type SubjectName = (typeof Subject)[keyof typeof Subject];
 export type AppSubject = SubjectName | ForcedSubject<SubjectName> | 'all';
 export type AppAbility = MongoAbility<[Actions, AppSubject]>;
@@ -104,7 +110,7 @@ effect(() => inject(AbilityServiceSignal).update(session.rules()));         // i
 
 - Nei componenti: `protected readonly can = injectCan();` (più `protected readonly Action = Action;` e `orderSubject = orderSubject` per il template) e nel template `@if (can(Action.Update, orderSubject(order))) {…}`; per campo, nel `.ts`, `this.can(Action.Update, orderSubject(order), ORDER_FIELDS.status)`. `can` è reattivo (signal interno di `AbilityServiceSignal`).
 - Direttiva strutturale: `<a *appCan="Action.Create; on: orderSubject" …>` (nella pagina `protected readonly orderSubject = ORDER_SUBJECT;`).
-- `subject` è ri-esportato da `@shared/rbac`; la feature espone `ORDER_SUBJECT = Subject.Order` e `orderSubject(order) = subject(ORDER_SUBJECT, { ...order })`.
+- `subject` è ri-esportato da `@shared/rbac`; la feature definisce `ORDER_SUBJECT = SUBJECT.Order` in `constants.ts` (riesposto anche da `permissions.ts`) e `orderSubject(order) = subject(ORDER_SUBJECT, { ...order })` in `permissions.ts`.
 - Guard: `canActivate: [permissionGuard(Action.Read, ORDER_SUBJECT)]` restituisce `new RedirectCommand(router.parseUrl(FORBIDDEN_PATH), { skipLocationChange: true })`: si vede la pagina 403 e l'URL resta quello richiesto. Va dopo `authGuard` (stessa sessione in cache).
 
 ## TanStack Query (`features/orders/api`)
@@ -136,7 +142,7 @@ export function injectOrdersList(filters = () => DEFAULT_ORDER_FILTERS) {
 - `OrderFormComponent`: `writable()` = per ogni campo di `ORDER_INPUT_FIELDS` `can(Action.Create, ORDER_SUBJECT, f)` (creazione) o `can(Action.Update, orderSubject(order), f)` (modifica); i controlli non scrivibili sono disabilitati e `pickWritable()` invia solo i campi scrivibili, in create e in PATCH.
 - La rotta controlla solo il tipo; in modifica `canUpdateRecord()` controlla il record caricato (condizioni CASL) e, se negato, mostra `app-forbidden-state` al posto del form.
 - Il form copia i dati dell'ordine una volta per id e non si resetta se è `dirty`: un refetch in background non sovrascrive le modifiche.
-- `ApiError.fieldErrors` → `setErrors({ server })` sui controlli abilitati (messaggio usato solo se inizia con `orders.form.errors.`, altrimenti `common.validation.invalid`); errori su campi sconosciuti o disabilitati → anche il messaggio generico.
+- `ApiError.fieldErrors` → `setErrors({ server })` sui controlli abilitati (messaggio usato solo se inizia con `ORDER_FORM_ERROR_PREFIX` = `orders.form.errors.`, altrimenti `GENERIC_FIELD_ERROR` = `common.validation.invalid`); errori su campi sconosciuti o disabilitati → anche il messaggio generico.
 
 ## i18n (Transloco, `shared/i18n`)
 
@@ -174,28 +180,40 @@ export function injectOrdersList(filters = () => DEFAULT_ORDER_FILTERS) {
 - Query/mutation: `TestBed.runInInjectionContext(() => injectCreateOrder())` + `mutateAsync`, poi `getQueryState(orderKeys.list(f))?.isInvalidated`.
 - E2E: `playwright.config.ts` avvia `npm run dev:mocks`; `e2e/orders.spec.ts` usa `new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag22aa']).analyze()`. È compilato da `npm run typecheck` (`e2e/tsconfig.json`).
 
-## Costanti e riuso (`constant-reuse`)
+## Costanti (`constants.ts`) e riuso
 
-Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold (percorsi sotto `src/app/`):
+Ogni costante di dominio è scritta una volta, solo in uno dei due `constants.ts` (regola `constants-location`, schema generale in `SKILL.md` sez. 9.1); gli altri moduli importano e compongono. Entrambi i file sono foglie: `shared/config/constants.ts` non importa nulla, `features/orders/constants.ts` importa solo `SUBJECT` da `@shared/config/constants`. Percorsi sotto `src/app/`:
 
-| Valore | Costante | File |
+| Costante | File | Ri-esportata da (compatibilità) |
 |---|---|---|
-| azioni CASL | `Action` (`Action.Update`, mai `'update'`), `ACTIONS` | `shared/rbac/subjects.ts` |
-| registro soggetti | `Subject = { Order: 'Order' }` | `shared/rbac/subjects.ts` |
-| soggetto e campi | `ORDER_SUBJECT = Subject.Order`, `orderSubject()`, `ORDER_FIELDS`/`ORDER_INPUT_FIELDS` | `features/orders/permissions.ts` |
-| nome feature | `ORDERS_FEATURE = 'orders'` (namespace, segmento di rotta, radice delle query key) | `features/orders/model/orders.constants.ts` |
-| namespace i18n | `ORDERS_NS = ORDERS_FEATURE` + `ORDERS_LOCALE_LOADERS`, `provideOrdersI18n()`; `common` caricato da `shared/i18n/i18n.ts` (chiavi complete `common.*`) | `features/orders/locales/index.ts` |
-| stati, ordinamenti, default | `ORDER_STATUS`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` (`ORDER_STATUSES` in `orders.schema.ts`); `DEFAULT_ORDER_FILTERS` in `api/orders.queries.ts` | `model/orders.constants.ts` |
-| percorsi UI | `ORDER_ROUTE_PATHS` (relativi, per `app.routes.ts`) e `orderPaths` (link), derivati da `ORDERS_FEATURE`; `FORBIDDEN_PATH` | `features/orders/routes.ts`; `shared/rbac/permission.guard.ts` |
-| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME`, `API_ERROR_CODE` | `api/orders.api.ts`; `shared/api/http.ts`, `shared/api/api-error.ts` |
-| query/mutation key | `orderKeys` (radice `[ORDERS_FEATURE]`), `DELETE_ORDER_MUTATION_KEY` | `api/orders.queries.ts`, `api/orders.mutations.ts` |
-| trasversali | `BUTTON_VARIANT` (`shared/ui/button.component.ts`), `CHART_KIND`/`CHART_VALUE_FORMAT` (`shared/charts/chart-options.ts`), `DEFAULT_CURRENCY` (`shared/i18n/format.ts`), `LOCALE`/`SUPPORTED_LOCALES`/`FLAG` (`shared/config/env.ts`), `GENERIC_FIELD_ERROR` (`shared/lib/zod-validator.ts`), `DEFAULT_PAGE_SIZE` | `shared/*` |
+| `ORDERS_FEATURE`, `ORDERS_NS` (= `ORDERS_FEATURE`) | `features/orders/constants.ts` | `index.ts` (`export * from './constants'`, vale per tutte le righe della feature) |
+| `ORDER_SUBJECT` (= `SUBJECT.Order`), `ORDER_FIELDS` | `features/orders/constants.ts` | `permissions.ts` |
+| `ORDER_STATUS`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` | `features/orders/constants.ts` | — |
+| `ORDERS_ENDPOINT`, `ORDER_STATS_ENDPOINT` | `features/orders/constants.ts` | — |
+| `ORDER_ID_PARAM`, `ORDER_NEW_SEGMENT`, `ORDER_EDIT_SEGMENT`, `ORDER_ROUTE_PATHS` | `features/orders/constants.ts` | `routes.ts` (`ORDER_ROUTE_PATHS`) |
+| `ORDER_FORM_ERROR_PREFIX`, `ORDER_FORM_ERROR` (chiavi i18n degli errori del form) | `features/orders/constants.ts` | — |
+| `ACTION`, `SUBJECT` | `shared/config/constants.ts` | `shared/rbac/subjects.ts` come `Action`/`Subject` (API di `@shared/rbac`) |
+| `FORBIDDEN_PATH` | `shared/config/constants.ts` | `shared/rbac/permission.guard.ts` |
+| `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`, `XSRF_HEADER_NAME` | `shared/config/constants.ts` | `shared/api/http.ts` |
+| `CORRELATION_ID_HEADER`, `API_ERROR_CODE` | `shared/config/constants.ts` | `shared/api/api-error.ts` (`API_ERROR_CODE`) |
+| `TEXT_RESPONSE`, `ABORT_EVENT` | `shared/config/constants.ts` | (usati da `shared/api/http.ts`, `api-client.ts`) |
+| `LOCALE`, `SUPPORTED_LOCALES`, `FALLBACK_LOCALE`, `FLAG` | `shared/config/constants.ts` | `shared/config/env.ts` (`FLAG`, `LOCALE`, `SUPPORTED_LOCALES`) |
+| `DEFAULT_CURRENCY` | `shared/config/constants.ts` | `shared/i18n/format.ts` |
+| `GENERIC_FIELD_ERROR` | `shared/config/constants.ts` | `shared/lib/zod-validator.ts` |
+| `REDIRECT_PLACEHOLDER_ORIGIN` (origine fittizia di `safeRedirect`) | `shared/config/constants.ts` | (usata da `shared/lib/safe-redirect.ts`) |
+| `BUTTON_VARIANT`, `DIALOG_OPEN_ATTRIBUTE` | `shared/config/constants.ts` | `shared/ui/button.component.ts` (`BUTTON_VARIANT`) |
+| `CHART_KIND`, `CHART_VALUE_FORMAT`, `CHART_FALLBACK_PALETTE` | `shared/config/constants.ts` | `shared/charts/chart-options.ts` (`CHART_KIND`, `CHART_VALUE_FORMAT`) |
 
-Uso tipico: i template `.html` non vedono gli import del `.ts`, quindi il componente espone le costanti come proprietà (`protected readonly Action = Action;`, `orderSubject = ORDER_SUBJECT`, `paths = orderPaths`, `fields = ORDER_FIELDS`, `statuses = ORDER_STATUSES`) e il template le usa: `*appCan="Action.Create; on: orderSubject"`, `[routerLink]="paths.edit(order.id)"`, `@if (can(Action.Delete, orderSubject(order)))`, `errorKey(fields.total)`. In `app.routes.ts`: `path: ORDER_ROUTE_PATHS.root`, `canActivate: [permissionGuard(Action.Read, ORDER_SUBJECT)]`, `providers: [provideOrdersI18n()]`. Le chiavi Transloco (`'orders.list.title' | transloco`) sono testo tradotto, non valori da estrarre.
+Restano fuori da `constants.ts` i valori composti o derivati e i numeri (la regola guarda le stringhe letterali): `orderPaths` (`features/orders/routes.ts`, da `ORDERS_FEATURE` e dai segmenti), `ORDER_INPUT_FIELDS` e `orderSubject()` (`permissions.ts`, da `ORDER_FIELDS`), `ORDER_STATUSES = OrderStatusSchema.options` (`model/orders.schema.ts`), `orderKeys` e `DEFAULT_ORDER_FILTERS` (`api/orders.queries.ts`), `DELETE_ORDER_MUTATION_KEY = orderKeys.removals()` (`api/orders.mutations.ts`), `ORDERS_LOCALE_LOADERS` (`locales/index.ts`), `ACTIONS = Object.values(ACTION)` (`shared/rbac/subjects.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`).
 
-Nuova feature (`customers`): `Customer: 'Customer'` in `Subject` di `shared/rbac/subjects.ts` e `CUSTOMER_SUBJECT = Subject.Customer`/`CUSTOMER_FIELDS` in `permissions.ts`; `model/customers.constants.ts` con `CUSTOMERS_FEATURE`, stati e ordinamenti; `CUSTOMERS_NS = CUSTOMERS_FEATURE` e `provideCustomersI18n()`; `CUSTOMER_ROUTE_PATHS`/`customerPaths` derivati da `CUSTOMERS_FEATURE`; `CUSTOMERS_ENDPOINT` in `api/customers.api.ts` (meglio `` `/${CUSTOMERS_FEATURE}` ``) e `customerKeys` con radice `[CUSTOMERS_FEATURE]`; ogni costante usata nel template esposta come proprietà `protected readonly`.
+Uso tipico: i template `.html` non vedono gli import del `.ts`, quindi il componente espone le costanti come proprietà (`protected readonly Action = Action;`, `orderSubject = ORDER_SUBJECT`, `paths = orderPaths`, `fields = ORDER_FIELDS`, `statuses = ORDER_STATUSES`) e il template le usa: `*appCan="Action.Create; on: orderSubject"`, `[routerLink]="paths.edit(order.id)"`, `@if (can(Action.Delete, orderSubject(order)))`, `errorKey(fields.total)`. In `app.routes.ts`: `path: ORDER_ROUTE_PATHS.root`, `canActivate: [permissionGuard(Action.Read, ORDER_SUBJECT)]`, `providers: [provideOrdersI18n()]`. Pagine e app importano dal barrel `@features/orders`; dentro la feature i moduli importano da `../constants` (`../../constants` dai componenti), in `shared/*` da `@shared/config/constants`. Le chiavi Transloco (`'orders.list.title' | transloco`) sono testo tradotto, non valori da estrarre.
 
-Eccezioni note: in `src/main.ts` il confronto `NG_APP_API_MOCKS === 'true'` resta letterale (uguale a `FLAG.on`): esbuild non propaga costanti importate da altri moduli e senza il letterale il chunk di MSW finirebbe nella build di produzione (commento nel file). `'div'`/`'span'` (tag del tooltip in `shared/charts/chart-options.ts`) e `'style'` (liste di DOMPurify in `shared/lib/sanitize.ts`) sono valori di presentazione/libreria. Metrica attuale dello scaffold (`arch_check.py`): **4 valori duplicati su 146 (2,7%)**, soglia 10%.
+Nuova feature (`customers`):
+1. `shared/config/constants.ts`: aggiungi `Customer: 'Customer'` a `SUBJECT` (unica modifica a shared; da `@shared/rbac` resta `Subject.Customer`).
+2. `features/customers/constants.ts`, foglia (importa al più `@shared/config/constants`): `CUSTOMERS_FEATURE = 'customers'`, `CUSTOMERS_NS = CUSTOMERS_FEATURE`, `CUSTOMER_SUBJECT = SUBJECT.Customer`, `CUSTOMER_FIELDS`, `CUSTOMER_STATUS`/`CUSTOMER_SORT` e default, `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``), segmenti e `CUSTOMER_ROUTE_PATHS` (`root: CUSTOMERS_FEATURE`), chiavi degli errori del form.
+3. Gli altri file importano da `../constants`: `permissions.ts`, `model/customers.schema.ts`, `routes.ts` (`customerPaths`), `api/customers.api.ts`, `customerKeys` con radice `[CUSTOMERS_FEATURE]`, `provideCustomersI18n()` in `index.ts` (che fa `export * from './constants'`); ogni costante usata nel template va esposta come proprietà `protected readonly`.
+
+Eccezioni note: in `src/main.ts` il confronto `NG_APP_API_MOCKS === 'true'` resta letterale (uguale a `FLAG.on`): esbuild non propaga costanti importate da altri moduli e senza il letterale il chunk di MSW finirebbe nella build di produzione (commento nel file). `'div'`/`'span'` (tag del tooltip in `shared/charts/chart-options.ts`) e `'style'` (liste di DOMPurify in `shared/lib/sanitize.ts`) sono valori di presentazione/libreria. Metrica attuale dello scaffold (`python3 -B scripts/arch_check.py`): **nessuna violazione, 4 valori duplicati su 146 (2,7%)**, soglia 10%.
 
 ## Trappole
 

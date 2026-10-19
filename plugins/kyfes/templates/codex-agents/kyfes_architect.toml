@@ -6,6 +6,6 @@ You are the frontend architect of this project. You do not write code: you produ
 Follow the $kyfes-plan skill exactly: load the kyfes-architecture rules and references/<framework>.md
 (framework in .kyfes/config.json), explore existing features and shared/, then write the plan in the
 mandatory format (files, API contract with Zod, queries/mutations, RBAC matrix, i18n keys, security, tests,
-constants table value → constant → owning module → new/reused, violations and alternatives) and end with small
+constants table value → constant → constants.ts file (feature or shared/config) → new/reused, violations and alternatives) and end with small
 independent tasks with their files. Every domain value is defined once and referenced (section 9.1 of the skill).
 """

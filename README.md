@@ -83,11 +83,12 @@ src/
 │       ├── components/       ← OrdersTable, OrderForm, OrdersChart…
 │       ├── model/            ← orders.schema.ts (Zod → types)
 │       ├── locales/          ← it.json · en.json  (namespace "orders")
-│       ├── permissions.ts    ← CASL subject 'Order'
+│       ├── constants.ts      ← every domain constant of the feature (name, namespace, subject, fields, statuses, routes, endpoint)
+│       ├── permissions.ts    ← CASL helpers, importing the subject from constants.ts
 │       └── index.ts          ← the only public entry point of the feature
 └── shared/
     ├── api/   auth/   rbac/   i18n/
-    └── charts/   ui/   lib/   config/
+    └── charts/   ui/   lib/   config/   ← config/constants.ts: every cross-cutting constant
 ```
 
 | Layer | React (Vite) · Vue | Next.js | Angular | SvelteKit |
@@ -115,8 +116,8 @@ Each framework ships a **reference scaffold** with a complete `orders` CRUD feat
 
 ```tsx
 // features/orders/components/OrdersTable.tsx — excerpt from the React scaffold
-const { t } = useTranslation(ORDERS_NS);            // shared/i18n; ORDERS_NS from model/orders.feature.ts
-const can = useCan();                               // shared/rbac (CASL); ACTIONS from shared/rbac
+const { t } = useTranslation(ORDERS_NS);            // shared/i18n; ORDERS_NS, ORDER_SUBJECT from ../constants
+const can = useCan();                               // shared/rbac (CASL); ACTIONS from shared/config/constants.ts, re-exported by shared/rbac
 const query = useOrdersInfinite({ status, sort });  // features/orders/api — TanStack Query, cursor pages
 const remove = useDeleteOrder();                    // optimistic delete with rollback
 
@@ -161,6 +162,7 @@ Vue uses `<Can>`/`useAbility()` from `@casl/vue`, Angular the `@casl/angular` si
 | before every shell command | writes through the shell into source files, `.env` or protected files (`>`, `tee`, `sed -i`, `cp`/`mv`, `curl -o`, inline scripts), `git apply`/`patch`, `disableAllHooks` | block |
 | after every write | untranslated visible text, `console.log`, `any`, `@ts-ignore` | warn |
 | before finishing (main agent and every subagent) | `arch_check` (incl. duplicated blocks of 8+ lines) + your lint, typecheck and test commands | block |
+| before every write | **explicit constants**: a domain constant (`export const X = 'v'`, `as const` maps and string arrays, enums, any top-level `UPPER_SNAKE` string constant) defined outside `features/<f>/constants.ts` or `shared/config/constants.ts` is denied, with the file to move it to | block |
 | before every write | **constant reuse**: a literal (or a new constant) equal to a constant already exported in the project is denied, with the constant to import | block |
 | before finishing, measured | **constant reuse**: at most 10% of the domain literals (RBAC actions and subjects, fields, i18n namespaces, statuses, filters, sort keys, columns, routes, endpoints, mappings) may be written more than once — everything else is a referenced constant; `arch_check` prints the ratio every run | block |
 | in CI | the same checks with `--strict`, `npm audit`, build | fail build |

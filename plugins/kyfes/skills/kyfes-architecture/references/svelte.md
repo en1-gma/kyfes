@@ -32,10 +32,12 @@ src/routes/             +layout.ts (ssr=false, crea il QueryClient), +layout.sve
                         lingua, logout), +error.svelte (403/404/5xx), +page.svelte, orders/+layout.ts (guard auth +
                         read Order), orders/+page.svelte, orders/new/+page.{ts,svelte} (create Order),
                         orders/[id]/+page.svelte, orders/[id]/edit/+page.{ts,svelte} (update Order)
-src/lib/features/orders/ api/orders.{api,queries,mutations}.ts, components/{OrdersTable,OrderForm,OrderEditor,
+src/lib/features/orders/ constants.ts (tutte le costanti della feature, foglia; anche i route id),
+                        api/orders.{api,queries,mutations}.ts, components/{OrdersTable,OrderForm,OrderEditor,
                         OrderDetail,OrdersChart}.svelte + order-status.ts, model/orders.schema.ts,
-                        locales/{it,en}.json, permissions.ts, index.ts
-src/lib/shared/         api/ auth/ rbac/ i18n/ (paraglide/ generato) charts/ lib/ config/
+                        locales/{it,en}.json, permissions.ts, routes.ts (orderPaths), index.ts
+src/lib/shared/         api/ auth/ rbac/ i18n/ (paraglide/ generato) charts/ lib/
+                        config/ (constants.ts: tutte le costanti trasversali, foglia; env.ts, env.schema.ts)
                         ui/ (theme.css, Button, ConfirmDialog, ConfirmDeleteDialog, QueryState, LoadMore,
                         ErrorState, EmptyState, Spinner, ForbiddenPage, NotFoundPage, StatusPage)
 src/mocks/              data.ts, handlers.ts, browser.ts, node.ts, render.ts + TestProviders.svelte,
@@ -123,14 +125,15 @@ await requireAuth(queryClient, url) // nei load: sessione o login (promise che n
 type AppAbility = MongoAbility<[Actions, Subjects], MongoQuery>;
 buildAbility(rules)                       // createMongoAbility<AppAbility>(rules)
 Action = { Create: 'create', Read: 'read', Update: 'update', Delete: 'delete', Manage: 'manage' } as const
-Subject = { Order: 'Order' } as const     // registro (subjects.ts): ogni feature aggiunge qui il suo soggetto
-SUBJECT_TYPES = Object.values(Subject)
+Subject = { Order: 'Order' } as const     // registro: ogni feature aggiunge qui il suo soggetto
+                                          // (entrambi in shared/config/constants.ts, riesposti da subjects.ts)
+ACTIONS = Object.values(Action); SUBJECT_TYPES = Object.values(Subject)   // subjects.ts
 class AbilityState { can(...) / cannot(...) / update(rules) }  // $state "version" bump su ability.on('updated')
 ```
 
 - `AbilityProvider.svelte` legge `useSession()` e in `$effect.pre` chiama `update(session.data?.rules ?? [])`. `update` usa `untrack`: senza, l'effetto legge e scrive la versione → `effect_update_depth_exceeded`.
 - Componenti: `const ability = useAbility(); ability.can(Action.Update, asOrderSubject(order), ORDER_FIELDS.status)`; markup: `<Can I={Action.Create} a={ORDER_SUBJECT}>…</Can>` (props `I`, `a`, `field`, `not`).
-- `ORDER_SUBJECT = Subject.Order`; `asOrderSubject(order)` = `subject(ORDER_SUBJECT, { ...order })`: **sempre su copia**, CASL definisce una proprietà sull'oggetto e i dati in cache/proxy `$state` non vanno mutati.
+- `ORDER_SUBJECT = Subject.Order` (in `features/orders/constants.ts`); `asOrderSubject(order)` (in `permissions.ts`) = `subject(ORDER_SUBJECT, { ...order })`: **sempre su copia**, CASL definisce una proprietà sull'oggetto e i dati in cache/proxy `$state` non vanno mutati.
 - Guard: `await requirePermission(queryClient, Action.Read, ORDER_SUBJECT)` → `error(403, 'Forbidden', { code: 'FORBIDDEN' })` (firma Kit 3: messaggio + proprietà) → `+error.svelte` mostra `ForbiddenPage`. Legge la sessione con `fetchQuery`, non `ensureQueryData`: dopo un 403 la sessione invalidata va riletta, non presa dalla cache.
 - Il guard conosce solo il tipo. `orders/[id]/edit/+page.ts` controlla `requirePermission(queryClient, Action.Update, ORDER_SUBJECT)`; la condizione sul record la verifica `OrderEditor` dopo il caricamento (`ability.can(Action.Update, asOrderSubject(order))`, altrimenti `<ErrorState forbidden />` e nessun form), e poi il server.
 - Permessi per campo: `canWriteOrderField(ability, field, order?)` (`create Order <field>` per un nuovo ordine, `update <record> <field>` per uno esistente); `OrderForm` disabilita i campi non scrivibili e `pickWritableFields` li toglie dal payload (`OrderPayloadSchema = OrderInputSchema.partial()`), sia in POST sia in PATCH.
@@ -138,7 +141,7 @@ class AbilityState { can(...) / cannot(...) / update(rules) }  // $state "versio
 ## TanStack Svelte Query (feature `orders`)
 
 ```ts
-export const orderKeys = { all: ['orders'] as const, lists: () => [...], list: (f) => [...], details, detail: (id) => [...], stats,
+export const orderKeys = { all: [ORDERS_FEATURE] as const, lists: () => [...], list: (f) => [...], details, detail: (id) => [...], stats,
   deletes: () => [...orderKeys.all, 'delete'] as const };   // deletes(): mutationKey condivisa dalle delete
 export function ordersInfiniteQueryOptions(filters = {}) {
   return infiniteQueryOptions({ queryKey: orderKeys.list(normalized),
@@ -193,28 +196,38 @@ export const useCreateOrder = () => createMutation(() => createOrderMutationOpti
 - Query/mutation fuori dai componenti: `client.fetchInfiniteQuery(options)`, `new InfiniteQueryObserver(client, options).fetchNextPage()`, `new MutationObserver(client, createOrderMutationOptions).mutate(input)`.
 - E2E: `playwright.config.ts` avvia `vite dev` con `PUBLIC_API_MOCKS=true`; `e2e/orders.spec.ts` usa `?mockUser=viewer` (disponibili `manager` default, `viewer`, `operator`, `anonymous`) e `new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag22aa'])`.
 
-## Costanti e riuso (`constant-reuse`)
+## Costanti (`constants.ts`) e riuso
 
-Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold (percorsi sotto `src/lib/`):
+Ogni costante di dominio è scritta una volta, solo in uno dei due `constants.ts` (regola `constants-location`, schema generale in `SKILL.md` sez. 9.1); gli altri moduli importano e compongono. Entrambi i file sono foglie: `shared/config/constants.ts` non importa nulla, `features/orders/constants.ts` importa solo `Subject` da `$lib/shared/config/constants`. Percorsi sotto `src/lib/`:
 
-| Valore | Costante | File |
+| Costante | File | Ri-esportata da (compatibilità) |
 |---|---|---|
-| azioni CASL | `Action` (`Action.Update`, mai `'update'`), `ACTIONS` | `shared/rbac/subjects.ts` |
-| registro soggetti | `Subject = { Order: 'Order' }`, `SUBJECT_TYPES` | `shared/rbac/subjects.ts` |
-| soggetto e campi | `ORDER_SUBJECT = Subject.Order`, `asOrderSubject()`, `ORDER_FIELDS`/`ORDER_FIELD_NAMES` | `features/orders/permissions.ts` |
-| namespace i18n | nessuna stringa: Paraglide compila una funzione per messaggio, il namespace è il prefisso (`m.orders_status_draft()`, `m.common_back_home()`) | `features/orders/locales/*.json`, `shared/i18n/locales/*.json` |
-| stati, ordinamenti, default, validazione | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT`, `ORDER_VALIDATION` | `model/orders.schema.ts` |
-| mapping stato → etichetta | `Record<OrderStatus, () => string>` | `components/order-status.ts` |
-| percorsi UI | `orderPaths` (route id SvelteKit: `'/orders/[id]'`) | `features/orders/routes.ts` |
-| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`; `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME` | `api/orders.api.ts`; `shared/api/endpoints.ts`; `shared/api/http.ts` |
-| query/mutation key | `orderKeys` (`deletes()` per le delete) | `api/orders.queries.ts` |
-| trasversali | `BUTTON_VARIANT` (`shared/ui/button.ts`), `CHART_KIND` (`shared/charts/options.ts`), `env` (`shared/config/env.ts`, flag privato `FLAG_ON` in `env.schema.ts`), `DEFAULT_PAGE_SIZE` | `shared/*` |
+| `ORDERS_FEATURE` | `features/orders/constants.ts` | (interno: radice di `orderKeys`) |
+| `ORDER_SUBJECT` (= `Subject.Order`), `ORDER_FIELDS` | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_STATUS`, `DEFAULT_ORDER_STATUS` | `features/orders/constants.ts` | `index.ts` (`ORDER_STATUS`) |
+| `ORDER_SORT`, `DEFAULT_ORDER_SORT` | `features/orders/constants.ts` | — |
+| `ORDER_VALIDATION` (codici i18n `orders_validation_*`) | `features/orders/constants.ts` | — |
+| `ORDERS_ENDPOINT`, `ORDER_STATS_ENDPOINT` | `features/orders/constants.ts` | `index.ts` |
+| `ORDER_ROUTES` (route id SvelteKit: `'/orders/[id]'`, …) | `features/orders/constants.ts` | `routes.ts` come `orderPaths` (e `index.ts`) |
+| `Action`, `Subject` | `shared/config/constants.ts` | `shared/rbac/subjects.ts`, `$lib/shared/rbac` |
+| `AUTH_ENDPOINTS`, `DEFAULT_API_BASE_URL` | `shared/config/constants.ts` | `$lib/shared/api` (`AUTH_ENDPOINTS`) |
+| `XSRF_COOKIE_NAME`, `XSRF_HEADER_NAME`, `CORRELATION_ID_HEADER` | `shared/config/constants.ts` | (usati da `shared/api/http.ts`) |
+| `LOCALE`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE`, `ENV_FLAG` | `shared/config/constants.ts` | (usati da `shared/config/env.schema.ts`; `env` resta l'API pubblica) |
+| `DEFAULT_CURRENCY` | `shared/config/constants.ts` | (usato da `shared/i18n/format.ts`) |
+| `BUTTON_VARIANT` | `shared/config/constants.ts` | `shared/ui/button.ts`, `$lib/shared/ui` |
+| `CHART_KIND`, `CHART_PALETTE_VARS`, `CHART_COLOR_VARS`, `CHART_FALLBACK_COLORS` | `shared/config/constants.ts` | `shared/charts/options.ts` (`CHART_KIND`) |
+| `INLINE_STYLE`, `SAFE_URL_PROTOCOLS` | `shared/config/constants.ts` | (usati da `shared/lib/sanitize.ts`, `safe-url.ts`) |
 
-Uso tipico: link con `resolve(orderPaths.detail, { id: order.id })` e `resolve(orderPaths.edit, { id })` da `$app/paths` (mai URL a mano); `<Can I={Action.Create} a={ORDER_SUBJECT}>`; guard nei `load` (`routes/orders/+layout.ts`: `requirePermission(queryClient, Action.Read, ORDER_SUBJECT)`); `canWriteOrderField(ability, field, order)` su `ORDER_FIELD_NAMES`; mock (`src/mocks/data.ts`) con `Action.*`, `ORDER_SUBJECT`, `ORDER_STATUS`.
+Restano fuori da `constants.ts` i valori composti o derivati e i numeri (la regola guarda le stringhe letterali): `orderPaths = ORDER_ROUTES` (`routes.ts`), `orderKeys` (`api/orders.queries.ts`, radice `[ORDERS_FEATURE]`, `deletes()` per le delete), `ORDER_FIELD_NAMES = Object.values(ORDER_FIELDS)` e `asOrderSubject()` (`permissions.ts`), `ORDER_STATUSES = OrderStatusSchema.options` (`model/orders.schema.ts`), il mapping stato → etichetta `Record<OrderStatus, () => string>` (`components/order-status.ts`), `ACTIONS`/`SUBJECT_TYPES` (`shared/rbac/subjects.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`). Il namespace i18n non è una stringa: Paraglide compila una funzione per messaggio e il namespace è il prefisso (`m.orders_status_draft()`, `m.common_back_home()`).
 
-Nuova feature (`customers`): `Customer: 'Customer'` in `Subject` di `shared/rbac/subjects.ts` e `CUSTOMER_SUBJECT`/`CUSTOMER_FIELDS` in `permissions.ts`; `CUSTOMERS_FEATURE`, stati e ordinamenti in `model/customers.schema.ts`; `customerKeys` con radice `[CUSTOMERS_FEATURE]` e `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``) in `api/`; `customerPaths` con i route id di `src/routes/customers/…` (servono a `resolve()`); messaggi con prefisso `customers_` in `features/customers/locales/*.json`; tutto riesportato da `index.ts`.
+Uso tipico: link con `resolve(orderPaths.detail, { id: order.id })` e `resolve(orderPaths.edit, { id })` da `$app/paths` (mai URL a mano); `<Can I={Action.Create} a={ORDER_SUBJECT}>`; guard nei `load` (`routes/orders/+layout.ts`: `requirePermission(queryClient, Action.Read, ORDER_SUBJECT)`); `canWriteOrderField(ability, field, order)` su `ORDER_FIELD_NAMES`. Pagine e layout importano dal barrel `$lib/features/orders`; dentro la feature i moduli importano da `../constants`; i mock (`src/mocks/data.ts`) usano `Action.*`, `ORDER_SUBJECT`, `ORDER_STATUS` e `DEFAULT_LOCALE`.
 
-Eccezioni note: `'/orders'` compare come route id (`orderPaths.list`) e come `ORDERS_ENDPOINT`, omonimi di concetti diversi; `'short'` è un'opzione `Intl` (`OrderDetail.svelte`, `toMonthlyTotals` in `orders.queries.ts`); `'delete'` è sia `Action.Delete` sia il segmento di `orderKeys.deletes()`; `'updated'` è il nome di eventi di libreria (CASL `ability.on('updated')` in `shared/rbac/ability-state.svelte.ts`, evento della query cache in `shared/auth/auth.ts`). Metrica attuale dello scaffold (`arch_check.py`): **4 valori duplicati su 111 (3,6%)**, soglia 10%.
+Nuova feature (`customers`):
+1. `shared/config/constants.ts`: aggiungi `Customer: 'Customer'` a `Subject` (unica modifica a shared).
+2. `features/customers/constants.ts`, foglia (importa al più `$lib/shared/config/constants`): `CUSTOMERS_FEATURE = 'customers'`, `CUSTOMER_SUBJECT = Subject.Customer`, `CUSTOMER_FIELDS`, `CUSTOMER_STATUS`/`CUSTOMER_SORT` e default, `CUSTOMER_VALIDATION`, `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``), `CUSTOMER_ROUTES` con i route id di `src/routes/customers/…` (letterali: servono a `resolve()` per controllare tipi e parametri).
+3. Gli altri file importano da `../constants`: `permissions.ts`, `model/customers.schema.ts`, `routes.ts` (`customerPaths`), `api/customers.api.ts`, `customerKeys` con radice `[CUSTOMERS_FEATURE]`; messaggi con prefisso `customers_` in `features/customers/locales/*.json` (+ riga in `pathPattern`); `index.ts` ri-esporta quello che usano le rotte.
+
+Eccezioni note: `'/orders'` compare due volte in `features/orders/constants.ts`, come route id (`ORDER_ROUTES.list`) e come `ORDERS_ENDPOINT`, omonimi di concetti diversi (il route id deve restare letterale per `resolve()`); `'short'` è un'opzione `Intl` (`OrderDetail.svelte`, `toMonthlyTotals` in `orders.queries.ts`); `'delete'` è sia `Action.Delete` sia il segmento di `orderKeys.deletes()`; `'updated'` è il nome di eventi di libreria (CASL `ability.on('updated')` in `shared/rbac/ability-state.svelte.ts`, evento della query cache in `shared/auth/auth.ts`). Metrica attuale dello scaffold (`python3 -B scripts/arch_check.py`): **nessuna violazione, 4 valori duplicati su 111 (3,6%)**, soglia 10%.
 
 ## Trappole
 
