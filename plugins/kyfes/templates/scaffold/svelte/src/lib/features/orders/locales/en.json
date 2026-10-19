@@ -1,0 +1,48 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"orders_nav": "Orders",
+	"orders_list_title": "Orders",
+	"orders_new": "New order",
+	"orders_new_title": "New order",
+	"orders_edit_title": "Edit order",
+	"orders_detail_title": "Order {number}",
+	"orders_table_caption": "List of orders",
+	"orders_empty": "There are no orders.",
+	"orders_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} order shown",
+				"countPlural=other": "{count} orders shown"
+			}
+		}
+	],
+	"orders_field_number": "Number",
+	"orders_field_customer": "Customer",
+	"orders_field_status": "Status",
+	"orders_field_total": "Total",
+	"orders_field_created": "Created on",
+	"orders_col_actions": "Actions",
+	"orders_action_edit": "Edit",
+	"orders_action_edit_label": "Edit order {number}",
+	"orders_action_delete": "Delete",
+	"orders_action_delete_label": "Delete order {number}",
+	"orders_delete_title": "Delete the order?",
+	"orders_delete_text": "Order {number} will be permanently deleted.",
+	"orders_status_draft": "Draft",
+	"orders_status_confirmed": "Confirmed",
+	"orders_status_shipped": "Shipped",
+	"orders_status_cancelled": "Cancelled",
+	"orders_status_readonly": "You are not allowed to change the status.",
+	"orders_form_submit_create": "Create order",
+	"orders_form_submit_update": "Save changes",
+	"orders_validation_required": "This field is required.",
+	"orders_validation_too_long": "Text is too long.",
+	"orders_validation_amount": "Enter a valid amount, zero or greater.",
+	"orders_validation_invalid": "Invalid value.",
+	"orders_chart_title": "Order totals by month",
+	"orders_chart_description": "Bar chart with the total of the orders of each month.",
+	"orders_chart_series": "Total",
+	"orders_chart_month": "Month"
+}

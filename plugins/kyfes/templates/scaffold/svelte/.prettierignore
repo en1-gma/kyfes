@@ -1,0 +1,12 @@
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+build/
+.svelte-kit/
+coverage/
+playwright-report/
+test-results/
+src/lib/shared/i18n/paraglide/
+project.inlang/*
+!project.inlang/settings.json
+.kyfes/

@@ -1,0 +1,98 @@
+/* Global styles and design tokens (CSS variables). Imported once by src/routes/+layout.svelte. */
+:root {
+	--color-bg: #f7f8fa;
+	--color-surface: #ffffff;
+	--color-text: #1b1f24;
+	--color-text-muted: #59636e;
+	--color-border: #d0d7de;
+	--color-primary: #1d4ed8;
+	--color-primary-contrast: #ffffff;
+	--color-danger: #b42318;
+	--color-danger-contrast: #ffffff;
+	--color-focus: #f59e0b;
+	--chart-1: #1d4ed8;
+	--chart-2: #0f766e;
+	--chart-3: #b45309;
+	--chart-4: #7c3aed;
+	--chart-5: #be185d;
+	--chart-6: #4d7c0f;
+	--radius: 6px;
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 1rem;
+	--space-4: 1.5rem;
+	--space-5: 2rem;
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	background: var(--color-bg);
+	color: var(--color-text);
+	font-family: var(--font-sans);
+	line-height: 1.5;
+}
+
+.app-root {
+	display: contents;
+}
+
+a {
+	color: var(--color-primary);
+}
+
+:focus-visible {
+	outline: 3px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+	background: var(--color-surface);
+}
+
+th,
+td {
+	text-align: left;
+	padding: var(--space-2) var(--space-3);
+	border-bottom: 1px solid var(--color-border);
+}
+
+input,
+select,
+textarea {
+	font: inherit;
+	padding: var(--space-2);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius);
+	background: var(--color-surface);
+	color: inherit;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		animation: none !important;
+		transition: none !important;
+	}
+}

@@ -1,0 +1,14 @@
+node_modules
+/build
+/.svelte-kit
+/coverage
+/playwright-report
+/test-results
+/src/lib/shared/i18n/paraglide
+/project.inlang/*
+!/project.inlang/settings.json
+.env
+.env.*
+!.env.example
+.DS_Store
+vite.config.ts.timestamp-*

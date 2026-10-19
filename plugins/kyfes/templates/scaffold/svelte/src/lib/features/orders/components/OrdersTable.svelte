@@ -1,0 +1,117 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+	import { m, formatCurrency, formatDate } from '$lib/shared/i18n';
+	import { useAbility } from '$lib/shared/rbac';
+	import { Button, ConfirmDialog, EmptyState, ErrorState, Spinner } from '$lib/shared/ui';
+	import { useDeleteOrder } from '../api/orders.mutations';
+	import { useOrders } from '../api/orders.queries';
+	import type { Order } from '../model/orders.schema';
+	import { asOrderSubject, ORDER_SUBJECT } from '../permissions';
+	import { orderStatusLabel } from './order-status';
+
+	const orders = useOrders();
+	const remove = useDeleteOrder();
+	const ability = useAbility();
+
+	const rows = $derived(orders.data?.pages.flatMap((page) => page.items) ?? []);
+	// Column visible if the user may act on at least some orders (type-level check).
+	const showActions = $derived(
+		ability.can('update', ORDER_SUBJECT) || ability.can('delete', ORDER_SUBJECT)
+	);
+
+	let pending: Order | undefined = $state();
+	let confirmOpen = $state(false);
+
+	function askDelete(order: Order) {
+		pending = order;
+		confirmOpen = true;
+	}
+
+	function confirmDelete() {
+		if (pending) remove.mutate(pending.id);
+	}
+</script>
+
+{#if orders.isPending}
+	<Spinner />
+{:else if orders.isError}
+	<ErrorState error={orders.error} onretry={() => orders.refetch()} />
+{:else if rows.length === 0}
+	<EmptyState title={m.orders_empty()} />
+{:else}
+	{#if remove.isError}
+		<ErrorState error={remove.error} />
+	{/if}
+	<table>
+		<caption class="visually-hidden">{m.orders_table_caption()}</caption>
+		<thead>
+			<tr>
+				<th scope="col">{m.orders_field_number()}</th>
+				<th scope="col">{m.orders_field_customer()}</th>
+				<th scope="col">{m.orders_field_status()}</th>
+				<th scope="col" class="num">{m.orders_field_total()}</th>
+				<th scope="col">{m.orders_field_created()}</th>
+				{#if showActions}<th scope="col">{m.orders_col_actions()}</th>{/if}
+			</tr>
+		</thead>
+		<tbody>
+			{#each rows as order (order.id)}
+				{@const record = asOrderSubject(order)}
+				<tr>
+					<td><a href={resolve('/orders/[id]', { id: order.id })}>{order.number}</a></td>
+					<td>{order.customerName}</td>
+					<td>{orderStatusLabel(order.status)}</td>
+					<td class="num">{formatCurrency(order.total)}</td>
+					<td>{formatDate(order.createdAt)}</td>
+					{#if showActions}
+						<td class="actions">
+							{#if ability.can('update', record)}
+								<a
+									href={resolve('/orders/[id]/edit', { id: order.id })}
+									aria-label={m.orders_action_edit_label({ number: order.number })}
+									>{m.orders_action_edit()}</a
+								>
+							{/if}
+							{#if ability.can('delete', record)}
+								<Button
+									variant="danger"
+									aria-label={m.orders_action_delete_label({ number: order.number })}
+									onclick={() => askDelete(order)}>{m.orders_action_delete()}</Button
+								>
+							{/if}
+						</td>
+					{/if}
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+	<p class="count" aria-live="polite">{m.orders_count({ count: rows.length })}</p>
+	{#if orders.hasNextPage}
+		<Button disabled={orders.isFetchingNextPage} onclick={() => orders.fetchNextPage()}>
+			{orders.isFetchingNextPage ? m.common_loading() : m.common_load_more()}
+		</Button>
+	{/if}
+{/if}
+
+<ConfirmDialog
+	bind:open={confirmOpen}
+	danger
+	title={m.orders_delete_title()}
+	message={m.orders_delete_text({ number: pending?.number ?? '' })}
+	confirmLabel={m.orders_action_delete()}
+	onconfirm={confirmDelete}
+/>
+
+<style>
+	.num {
+		text-align: right;
+	}
+	.actions {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+	}
+	.count {
+		color: var(--color-text-muted);
+	}
+</style>

@@ -1,0 +1,48 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"orders_nav": "Ordini",
+	"orders_list_title": "Ordini",
+	"orders_new": "Nuovo ordine",
+	"orders_new_title": "Nuovo ordine",
+	"orders_edit_title": "Modifica ordine",
+	"orders_detail_title": "Ordine {number}",
+	"orders_table_caption": "Elenco degli ordini",
+	"orders_empty": "Non ci sono ordini.",
+	"orders_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} ordine visualizzato",
+				"countPlural=other": "{count} ordini visualizzati"
+			}
+		}
+	],
+	"orders_field_number": "Numero",
+	"orders_field_customer": "Cliente",
+	"orders_field_status": "Stato",
+	"orders_field_total": "Totale",
+	"orders_field_created": "Creato il",
+	"orders_col_actions": "Azioni",
+	"orders_action_edit": "Modifica",
+	"orders_action_edit_label": "Modifica l'ordine {number}",
+	"orders_action_delete": "Elimina",
+	"orders_action_delete_label": "Elimina l'ordine {number}",
+	"orders_delete_title": "Eliminare l'ordine?",
+	"orders_delete_text": "L'ordine {number} sarà eliminato definitivamente.",
+	"orders_status_draft": "Bozza",
+	"orders_status_confirmed": "Confermato",
+	"orders_status_shipped": "Spedito",
+	"orders_status_cancelled": "Annullato",
+	"orders_status_readonly": "Non hai i permessi per modificare lo stato.",
+	"orders_form_submit_create": "Crea ordine",
+	"orders_form_submit_update": "Salva modifiche",
+	"orders_validation_required": "Campo obbligatorio.",
+	"orders_validation_too_long": "Testo troppo lungo.",
+	"orders_validation_amount": "Inserisci un importo valido, maggiore o uguale a zero.",
+	"orders_validation_invalid": "Valore non valido.",
+	"orders_chart_title": "Totale ordini per mese",
+	"orders_chart_description": "Grafico a barre con il totale degli ordini di ogni mese.",
+	"orders_chart_series": "Totale",
+	"orders_chart_month": "Mese"
+}
