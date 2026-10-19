@@ -1,0 +1,37 @@
+name: kit tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Hook, regole, installer (Claude Code e Codex)
+        run: bash tests/run.sh
+
+  scaffolds:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [react, next, vue, angular, svelte]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Scaffold ${{ matrix.framework }} — install, lint, typecheck, test, build, arch_check --strict
+        run: bash tests/run.sh --scaffolds ${{ matrix.framework }}
