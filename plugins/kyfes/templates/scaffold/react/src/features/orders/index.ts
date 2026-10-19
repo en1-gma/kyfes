@@ -10,18 +10,20 @@ export {
   orderStatsQueryOptions,
 } from './api/orders.queries';
 export { useCreateOrder, useUpdateOrder, useDeleteOrder } from './api/orders.mutations';
+export { OrderSchema, OrderInputSchema, ORDER_STATUSES } from './model/orders.schema';
+export type { Order, OrderInput } from './model/orders.schema';
 export {
-  OrderSchema,
-  OrderInputSchema,
+  ORDERS_NS,
+  ORDER_SUBJECT,
+  ORDER_FIELDS,
   ORDER_STATUS,
-  ORDER_STATUSES,
   DEFAULT_ORDER_STATUS,
   ORDER_SORT,
   DEFAULT_ORDER_SORT,
-} from './model/orders.schema';
-export type { Order, OrderInput, OrderStatus, OrderSort } from './model/orders.schema';
-export { ORDER_SUBJECT, ORDER_FIELDS, orderSubject } from './permissions';
-export { ORDERS_NS } from './model/orders.feature';
-export { ORDERS_ENDPOINT } from './api/orders.api';
-export { ORDER_DETAIL_MODE } from './components/order-detail-mode';
+  ORDERS_ENDPOINT,
+  ORDERS_STATS_ENDPOINT,
+  ORDER_DETAIL_MODE,
+} from './constants';
+export type { OrderStatus, OrderSort } from './constants';
+export { orderSubject } from './permissions';
 export { orderPaths, orderRoutes } from './routes';

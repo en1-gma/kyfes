@@ -6,21 +6,9 @@ import { ACTIONS, useCan } from '@/shared/rbac';
 import { useTranslation } from '@/shared/i18n';
 import { Button, ErrorState } from '@/shared/ui';
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations';
-import { ORDERS_NS } from '../model/orders.feature';
-import {
-  DEFAULT_ORDER_STATUS,
-  ORDER_STATUSES,
-  OrderInputSchema,
-  type Order,
-  type OrderInput,
-} from '../model/orders.schema';
-import {
-  ORDER_EDITABLE_FIELDS,
-  ORDER_FIELDS,
-  ORDER_SUBJECT,
-  orderSubject,
-  type OrderEditableField,
-} from '../permissions';
+import { DEFAULT_ORDER_STATUS, ORDER_FIELDS, ORDER_SUBJECT, ORDERS_NS } from '../constants';
+import { ORDER_STATUSES, OrderInputSchema, type Order, type OrderInput } from '../model/orders.schema';
+import { ORDER_EDITABLE_FIELDS, orderSubject, type OrderEditableField } from '../permissions';
 
 interface OrderFormProps {
   /** Edit mode when present, create mode otherwise. */

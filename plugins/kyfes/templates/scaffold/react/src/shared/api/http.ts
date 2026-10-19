@@ -1,18 +1,12 @@
 import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '@/shared/config';
+import {
+  AUTH_ENDPOINTS,
+  CORRELATION_HEADER,
+  XSRF_COOKIE_NAME,
+  XSRF_HEADER_NAME,
+} from '@/shared/config/constants';
 import { ApiError, ApiErrorBodySchema } from './api-error';
-
-export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
-export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
-const CORRELATION_HEADER = 'x-correlation-id';
-
-/** Endpoints of the BFF session (relative to the API base URL). */
-export const AUTH_ENDPOINTS = {
-  me: '/auth/me',
-  login: '/auth/login',
-  logout: '/auth/logout',
-  refresh: '/auth/refresh',
-} as const;
 
 /** Auth endpoints never trigger the refresh/retry logic (avoids loops). */
 const NO_REFRESH_ENDPOINTS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout];

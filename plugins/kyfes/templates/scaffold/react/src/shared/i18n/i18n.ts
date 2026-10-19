@@ -1,9 +1,7 @@
 import i18next, { type BackendModule, type ResourceKey } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { env, SUPPORTED_LOCALES, type Locale } from '@/shared/config';
-
-/** Namespace of the shared texts (`shared/i18n/locales`): default and fallback of every `t()`. */
-export const COMMON_NS = 'common';
+import { COMMON_NS } from '@/shared/config/constants';
 
 type JsonModule = { default: ResourceKey };
 

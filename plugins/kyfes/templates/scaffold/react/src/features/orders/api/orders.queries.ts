@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { DEFAULT_PAGE_SIZE, getNextCursor } from '@/shared/api';
-import { ORDERS_FEATURE } from '../model/orders.feature';
-import { DEFAULT_ORDER_SORT, type OrderListFilters } from '../model/orders.schema';
+import { DEFAULT_ORDER_SORT, ORDERS_FEATURE } from '../constants';
+import type { OrderListFilters } from '../model/orders.schema';
 import { ordersApi } from './orders.api';
 
 /** Key factory: the only place where the keys of the feature are written (kyfes §4.2). */

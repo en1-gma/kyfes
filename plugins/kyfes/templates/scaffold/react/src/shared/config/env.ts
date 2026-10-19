@@ -1,17 +1,11 @@
 import { z } from 'zod';
+import { FALLBACK_LOCALE, FLAG_OFF, FLAG_ON, SUPPORTED_LOCALES } from './constants';
 
-/** Language used when `VITE_DEFAULT_LOCALE` is not set. */
-const FALLBACK_LOCALE = 'it';
-
-/** Locales the UI ships with. Add a language here and a `locales/<lng>.json` in every namespace. */
-export const SUPPORTED_LOCALES = [FALLBACK_LOCALE, 'en'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-/** Value of an enabled boolean flag (`VITE_*=true`); `false` or empty disable it. */
-const FLAG_ON = 'true';
-
+/** `VITE_*=true` enables a flag; `false` or empty disable it. */
 const booleanFlag = z
-  .enum([FLAG_ON, 'false', ''])
+  .enum([FLAG_ON, FLAG_OFF, ''])
   .optional()
   .transform((v) => v === FLAG_ON);
 

@@ -1,20 +1,11 @@
-/** Fields of a datum, as Recharts `dataKey`s. */
-export const CHART_DATUM_KEY = {
-  label: 'label',
-  value: 'value',
-} as const satisfies Record<keyof ChartDatum, keyof ChartDatum>;
+import type { CHART_DATUM_KEY, CHART_VARIANT } from '@/shared/config/constants';
 
-/** Kinds of series drawn by the cartesian chart. */
-export const CHART_VARIANT = {
-  bar: 'bar',
-  line: 'line',
-} as const;
 export type CartesianVariant = (typeof CHART_VARIANT)[keyof typeof CHART_VARIANT];
 
 export interface ChartDatum {
   /** Already formatted category label (e.g. "mar 2026"). */
-  label: string;
-  value: number;
+  [CHART_DATUM_KEY.label]: string;
+  [CHART_DATUM_KEY.value]: number;
 }
 
 export interface ChartProps {
@@ -29,6 +20,3 @@ export interface ChartProps {
   formatValue?: ((value: number) => string) | undefined;
   height?: number | undefined;
 }
-
-/** Palette from CSS custom properties (app/styles.css): theme changes need no JS. */
-export const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'] as const;

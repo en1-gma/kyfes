@@ -5,6 +5,7 @@ import {
   ORDER_SORT,
   ORDER_SUBJECT,
   ORDERS_ENDPOINT,
+  ORDERS_STATS_ENDPOINT,
   OrderInputSchema,
   type Order,
 } from '@/features/orders';
@@ -64,7 +65,7 @@ export const handlers = [
   http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
 
   // ---------------------------------------------------------------- orders
-  http.get(`${API}${ORDERS_ENDPOINT}/stats`, async () => {
+  http.get(`${API}${ORDERS_STATS_ENDPOINT}`, async () => {
     await delay();
     const byMonth = new Map<string, { total: number; count: number }>();
     for (const o of db.orders) {

@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { BUTTON_VARIANT, type ButtonVariant } from './button-variant';
+import { BUTTON_VARIANT, type ButtonVariant } from '@/shared/config/constants';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;

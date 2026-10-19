@@ -1,14 +1,11 @@
-import { ORDERS_FEATURE } from './model/orders.feature';
-
-/** Route param holding the order id (`useParams()` → `orderId`). */
-const ORDER_ID_PARAM = 'orderId';
+import { ORDER_ID_PARAM, ORDER_ROUTE_SEGMENT, ORDERS_FEATURE } from './constants';
 
 /** Relative paths for the router (app): the section and its children. */
 export const orderRoutes = {
   section: ORDERS_FEATURE,
-  new: 'new',
+  new: ORDER_ROUTE_SEGMENT.new,
   detail: `:${ORDER_ID_PARAM}`,
-  edit: `:${ORDER_ID_PARAM}/edit`,
+  edit: `:${ORDER_ID_PARAM}/${ORDER_ROUTE_SEGMENT.edit}`,
 } as const;
 
 const SECTION_PATH = `/${orderRoutes.section}`;
@@ -18,5 +15,5 @@ export const orderPaths = {
   list: SECTION_PATH,
   new: `${SECTION_PATH}/${orderRoutes.new}`,
   detail: (id: string) => `${SECTION_PATH}/${encodeURIComponent(id)}`,
-  edit: (id: string) => `${SECTION_PATH}/${encodeURIComponent(id)}/edit`,
+  edit: (id: string) => `${SECTION_PATH}/${encodeURIComponent(id)}/${ORDER_ROUTE_SEGMENT.edit}`,
 } as const;

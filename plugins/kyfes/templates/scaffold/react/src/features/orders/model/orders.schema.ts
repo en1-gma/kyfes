@@ -1,20 +1,13 @@
 import { z } from 'zod';
 import { pageSchema } from '@/shared/api';
 import { VALIDATION_KEYS } from '@/shared/i18n';
+import { ORDER_STATUS, type OrderSort, type OrderStatus } from '../constants';
 
-export const ORDER_STATUS = {
-  draft: 'draft',
-  confirmed: 'confirmed',
-  shipped: 'shipped',
-  cancelled: 'cancelled',
-} as const;
+export type { OrderSort, OrderStatus } from '../constants';
+
 export const OrderStatusSchema = z.enum(ORDER_STATUS);
-export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 /** Statuses in display order (filters, selects). */
 export const ORDER_STATUSES = OrderStatusSchema.options;
-
-/** Status of a new order when the client does not send one (applied by the server). */
-export const DEFAULT_ORDER_STATUS: OrderStatus = ORDER_STATUS.draft;
 
 export const OrderSchema = z.object({
   id: z.uuid(),
@@ -54,15 +47,6 @@ export const OrderStatsSchema = z.object({
   ),
 });
 export type OrderStats = z.infer<typeof OrderStatsSchema>;
-
-/** Sort orders accepted by the list endpoint (`field:direction`). */
-export const ORDER_SORT = {
-  createdAtDesc: 'createdAt:desc',
-  createdAtAsc: 'createdAt:asc',
-  totalDesc: 'total:desc',
-} as const;
-export type OrderSort = (typeof ORDER_SORT)[keyof typeof ORDER_SORT];
-export const DEFAULT_ORDER_SORT: OrderSort = ORDER_SORT.createdAtDesc;
 
 /** List filters: part of the query key. */
 export interface OrderListFilters {

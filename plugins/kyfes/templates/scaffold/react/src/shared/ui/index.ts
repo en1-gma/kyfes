@@ -1,7 +1,7 @@
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
-export { BUTTON_VARIANT } from './button-variant';
-export type { ButtonVariant } from './button-variant';
+export { BUTTON_VARIANT } from '@/shared/config/constants';
+export type { ButtonVariant } from '@/shared/config/constants';
 export { Spinner } from './Spinner';
 export { ErrorState } from './ErrorState';
 export { EmptyState } from './EmptyState';

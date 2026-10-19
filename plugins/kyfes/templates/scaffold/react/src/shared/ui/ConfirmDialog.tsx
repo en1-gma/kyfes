@@ -1,10 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import { Button } from './Button';
-import { BUTTON_VARIANT } from './button-variant';
-
-/** Attribute set on the `<dialog>` when `showModal()`/`close()` are missing (old engines, jsdom). */
-const OPEN_ATTR = 'open';
+import { BUTTON_VARIANT, OPEN_ATTR } from '@/shared/config/constants';
 
 interface ConfirmDialogProps {
   open: boolean;

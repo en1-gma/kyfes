@@ -1,5 +1,5 @@
 import { useTranslation } from '@/shared/i18n';
-import { ORDERS_NS } from '../model/orders.feature';
+import { ORDERS_NS } from '../constants';
 import type { OrderStatus } from '../model/orders.schema';
 
 /** Status as text + colour (colour is never the only information). */

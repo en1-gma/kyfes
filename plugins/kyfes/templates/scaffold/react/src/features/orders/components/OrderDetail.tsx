@@ -4,11 +4,10 @@ import { ACTIONS, Can } from '@/shared/rbac';
 import { formatCurrency, formatDate, useTranslation } from '@/shared/i18n';
 import { EmptyState, ForbiddenState, QueryState } from '@/shared/ui';
 import { useOrder } from '../api/orders.queries';
-import { ORDERS_NS } from '../model/orders.feature';
+import { ORDER_DETAIL_MODE, ORDERS_NS, type OrderDetailMode } from '../constants';
 import type { Order } from '../model/orders.schema';
 import { orderSubject } from '../permissions';
 import { orderPaths } from '../routes';
-import { ORDER_DETAIL_MODE, type OrderDetailMode } from './order-detail-mode';
 import { OrderForm } from './OrderForm';
 import { OrderStatusBadge } from './OrderStatusBadge';
 

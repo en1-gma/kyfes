@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
 import { ApiError } from './api-error';
-import { configureHttp, http, shouldSendXsrf, toApiError, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from './http';
+import { XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from '@/shared/config/constants';
+import { configureHttp, http, shouldSendXsrf, toApiError } from './http';
 
 let unconfigure: (() => void) | undefined;
 afterEach(() => {

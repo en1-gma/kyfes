@@ -1,13 +1,8 @@
 import { Bar, CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatNumber } from '@/shared/i18n';
 import { ChartFigure } from './ChartFigure';
-import {
-  CHART_COLORS,
-  CHART_DATUM_KEY,
-  CHART_VARIANT,
-  type CartesianVariant,
-  type ChartProps,
-} from './types';
+import { CHART_COLORS, CHART_DATUM_KEY, CHART_VARIANT } from '@/shared/config/constants';
+import type { CartesianVariant, ChartProps } from './types';
 
 /** Single Recharts implementation behind BarChart and LineChart (same axes, grid, tooltip). */
 export default function CartesianChart({ variant, ...props }: ChartProps & { variant: CartesianVariant }) {

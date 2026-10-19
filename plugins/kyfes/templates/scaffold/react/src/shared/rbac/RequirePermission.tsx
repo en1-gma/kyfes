@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Outlet } from 'react-router';
 import { ForbiddenState } from '@/shared/ui';
-import type { Actions, Subjects } from './ability';
+import type { Actions } from '@/shared/config/constants';
+import type { Subjects } from './ability';
 import { useAbility } from './can';
 
 interface RequirePermissionProps {

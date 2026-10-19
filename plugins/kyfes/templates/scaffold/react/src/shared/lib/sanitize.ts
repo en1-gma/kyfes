@@ -1,8 +1,5 @@
 import DOMPurify from 'dompurify';
-
-/** Both the `<style>` tag and the `style` attribute: no inline CSS in user HTML. */
-const STYLE = 'style';
-const TARGET_ATTR = 'target';
+import { STYLE, TARGET_ATTR } from '@/shared/config/constants';
 
 /**
  * The only way to render HTML coming from users or the backend (kyfes §3.3).

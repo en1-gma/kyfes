@@ -1,8 +1,6 @@
 import { subject } from '@/shared/rbac';
+import { ORDER_FIELDS, ORDER_SUBJECT } from './constants';
 import type { Order } from './model/orders.schema';
-
-/** CASL subject of the feature (kyfes §5). */
-export const ORDER_SUBJECT = 'Order' as const;
 
 // Registers 'Order' in shared/rbac `Subjects` without shared/ importing this feature.
 declare module '@/shared/rbac/ability' {
@@ -17,17 +15,10 @@ export function orderSubject(order: Order) {
   return subject(ORDER_SUBJECT, { ...order });
 }
 
-/** Fields of Order named by the field-level rules (`can(action, subject, field)`, `fields`). */
-export const ORDER_FIELDS = {
-  customerName: 'customerName',
-  status: 'status',
-  total: 'total',
-} as const satisfies Record<string, keyof Order>;
-
 /** Fields the user can edit, checked one by one against the field-level rules. */
 export const ORDER_EDITABLE_FIELDS = [
   ORDER_FIELDS.customerName,
   ORDER_FIELDS.status,
   ORDER_FIELDS.total,
-] as const;
+] as const satisfies readonly (keyof Order)[];
 export type OrderEditableField = (typeof ORDER_EDITABLE_FIELDS)[number];

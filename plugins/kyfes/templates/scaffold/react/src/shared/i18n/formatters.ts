@@ -1,9 +1,7 @@
+import { DEFAULT_CURRENCY } from '@/shared/config/constants';
 import { currentLocale } from './i18n';
 
 /** Date, number and currency formatting only through Intl (kyfes §6). */
-
-/** ISO 4217 currency of the amounts when the caller does not pass one. */
-export const DEFAULT_CURRENCY = 'EUR';
 
 export function formatDate(
   value: Date | string | number,

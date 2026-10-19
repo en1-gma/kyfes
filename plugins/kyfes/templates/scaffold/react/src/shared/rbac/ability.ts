@@ -6,16 +6,7 @@ import {
   type RawRuleOf,
 } from '@casl/ability';
 import type { RawRule } from '@/shared/auth';
-
-/** CASL actions, written once: guards, `can()`, `<Can>` and mock rules reference these. */
-export const ACTIONS = {
-  create: 'create',
-  read: 'read',
-  update: 'update',
-  delete: 'delete',
-  manage: 'manage',
-} as const;
-export type Actions = (typeof ACTIONS)[keyof typeof ACTIONS];
+import type { Actions } from '@/shared/config/constants';
 
 /**
  * Registry of the CASL subjects of the features. Each feature registers its subject in its

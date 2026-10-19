@@ -3,7 +3,7 @@ import { BarChart } from '@/shared/charts';
 import { DEFAULT_CURRENCY, formatCurrency, formatMonth, useTranslation } from '@/shared/i18n';
 import { QueryState } from '@/shared/ui';
 import { useOrderStats } from '../api/orders.queries';
-import { ORDERS_NS } from '../model/orders.feature';
+import { ORDERS_NS } from '../constants';
 
 /** Order totals per month (data aggregated by the backend, `/orders/stats`). */
 export function OrdersChart() {

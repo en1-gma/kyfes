@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_ORDER_SORT, type OrderSort, type OrderStatus } from '../model/orders.schema';
+import { DEFAULT_ORDER_SORT, type OrderSort, type OrderStatus } from '../constants';
 
 /** UI-only state of the orders list (filters): never copies of server data (kyfes §4.2). */
 interface OrdersUiState {

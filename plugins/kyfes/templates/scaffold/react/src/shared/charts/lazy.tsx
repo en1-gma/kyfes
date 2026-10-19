@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Spinner } from '@/shared/ui';
-import { CHART_VARIANT, type ChartProps } from './types';
+import { CHART_VARIANT } from '@/shared/config/constants';
+import type { ChartProps } from './types';
 
 // Recharts is loaded only when a chart is rendered (separate chunk, kyfes §7).
 const LazyCartesian = lazy(() => import('./CartesianChart'));

@@ -9,9 +9,7 @@ import {
   type OrderStats,
   type OrderStatus,
 } from '../model/orders.schema';
-
-/** REST resource of the orders (relative to the API base URL). */
-export const ORDERS_ENDPOINT = '/orders';
+import { ORDERS_ENDPOINT, ORDERS_STATS_ENDPOINT } from '../constants';
 
 const orderEndpoint = (id: string) => `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`;
 
@@ -46,7 +44,7 @@ export const ordersApi = {
   },
 
   async stats(signal?: AbortSignal): Promise<OrderStats> {
-    const { data } = await http.get<unknown>(`${ORDERS_ENDPOINT}/stats`, { signal });
+    const { data } = await http.get<unknown>(ORDERS_STATS_ENDPOINT, { signal });
     return OrderStatsSchema.parse(data);
   },
 };
