@@ -29,5 +29,18 @@ describe('safeRedirect', () => {
 
   it('normalises dot segments without leaving the origin', () => {
     expect(safeRedirect('/a/../../orders')).toBe('/orders');
+    expect(safeRedirect('/a/../orders')).toBe('/orders');
+  });
+
+  it.each([
+    '/.//evil.example',
+    '/a/..//evil.example',
+    '/%2e%2e//evil.example',
+    '/..//evil.example',
+    '/./%2F/evil.example',
+    '/%2F%2Fevil.example',
+    '/%5Cevil.example',
+  ])('rejects %j, which normalises to another origin', (value) => {
+    expect(safeRedirect(value)).toBe('/');
   });
 });

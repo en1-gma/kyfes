@@ -24,6 +24,7 @@ export type SessionUser = z.infer<typeof SessionUserSchema>;
 export const SessionSchema = z.object({
   user: SessionUserSchema,
   rules: z.array(RawRuleSchema),
-  locale: z.string().optional(),
+  // Unknown or null locale: ignored (the UI keeps the browser/default language), never a broken session.
+  locale: z.string().optional().catch(undefined),
 });
 export type Session = z.infer<typeof SessionSchema>;

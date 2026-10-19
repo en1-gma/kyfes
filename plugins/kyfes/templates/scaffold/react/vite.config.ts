@@ -36,6 +36,9 @@ export default defineConfig(({ mode }) => {
       exclude: [...configDefaults.exclude, 'e2e/**'],
       css: false,
       unstubEnvs: true,
+      // No persistent transform cache: it keeps stale `import.meta.glob` results, so the locales of a
+      // new feature would not be found until the cache is cleared.
+      fsModuleCache: false,
     },
   };
 });

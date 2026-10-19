@@ -14,7 +14,7 @@ function invalidateAggregates(queryClient: QueryClient) {
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: OrderInput) => ordersApi.create(input),
+    mutationFn: (input: Partial<OrderInput>) => ordersApi.create(input),
     onSuccess: async (order) => {
       queryClient.setQueryData(orderKeys.detail(order.id), order);
       await invalidateAggregates(queryClient);
@@ -35,10 +35,14 @@ export function useUpdateOrder(id: string) {
 
 type OrderLists = InfiniteData<OrderPage, string | undefined>;
 
+/** Shared by every delete: lets a failing delete know whether others are still in flight. */
+const DELETE_ORDER_KEY = [...orderKeys.all, 'delete'] as const;
+
 /** Delete with optimistic update on every cached list, rollback on error (kyfes §4.2). */
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: DELETE_ORDER_KEY,
     mutationFn: (order: Pick<Order, 'id'>) => ordersApi.remove(order.id),
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: orderKeys.lists() });
@@ -53,12 +57,22 @@ export function useDeleteOrder() {
       );
       return { previous };
     },
-    onError: (_error, _order, context) => {
-      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data);
+    onError: async (_error, _order, context) => {
+      // The snapshot also holds the rows of the other deletes still in flight: restoring it would bring
+      // them back. Restore it only when this is the last pending delete, otherwise refetch later.
+      if (queryClient.isMutating({ mutationKey: DELETE_ORDER_KEY }) <= 1) {
+        for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data);
+      } else {
+        await queryClient.invalidateQueries({ queryKey: orderKeys.lists(), refetchType: 'none' });
+      }
     },
-    onSettled: async (_data, _error, { id }) => {
+    onSuccess: (_data, { id }) => {
       queryClient.removeQueries({ queryKey: orderKeys.detail(id) });
-      await invalidateAggregates(queryClient);
+    },
+    onSettled: async () => {
+      // The last delete to finish refetches: earlier refetches would return rows still being deleted.
+      if (queryClient.isMutating({ mutationKey: DELETE_ORDER_KEY }) <= 1)
+        await invalidateAggregates(queryClient);
     },
   });
 }

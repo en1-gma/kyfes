@@ -19,3 +19,4 @@ export function orderSubject(order: Order) {
 
 /** Fields the user can edit, checked one by one against the field-level rules. */
 export const ORDER_EDITABLE_FIELDS = ['customerName', 'status', 'total'] as const;
+export type OrderEditableField = (typeof ORDER_EDITABLE_FIELDS)[number];

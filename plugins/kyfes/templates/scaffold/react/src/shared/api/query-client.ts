@@ -3,9 +3,13 @@ import { isApiError } from './api-error';
 
 const MAX_RETRIES = 2;
 
-/** No retry on 4xx (the answer will not change); at most 2 retries on 5xx / network errors. */
+/**
+ * Retry only what may succeed a moment later: network errors/timeouts (status 0) and 5xx, at most twice.
+ * Never 4xx, never an invalid payload (ZodError) or a programming error: the answer will not change.
+ */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (isApiError(error) && error.isClientError) return false;
+  if (!isApiError(error)) return false;
+  if (error.status !== 0 && error.status < 500) return false;
   return failureCount < MAX_RETRIES;
 }
 

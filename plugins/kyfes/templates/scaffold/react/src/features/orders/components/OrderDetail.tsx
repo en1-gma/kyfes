@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { isApiError } from '@/shared/api';
 import { Can } from '@/shared/rbac';
 import { formatCurrency, formatDate, useTranslation } from '@/shared/i18n';
-import { EmptyState, ErrorState, ForbiddenState, Spinner } from '@/shared/ui';
+import { EmptyState, ForbiddenState, QueryState } from '@/shared/ui';
 import { useOrder } from '../api/orders.queries';
 import type { Order } from '../model/orders.schema';
 import { orderSubject } from '../permissions';
@@ -19,20 +19,11 @@ interface OrderDetailProps {
 
 export function OrderDetail({ orderId, mode = 'view', onSaved, onCancel }: OrderDetailProps) {
   const { t } = useTranslation('orders');
-  const { data: order, error, isPending, refetch } = useOrder(orderId);
+  const query = useOrder(orderId);
+  const { data: order, error } = query;
 
-  if (isPending) return <Spinner />;
   if (isApiError(error) && error.isNotFound) return <EmptyState message={t('detail.notFound')} />;
-  if (!order) {
-    return (
-      <ErrorState
-        error={error}
-        onRetry={() => {
-          void refetch();
-        }}
-      />
-    );
-  }
+  if (!order) return <QueryState query={query}>{null}</QueryState>;
 
   if (mode === 'edit') {
     return (

@@ -7,7 +7,7 @@ import { useTranslation } from '@/shared/i18n';
 import { Button, ErrorState } from '@/shared/ui';
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations';
 import { ORDER_STATUSES, OrderInputSchema, type Order, type OrderInput } from '../model/orders.schema';
-import { ORDER_SUBJECT, orderSubject } from '../permissions';
+import { ORDER_EDITABLE_FIELDS, ORDER_SUBJECT, orderSubject, type OrderEditableField } from '../permissions';
 
 interface OrderFormProps {
   /** Edit mode when present, create mode otherwise. */
@@ -15,8 +15,6 @@ interface OrderFormProps {
   onSaved?: ((order: Order) => void) | undefined;
   onCancel?: (() => void) | undefined;
 }
-
-const FIELDS = ['customerName', 'status', 'total'] as const;
 
 export function OrderForm({ order, onSaved, onCancel }: OrderFormProps) {
   const { t } = useTranslation('orders');
@@ -26,10 +24,10 @@ export function OrderForm({ order, onSaved, onCancel }: OrderFormProps) {
   const update = useUpdateOrder(order?.id ?? '');
   const mutation = order ? update : create;
 
-  // Field-level permission (kyfes §5): read-only when the rule does not allow the field.
-  const statusReadOnly = order
-    ? !can('update', orderSubject(order), 'status')
-    : !can('create', ORDER_SUBJECT, 'status');
+  // Field-level permission (kyfes §5): a field the rules do not allow is read-only and never sent.
+  const writable = (field: OrderEditableField) =>
+    order ? can('update', orderSubject(order), field) : can('create', ORDER_SUBJECT, field);
+  const statusReadOnly = !writable('status');
 
   const {
     register,
@@ -45,17 +43,16 @@ export function OrderForm({ order, onSaved, onCancel }: OrderFormProps) {
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    const { status, ...rest } = values;
-    const payload = statusReadOnly ? rest : { ...rest, status };
+    const payload: Partial<OrderInput> = Object.fromEntries(
+      ORDER_EDITABLE_FIELDS.filter(writable).map((field) => [field, values[field]]),
+    );
     try {
-      const saved = order
-        ? await update.mutateAsync(payload)
-        : await create.mutateAsync({ ...values, ...payload });
+      const saved = order ? await update.mutateAsync(payload) : await create.mutateAsync(payload);
       onSaved?.(saved);
     } catch (error) {
       // Server-side validation errors land on their fields; everything else is shown below.
       if (isApiError(error) && error.fieldErrors) {
-        for (const field of FIELDS) {
+        for (const field of ORDER_EDITABLE_FIELDS) {
           const message = error.fieldErrors[field]?.[0];
           if (message) setError(field, { type: 'server', message });
         }

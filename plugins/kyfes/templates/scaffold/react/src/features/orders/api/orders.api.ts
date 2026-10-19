@@ -25,7 +25,8 @@ export const ordersApi = {
     return OrderSchema.parse(data);
   },
 
-  async create(input: OrderInput): Promise<Order> {
+  /** Only the fields the user may write: the server applies the defaults of the others (e.g. status). */
+  async create(input: Partial<OrderInput>): Promise<Order> {
     const { data } = await http.post<unknown>('/orders', input);
     return OrderSchema.parse(data);
   },

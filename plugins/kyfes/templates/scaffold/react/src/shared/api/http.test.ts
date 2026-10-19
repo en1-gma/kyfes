@@ -1,4 +1,5 @@
 import { http as mswHttp, HttpResponse } from 'msw';
+import axios from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
@@ -134,5 +135,54 @@ describe('401 / 403 handling', () => {
     server.use(mswHttp.delete('/api/orders/x', () => apiError(403, 'FORBIDDEN', 'No')));
     await expect(http.delete('/orders/x')).rejects.toMatchObject({ status: 403 });
     expect(onForbidden).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('refresh and cancellation edge cases', () => {
+  it('does not refresh again for a request that started before a completed refresh', async () => {
+    unconfigure = configureHttp({ onUnauthorized: vi.fn(), refreshOnUnauthorized: true });
+    let refreshCalls = 0;
+    let refreshed = false;
+    server.use(
+      mswHttp.post('/api/auth/refresh', () => {
+        refreshCalls += 1;
+        refreshed = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+      // Sent with the old cookie, answered with 401 only after the other request has refreshed.
+      mswHttp.get('/api/slow', async () => {
+        if (refreshCalls > 0) return HttpResponse.json({ ok: true });
+        while (!refreshed) await new Promise((r) => setTimeout(r, 5));
+        return apiError(401, 'UNAUTHENTICATED', 'Expired');
+      }),
+      mswHttp.get('/api/fast', () =>
+        refreshed ? HttpResponse.json({ ok: true }) : apiError(401, 'UNAUTHENTICATED', 'Expired'),
+      ),
+    );
+    const slow = http.get('/slow');
+    await http.get('/fast');
+    await expect(slow).resolves.toMatchObject({ data: { ok: true } });
+    expect(refreshCalls).toBe(1);
+  });
+
+  it('calls onUnauthorized once when a refresh fails for concurrent requests', async () => {
+    const onUnauthorized = vi.fn();
+    unconfigure = configureHttp({ onUnauthorized, refreshOnUnauthorized: true });
+    server.use(
+      mswHttp.post('/api/auth/refresh', () => apiError(401, 'UNAUTHENTICATED', 'Expired')),
+      mswHttp.get('/api/private/:n', () => apiError(401, 'UNAUTHENTICATED', 'Expired')),
+    );
+    await Promise.allSettled([http.get('/private/1'), http.get('/private/2'), http.get('/private/3')]);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes cancellations through instead of turning them into network errors', async () => {
+    server.use(mswHttp.get('/api/hang', () => new Promise<never>(() => undefined)));
+    const controller = new AbortController();
+    const pending = http.get('/hang', { signal: controller.signal }).catch((e: unknown) => e);
+    controller.abort();
+    const error = await pending;
+    expect(axios.isCancel(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(ApiError);
   });
 });

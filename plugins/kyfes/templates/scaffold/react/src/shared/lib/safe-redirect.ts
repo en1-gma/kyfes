@@ -17,7 +17,12 @@ export function safeRedirect(target: unknown, fallback = '/'): string {
     const base = 'https://kyfes.invalid';
     const url = new URL(value, base);
     if (url.origin !== base) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
+    const result = `${url.pathname}${url.search}${url.hash}`;
+    // Dot segments are resolved by URL: `/.//evil.example` becomes `//evil.example`, a protocol-relative URL.
+    // Check the normalised result too, decoded, so `/%2e%2e//host` and `/%5Chost` cannot leave the origin.
+    const decoded = decodeURIComponent(url.pathname);
+    if (result.startsWith('//') || decoded.startsWith('//') || decoded.includes('\\')) return fallback;
+    return result;
   } catch {
     return fallback;
   }

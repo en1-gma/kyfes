@@ -1,6 +1,6 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { delay, http } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { db } from '@/mocks/data';
@@ -128,5 +128,46 @@ describe('orders mutations', () => {
     await waitFor(() => {
       expect(list.result.current.data?.pages[0]?.items[0]?.id).toBe(target.id);
     });
+  });
+
+  it('a failing delete does not bring back a row whose delete is still in flight', async () => {
+    const { queryClient, wrapper } = setup();
+    const list = renderHook(() => useOrdersInfinite(), { wrapper });
+    await waitFor(() => {
+      expect(list.result.current.data?.pages[0]?.items).toHaveLength(20);
+    });
+    const [first, second] = list.result.current.data!.pages[0]!.items;
+    server.use(
+      http.delete('/api/orders/:id', async ({ params }) => {
+        if (params.id === first!.id) {
+          await delay(20);
+          return apiError(500, 'INTERNAL', 'boom');
+        }
+        await delay(200);
+        db.orders = db.orders.filter((o) => o.id !== params.id);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const a = renderHook(() => useDeleteOrder(), { wrapper });
+    const b = renderHook(() => useDeleteOrder(), { wrapper });
+    act(() => {
+      b.result.current.mutate(second!);
+      a.result.current.mutate(first!);
+    });
+    await waitFor(() => {
+      expect(a.result.current.isError).toBe(true);
+    });
+    const ids = () =>
+      queryClient
+        .getQueryData(ordersInfiniteQueryOptions().queryKey)
+        ?.pages.flatMap((p) => p.items.map((o) => o.id)) ?? [];
+    expect(ids()).not.toContain(second!.id);
+    await waitFor(() => {
+      expect(b.result.current.isSuccess).toBe(true);
+    });
+    await waitFor(() => {
+      expect(ids()).toContain(first!.id);
+    });
+    expect(ids()).not.toContain(second!.id);
   });
 });

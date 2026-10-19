@@ -25,6 +25,11 @@ export function apiError(
 
 const ability = () => buildAbility(mockSessions[db.user].rules);
 
+/** True if the body carries at least one field the current user may not write. */
+function deniedFields(body: unknown, cannot: (field: string) => boolean): boolean {
+  return typeof body === 'object' && body !== null && Object.keys(body).some(cannot);
+}
+
 const encodeCursor = (offset: number) => btoa(`o:${String(offset)}`);
 const decodeCursor = (cursor: string | null) => {
   if (!cursor) return 0;
@@ -89,7 +94,12 @@ export const handlers = [
   http.post(`${API}/orders`, async ({ request }) => {
     await delay();
     if (ability().cannot('create', 'Order')) return apiError(403, 'FORBIDDEN', 'Not allowed');
-    const parsed = OrderInputSchema.safeParse(await request.json());
+    const body = await request.json();
+    // Field-level check, as a real backend does (permittedFieldsOf): every field sent must be writable.
+    if (deniedFields(body, (field) => ability().cannot('create', 'Order', field)))
+      return apiError(403, 'FORBIDDEN', 'Not allowed');
+    // The server owns the defaults of the fields the client may not send.
+    const parsed = OrderInputSchema.safeParse({ status: 'draft', ...(body as object) });
     if (!parsed.success) {
       return apiError(422, 'VALIDATION_ERROR', 'Invalid order', z.flattenError(parsed.error).fieldErrors);
     }
@@ -107,9 +117,12 @@ export const handlers = [
     await delay();
     const current = db.orders.find((o) => o.id === params.id);
     if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-    if (ability().cannot('update', subject('Order', { ...current })))
+    const record = subject('Order', { ...current });
+    if (ability().cannot('update', record)) return apiError(403, 'FORBIDDEN', 'Not allowed');
+    const body = await request.json();
+    if (deniedFields(body, (field) => ability().cannot('update', record, field)))
       return apiError(403, 'FORBIDDEN', 'Not allowed');
-    const parsed = OrderInputSchema.partial().safeParse(await request.json());
+    const parsed = OrderInputSchema.partial().safeParse(body);
     if (!parsed.success) return apiError(422, 'VALIDATION_ERROR', 'Invalid order');
     const updated: Order = { ...current, ...parsed.data };
     db.orders = db.orders.map((o) => (o.id === current.id ? updated : o));

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCan } from '@/shared/rbac';
 import { formatCurrency, formatDate, useTranslation } from '@/shared/i18n';
-import { Button, ConfirmDialog, EmptyState, ErrorState, Spinner } from '@/shared/ui';
+import { Button, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '@/shared/ui';
 import { useDeleteOrder } from '../api/orders.mutations';
 import { useOrdersInfinite } from '../api/orders.queries';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '../model/orders.schema';
@@ -47,18 +47,7 @@ export function OrdersTable() {
         </label>
       </div>
 
-      {query.isPending ? (
-        <Spinner />
-      ) : query.isError ? (
-        <ErrorState
-          error={query.error}
-          onRetry={() => {
-            void query.refetch();
-          }}
-        />
-      ) : orders.length === 0 ? (
-        <EmptyState message={t('list.empty')} />
-      ) : (
+      <QueryState query={query} isEmpty={orders.length === 0} emptyMessage={t('list.empty')}>
         <>
           <div className="table-wrapper">
             <table className="table">
@@ -124,36 +113,24 @@ export function OrdersTable() {
               </tbody>
             </table>
           </div>
-          <p className="muted" aria-live="polite">
-            {t('list.count', { count: orders.length })}
-          </p>
-          {query.hasNextPage && (
-            <Button
-              busy={query.isFetchingNextPage}
-              onClick={() => {
-                void query.fetchNextPage();
-              }}
-            >
-              {t('common:actions.loadMore')}
-            </Button>
-          )}
+          <LoadMore summary={t('list.count', { count: orders.length })} query={query} />
         </>
-      )}
+      </QueryState>
 
       {remove.isError && <ErrorState error={remove.error} />}
 
-      <ConfirmDialog
-        open={toDelete !== null}
-        danger
-        title={t('delete.title')}
-        message={t('delete.message', { number: toDelete?.number ?? '' })}
-        confirmLabel={t('delete.confirm')}
-        busy={remove.isPending}
-        onCancel={() => {
-          setToDelete(null);
+      <ConfirmDeleteDialog
+        item={toDelete}
+        labels={{
+          title: t('delete.title'),
+          message: t('delete.message', { number: toDelete?.number ?? '' }),
+          confirm: t('delete.confirm'),
         }}
-        onConfirm={() => {
-          if (toDelete) remove.mutate(toDelete);
+        busy={remove.isPending}
+        onConfirm={(order) => {
+          remove.mutate(order);
+        }}
+        onClose={() => {
           setToDelete(null);
         }}
       />

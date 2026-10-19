@@ -9,6 +9,13 @@ const features = import.meta.glob<Json>('../../features/*/locales/*.json', {
   import: 'default',
 });
 
+/** i18next plural suffixes: languages have different plural categories, so they are not compared. */
+const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
+
+function comparableKeys(obj: Json): string[] {
+  return [...new Set(flatKeys(obj).map((key) => key.replace(PLURAL_SUFFIX, '')))].sort();
+}
+
 function flatKeys(obj: Json, prefix = ''): string[] {
   return Object.entries(obj).flatMap(([key, value]) =>
     value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -35,6 +42,14 @@ function byNamespace(): Map<string, Map<string, Json>> {
 
 const namespaces = byNamespace();
 
+describe('plural-aware key comparison', () => {
+  it('ignores plural categories that differ between languages', () => {
+    expect(comparableKeys({ count_one: 'a', count_other: 'b' })).toEqual(
+      comparableKeys({ count_one: 'a', count_few: 'b', count_many: 'c', count_other: 'd' }),
+    );
+  });
+});
+
 describe('locale files', () => {
   it('include common and orders', () => {
     expect([...namespaces.keys()]).toEqual(expect.arrayContaining(['common', 'orders']));
@@ -46,7 +61,7 @@ describe('locale files', () => {
     });
 
     it('has the same keys in every locale', () => {
-      const [reference, ...others] = SUPPORTED_LOCALES.map((lng) => flatKeys(files.get(lng) ?? {}).sort());
+      const [reference, ...others] = SUPPORTED_LOCALES.map((lng) => comparableKeys(files.get(lng) ?? {}));
       for (const keys of others) expect(keys).toEqual(reference);
     });
 

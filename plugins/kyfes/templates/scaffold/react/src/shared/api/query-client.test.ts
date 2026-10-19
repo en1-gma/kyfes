@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { ApiError } from './api-error';
 import { createQueryClient, shouldRetry } from './query-client';
 
@@ -8,6 +9,11 @@ describe('query client defaults', () => {
   it('never retries 4xx', () => {
     expect(shouldRetry(0, err(400))).toBe(false);
     expect(shouldRetry(0, err(404))).toBe(false);
+  });
+
+  it('never retries invalid payloads or programming errors', () => {
+    expect(shouldRetry(0, new z.ZodError([]))).toBe(false);
+    expect(shouldRetry(0, new TypeError('x'))).toBe(false);
   });
 
   it('retries 5xx and network errors at most twice', () => {

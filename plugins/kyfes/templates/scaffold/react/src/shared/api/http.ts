@@ -51,6 +51,7 @@ let hooks: HttpHooks = {};
 export function configureHttp(next: HttpHooks): () => void {
   const previous = hooks;
   hooks = { ...hooks, ...next };
+  unauthorizedNotified = false;
   return () => {
     hooks = previous;
   };
@@ -90,25 +91,46 @@ export function toApiError(error: unknown): ApiError {
 
 // ---------------------------------------------------------------- 401: single-flight refresh
 
-type RetriableConfig = InternalAxiosRequestConfig & { _kyfesRetried?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & { _kyfesRetried?: boolean; _kyfesSessionGen?: number };
 
 let refreshInFlight: Promise<void> | null = null;
+/** Incremented by every successful refresh: a request started before it already has a renewed session. */
+let sessionGeneration = 0;
+/** One redirect per failed refresh, however many requests were waiting on it. */
+let unauthorizedNotified = false;
 
 function refreshSession(): Promise<void> {
   refreshInFlight ??= http
     .post('/auth/refresh')
-    .then(() => undefined)
+    .then(() => {
+      sessionGeneration += 1;
+      unauthorizedNotified = false;
+    })
     .finally(() => {
       refreshInFlight = null;
     });
   return refreshInFlight;
 }
 
-function isAuthEndpoint(url: string | undefined): boolean {
-  return !!url && AUTH_ENDPOINTS.some((p) => url.endsWith(p));
+function notifyUnauthorized(): void {
+  if (unauthorizedNotified) return;
+  unauthorizedNotified = true;
+  hooks.onUnauthorized?.();
 }
 
+function isAuthEndpoint(url: string | undefined): boolean {
+  const path = url?.split(/[?#]/)[0];
+  return !!path && AUTH_ENDPOINTS.some((p) => path.endsWith(p));
+}
+
+http.interceptors.request.use((config: RetriableConfig) => {
+  config._kyfesSessionGen ??= sessionGeneration;
+  return config;
+});
+
 http.interceptors.response.use(undefined, async (error: unknown) => {
+  // A cancelled request (AbortSignal, unmounted query) is not a network failure: pass it through untouched.
+  if (axios.isCancel(error)) throw error;
   const apiError = toApiError(error);
   const config = axios.isAxiosError(error) ? (error as AxiosError).config : undefined;
   const original = config as RetriableConfig | undefined;
@@ -116,15 +138,17 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
   if (apiError.isUnauthorized && original && !isAuthEndpoint(original.url)) {
     if (hooks.refreshOnUnauthorized && !original._kyfesRetried) {
       original._kyfesRetried = true;
+      // Started before a refresh that has already completed: just retry with the renewed cookie.
+      if ((original._kyfesSessionGen ?? 0) < sessionGeneration) return http.request(original);
       try {
         await refreshSession();
       } catch {
-        hooks.onUnauthorized?.();
+        notifyUnauthorized();
         throw apiError;
       }
       return http.request(original);
     }
-    hooks.onUnauthorized?.();
+    notifyUnauthorized();
   }
   if (apiError.isForbidden) hooks.onForbidden?.();
   throw apiError;
