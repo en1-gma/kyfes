@@ -1,8 +1,14 @@
+import {
+	CHART_COLOR_VARS,
+	CHART_FALLBACK_COLORS,
+	CHART_KIND,
+	CHART_PALETTE_VARS
+} from '$lib/shared/config/constants';
 import type { ChartOption } from './echarts';
 
 export type ChartDatum = { label: string; value: number };
-/** Series types the shared charts draw. */
-export const CHART_KIND = { bar: 'bar', line: 'line' } as const;
+/** Series types the shared charts draw (defined in shared/config/constants.ts). */
+export { CHART_KIND };
 export type ChartKind = (typeof CHART_KIND)[keyof typeof CHART_KIND];
 
 export type CategoryChartProps = {
@@ -20,16 +26,14 @@ export type CategoryChartProps = {
 	height?: number;
 };
 
-const PALETTE_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5', '--chart-6'];
-
 /** Palette and text colours from the CSS design tokens (shared/ui/theme.css). */
 export function readTheme(element: Element) {
 	const style = getComputedStyle(element);
 	const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
 	return {
-		palette: PALETTE_VARS.map((name) => read(name, '#1d4ed8')),
-		text: read('--color-text', '#1b1f24'),
-		border: read('--color-border', '#d0d7de')
+		palette: CHART_PALETTE_VARS.map((name) => read(name, CHART_FALLBACK_COLORS.series)),
+		text: read(CHART_COLOR_VARS.text, CHART_FALLBACK_COLORS.text),
+		border: read(CHART_COLOR_VARS.border, CHART_FALLBACK_COLORS.border)
 	};
 }
 

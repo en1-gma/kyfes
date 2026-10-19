@@ -1,12 +1,15 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '$lib/shared/config';
+import {
+	AUTH_ENDPOINTS,
+	CORRELATION_ID_HEADER,
+	XSRF_COOKIE_NAME,
+	XSRF_HEADER_NAME
+} from '$lib/shared/config/constants';
 import { ApiError, ApiErrorBodySchema } from './api-error';
-import { AUTH_ENDPOINTS } from './endpoints';
 
 /** The only HTTP client of the app. Components never use it directly: features/<f>/api does. */
 
-export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
-export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
 /** These auth endpoints never trigger the refresh nor the unauthorized callback (no loops). */
 const NO_REFRESH_ENDPOINTS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout];
 
@@ -59,7 +62,7 @@ export function toApiError(error: unknown): ApiError {
 	if (error instanceof AxiosError) {
 		const status = error.response?.status ?? 0;
 		const parsed = ApiErrorBodySchema.safeParse(error.response?.data);
-		const headerId = error.response?.headers?.['x-correlation-id'];
+		const headerId = error.response?.headers?.[CORRELATION_ID_HEADER];
 		const correlationId =
 			(parsed.success ? parsed.data.correlationId : undefined) ??
 			(typeof headerId === 'string' ? headerId : undefined);

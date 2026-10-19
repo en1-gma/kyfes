@@ -5,8 +5,9 @@
 	import { Button, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '$lib/shared/ui';
 	import { useDeleteOrder } from '../api/orders.mutations';
 	import { useOrders } from '../api/orders.queries';
+	import { ORDER_SUBJECT } from '../constants';
 	import type { Order } from '../model/orders.schema';
-	import { asOrderSubject, ORDER_SUBJECT } from '../permissions';
+	import { asOrderSubject } from '../permissions';
 	import { orderPaths } from '../routes';
 	import { orderStatusLabel } from './order-status';
 

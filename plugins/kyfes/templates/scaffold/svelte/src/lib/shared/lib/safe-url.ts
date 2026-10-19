@@ -1,5 +1,7 @@
-const ALLOWED_PROTOCOLS = new Set(['https:', 'mailto:', 'tel:']);
+import { SAFE_URL_PROTOCOLS } from '$lib/shared/config/constants';
 import { hasControlChars } from './control-chars';
+
+const ALLOWED_PROTOCOLS = new Set<string>(SAFE_URL_PROTOCOLS);
 
 /**
  * URLs coming from users/data: only https:, mailto:, tel: and relative paths.

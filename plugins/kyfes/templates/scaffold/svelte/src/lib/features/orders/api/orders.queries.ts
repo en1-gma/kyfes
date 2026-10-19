@@ -7,14 +7,15 @@ import {
 import { DEFAULT_PAGE_SIZE } from '$lib/shared/api';
 import type { ChartDatum } from '$lib/shared/charts';
 import { formatDate } from '$lib/shared/i18n';
-import { DEFAULT_ORDER_SORT, type OrderStats } from '../model/orders.schema';
+import { DEFAULT_ORDER_SORT, ORDERS_FEATURE } from '../constants';
+import type { OrderStats } from '../model/orders.schema';
 import { ordersApi } from './orders.api';
 
 export type OrdersFilters = { limit?: number; sort?: string };
 
 /** Key factory: the only way to build orders query keys. */
 export const orderKeys = {
-	all: ['orders'] as const,
+	all: [ORDERS_FEATURE] as const,
 	lists: () => [...orderKeys.all, 'list'] as const,
 	list: (filters: Required<OrdersFilters>) => [...orderKeys.lists(), filters] as const,
 	details: () => [...orderKeys.all, 'detail'] as const,

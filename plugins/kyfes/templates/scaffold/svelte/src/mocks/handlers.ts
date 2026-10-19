@@ -2,13 +2,22 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { z } from 'zod';
 import {
 	asOrderSubject,
+	ORDER_STATS_ENDPOINT,
 	ORDER_STATUS,
 	ORDER_SUBJECT,
+	ORDERS_ENDPOINT,
 	OrderInputSchema,
 	type Order
 } from '$lib/features/orders';
+import { AUTH_ENDPOINTS } from '$lib/shared/api';
+import { DEFAULT_API_BASE_URL } from '$lib/shared/config/constants';
 import { Action, buildAbility } from '$lib/shared/rbac';
 import { seedOrders, SESSIONS, type MockUser } from './data';
+
+/** Path served by the mock backend: same endpoints as the app, under the API base path. */
+const api = (endpoint: string) => `${DEFAULT_API_BASE_URL}${endpoint}`;
+const ordersPath = api(ORDERS_ENDPOINT);
+const orderPath = `${ordersPath}/:id`;
 
 /** In-memory backend for dev (browser) and tests (node). */
 const db = { orders: seedOrders(), user: 'manager' as MockUser | null };
@@ -65,21 +74,21 @@ function forbiddenField(
 }
 
 export const handlers: HttpHandler[] = [
-	http.get('/api/auth/me', () =>
+	http.get(api(AUTH_ENDPOINTS.me), () =>
 		db.user
 			? HttpResponse.json(SESSIONS[db.user])
 			: apiError(401, 'UNAUTHENTICATED', 'Login required')
 	),
-	http.post('/api/auth/refresh', () =>
+	http.post(api(AUTH_ENDPOINTS.refresh), () =>
 		db.user
 			? new HttpResponse(null, { status: 204 })
 			: apiError(401, 'UNAUTHENTICATED', 'Login required')
 	),
-	http.post('/api/auth/logout', () => {
+	http.post(api(AUTH_ENDPOINTS.logout), () => {
 		db.user = null;
 		return new HttpResponse(null, { status: 204 });
 	}),
-	http.get('/api/orders/stats', () => {
+	http.get(api(ORDER_STATS_ENDPOINT), () => {
 		const totals = new Map<string, { total: number; count: number }>();
 		for (const order of db.orders) {
 			const month = order.createdAt.slice(0, 7);
@@ -95,7 +104,7 @@ export const handlers: HttpHandler[] = [
 			}));
 		return HttpResponse.json({ months });
 	}),
-	http.get('/api/orders', ({ request }) => {
+	http.get(ordersPath, ({ request }) => {
 		const url = new URL(request.url);
 		const limit = Math.min(Number(url.searchParams.get('limit') ?? 20) || 20, 100);
 		const cursor = url.searchParams.get('cursor');
@@ -105,11 +114,11 @@ export const handlers: HttpHandler[] = [
 		const next = start + limit < sorted.length ? String(start + limit) : null;
 		return HttpResponse.json({ items, nextCursor: next, limit });
 	}),
-	http.get('/api/orders/:id', ({ params }) => {
+	http.get(orderPath, ({ params }) => {
 		const order = db.orders.find((o) => o.id === params.id);
 		return order ? HttpResponse.json(order) : apiError(404, 'NOT_FOUND', 'Order not found');
 	}),
-	http.post('/api/orders', async ({ request }) => {
+	http.post(ordersPath, async ({ request }) => {
 		if (ability().cannot(Action.Create, ORDER_SUBJECT))
 			return apiError(403, 'FORBIDDEN', 'Not allowed');
 		const parsed = OrderBodySchema.required({ customerName: true, total: true }).safeParse(
@@ -130,7 +139,7 @@ export const handlers: HttpHandler[] = [
 		db.orders.push(order);
 		return HttpResponse.json(order, { status: 201 });
 	}),
-	http.patch('/api/orders/:id', async ({ params, request }) => {
+	http.patch(orderPath, async ({ params, request }) => {
 		const index = db.orders.findIndex((o) => o.id === params.id);
 		const current = db.orders[index];
 		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
@@ -146,7 +155,7 @@ export const handlers: HttpHandler[] = [
 		db.orders[index] = updated;
 		return HttpResponse.json(updated);
 	}),
-	http.delete('/api/orders/:id', ({ params }) => {
+	http.delete(orderPath, ({ params }) => {
 		const current = db.orders.find((o) => o.id === params.id);
 		if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
 		if (ability().cannot(Action.Delete, asOrderSubject(current))) {
@@ -159,7 +168,7 @@ export const handlers: HttpHandler[] = [
 
 /** Overrides for error-state tests. */
 export const errorHandlers = {
-	ordersServerError: http.get('/api/orders', () => apiError(500, 'INTERNAL', 'Boom')),
-	ordersForbidden: http.get('/api/orders', () => apiError(403, 'FORBIDDEN', 'Not allowed')),
-	deleteServerError: http.delete('/api/orders/:id', () => apiError(500, 'INTERNAL', 'Boom'))
+	ordersServerError: http.get(ordersPath, () => apiError(500, 'INTERNAL', 'Boom')),
+	ordersForbidden: http.get(ordersPath, () => apiError(403, 'FORBIDDEN', 'Not allowed')),
+	deleteServerError: http.delete(orderPath, () => apiError(500, 'INTERNAL', 'Boom'))
 };

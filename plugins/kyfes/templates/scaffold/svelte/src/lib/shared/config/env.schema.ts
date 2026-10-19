@@ -1,24 +1,22 @@
 import { z } from 'zod';
+import { DEFAULT_API_BASE_URL, DEFAULT_LOCALE, ENV_FLAG, SUPPORTED_LOCALES } from './constants';
 
 /**
  * Zod schemas of the public variables (declared in src/env.ts, SvelteKit 3 `defineEnvVars`).
  * PUBLIC_ prefix kept on purpose: anything public ends up in the browser bundle, never secrets.
  */
-const DEFAULT_LOCALE = 'it';
-const FLAG_ON = 'true';
-
 export const publicEnvSchemas = {
 	PUBLIC_API_BASE_URL: z
 		.string()
 		.optional()
-		.transform((value) => value || '/api')
+		.transform((value) => value || DEFAULT_API_BASE_URL)
 		.pipe(z.string().startsWith('/')),
 	PUBLIC_DEFAULT_LOCALE: z
-		.enum([DEFAULT_LOCALE, 'en'])
+		.enum(SUPPORTED_LOCALES)
 		.optional()
 		.transform((value) => value ?? DEFAULT_LOCALE),
 	PUBLIC_API_MOCKS: z
-		.enum([FLAG_ON, 'false', ''])
+		.enum([ENV_FLAG.on, ENV_FLAG.off, ''])
 		.optional()
-		.transform((value) => value === FLAG_ON)
+		.transform((value) => value === ENV_FLAG.on)
 };

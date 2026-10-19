@@ -1,5 +1,5 @@
 export { http, onUnauthorized, enableSessionRefresh, toApiError, isSameOrigin } from './http';
-export { AUTH_ENDPOINTS } from './endpoints';
+export { AUTH_ENDPOINTS } from '$lib/shared/config/constants';
 export { ApiError, isApiError, ApiErrorBodySchema, type FieldErrors } from './api-error';
 export { createAppQueryClient, shouldRetry } from './query-client';
 export {

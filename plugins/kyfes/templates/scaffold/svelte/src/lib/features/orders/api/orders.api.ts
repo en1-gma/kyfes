@@ -1,4 +1,5 @@
 import { http, pageSchema, toPageQuery, type PageParams } from '$lib/shared/api';
+import { ORDER_STATS_ENDPOINT, ORDERS_ENDPOINT } from '../constants';
 import {
 	OrderPayloadSchema,
 	OrderSchema,
@@ -8,8 +9,6 @@ import {
 	type OrderStats
 } from '../model/orders.schema';
 
-/** API path of the orders resource (relative to PUBLIC_API_BASE_URL). */
-export const ORDERS_ENDPOINT = '/orders';
 const orderEndpoint = (id: string) => `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`;
 
 export const OrderPageSchema = pageSchema(OrderSchema);
@@ -53,7 +52,7 @@ export const ordersApi = {
 	},
 
 	async stats(signal?: AbortSignal): Promise<OrderStats> {
-		const { data } = await http.get<unknown>(`${ORDERS_ENDPOINT}/stats`, { signal });
+		const { data } = await http.get<unknown>(ORDER_STATS_ENDPOINT, { signal });
 		return OrderStatsSchema.parse(data);
 	}
 };

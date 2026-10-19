@@ -1,5 +1,6 @@
 import { ORDER_FIELDS, ORDER_STATUS, ORDER_SUBJECT, type Order } from '$lib/features/orders';
 import type { Session } from '$lib/shared/auth';
+import { DEFAULT_LOCALE } from '$lib/shared/config/constants';
 import { Action } from '$lib/shared/rbac';
 
 /** Fields the operator may write: never `status`. */
@@ -11,12 +12,12 @@ export const SESSIONS: Record<MockUser, Session> = {
 	manager: {
 		user: { id: 'u-manager', name: 'Maria Manager', email: 'maria.manager@example.com' },
 		rules: [{ action: Action.Manage, subject: ORDER_SUBJECT }],
-		locale: 'it'
+		locale: DEFAULT_LOCALE
 	},
 	viewer: {
 		user: { id: 'u-viewer', name: 'Vittorio Viewer', email: 'vittorio.viewer@example.com' },
 		rules: [{ action: Action.Read, subject: ORDER_SUBJECT }],
-		locale: 'it'
+		locale: DEFAULT_LOCALE
 	},
 	// Field-level and conditional rules: never sets `status`, edits only draft orders.
 	operator: {
@@ -31,7 +32,7 @@ export const SESSIONS: Record<MockUser, Session> = {
 				conditions: { [ORDER_FIELDS.status]: ORDER_STATUS.draft }
 			}
 		],
-		locale: 'it'
+		locale: DEFAULT_LOCALE
 	}
 };
 

@@ -1,26 +1,8 @@
 import { z } from 'zod';
+import { ORDER_STATUS, ORDER_VALIDATION } from '../constants';
 
-export const ORDER_STATUS = {
-	draft: 'draft',
-	confirmed: 'confirmed',
-	shipped: 'shipped',
-	cancelled: 'cancelled'
-} as const;
 export const OrderStatusSchema = z.enum(ORDER_STATUS);
 export const ORDER_STATUSES = OrderStatusSchema.options;
-/** Status of a new order in the form (the server applies the same default). */
-export const DEFAULT_ORDER_STATUS = ORDER_STATUS.draft;
-
-/** Server sort of the list: newest first. */
-export const ORDER_SORT = { createdAtDesc: '-createdAt' } as const;
-export const DEFAULT_ORDER_SORT = ORDER_SORT.createdAtDesc;
-
-/** Validation codes of the order form: i18n codes (orders_validation_*), never user-facing text. */
-export const ORDER_VALIDATION = {
-	required: 'required',
-	tooLong: 'tooLong',
-	invalidAmount: 'invalidAmount'
-} as const;
 
 export const OrderSchema = z.object({
 	id: z.uuid(),

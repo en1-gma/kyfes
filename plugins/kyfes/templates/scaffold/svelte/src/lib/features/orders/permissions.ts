@@ -1,16 +1,11 @@
-import { Action, Subject, subject, type AbilityState } from '$lib/shared/rbac';
+import { Action, subject, type AbilityState } from '$lib/shared/rbac';
+import { ORDER_FIELDS, ORDER_SUBJECT } from './constants';
 import type { Order, OrderField, OrderInput, OrderPayload } from './model/orders.schema';
 
-/** CASL subject of the feature (the name is registered in shared/rbac/subjects.ts). */
-export const ORDER_SUBJECT = Subject.Order;
-
-/** Writable fields of an order: field-level rules, form inputs and payload reference these. */
-export const ORDER_FIELDS = {
-	customerName: 'customerName',
-	status: 'status',
-	total: 'total'
-} as const satisfies { [F in OrderField]: F };
-export const ORDER_FIELD_NAMES: readonly OrderField[] = Object.values(ORDER_FIELDS);
+/** Every writable field (the check keeps ORDER_FIELDS in sync with the schema). */
+export const ORDER_FIELD_NAMES: readonly OrderField[] = Object.values(
+	ORDER_FIELDS satisfies { [F in OrderField]: F }
+);
 
 /**
  * Tags a record for conditional rules (e.g. `{ status: 'draft' }`). Works on a copy:

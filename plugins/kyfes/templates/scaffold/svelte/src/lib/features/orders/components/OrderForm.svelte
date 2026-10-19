@@ -4,20 +4,15 @@
 	import { useAbility } from '$lib/shared/rbac';
 	import { Button, ErrorState } from '$lib/shared/ui';
 	import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations';
+	import { DEFAULT_ORDER_STATUS, ORDER_FIELDS } from '../constants';
 	import {
-		DEFAULT_ORDER_STATUS,
 		ORDER_STATUSES,
 		OrderInputSchema,
 		type Order,
 		type OrderField,
 		type OrderStatus
 	} from '../model/orders.schema';
-	import {
-		canWriteOrderField,
-		ORDER_FIELD_NAMES,
-		ORDER_FIELDS,
-		pickWritableFields
-	} from '../permissions';
+	import { canWriteOrderField, ORDER_FIELD_NAMES, pickWritableFields } from '../permissions';
 	import { orderStatusLabel, validationMessage } from './order-status';
 
 	/**

@@ -1,10 +1,7 @@
+import { ORDER_ROUTES } from './constants';
+
 /**
- * UI routes of the orders feature (SvelteKit route ids): pages and components pass them to
- * `resolve()` from $app/paths, never a path written by hand.
+ * UI routes of the orders feature (SvelteKit route ids, defined in constants.ts): pages and
+ * components pass them to `resolve()` from $app/paths, never a path written by hand.
  */
-export const orderPaths = {
-	list: '/orders',
-	create: '/orders/new',
-	detail: '/orders/[id]',
-	edit: '/orders/[id]/edit'
-} as const;
+export const orderPaths = ORDER_ROUTES;

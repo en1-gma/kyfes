@@ -2,6 +2,7 @@ import axios from 'axios';
 import { delay, http as mswHttp, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../../../mocks/node';
+import { AUTH_ENDPOINTS, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from '$lib/shared/config/constants';
 import { ApiError } from './api-error';
 import { enableSessionRefresh, http, isSameOrigin, onUnauthorized } from './http';
 
@@ -13,8 +14,8 @@ afterEach(() => {
 describe('http client', () => {
 	it('sends cookies and the XSRF header only to the same origin', () => {
 		expect(http.defaults.withCredentials).toBe(true);
-		expect(http.defaults.xsrfCookieName).toBe('XSRF-TOKEN');
-		expect(http.defaults.xsrfHeaderName).toBe('X-XSRF-TOKEN');
+		expect(http.defaults.xsrfCookieName).toBe(XSRF_COOKIE_NAME);
+		expect(http.defaults.xsrfHeaderName).toBe(XSRF_HEADER_NAME);
 		expect(http.defaults.baseURL).toBe('/api');
 		expect(http.defaults.headers.Accept).toBe('application/json');
 		expect(isSameOrigin('/api/orders')).toBe(true);
@@ -22,17 +23,17 @@ describe('http client', () => {
 	});
 
 	it('sends X-XSRF-TOKEN read from the cookie on unsafe methods', async () => {
-		document.cookie = 'XSRF-TOKEN=abc123; path=/';
+		document.cookie = `${XSRF_COOKIE_NAME}=abc123; path=/`;
 		let header: string | null = null;
 		server.use(
 			mswHttp.post('/api/echo', ({ request }) => {
-				header = request.headers.get('X-XSRF-TOKEN');
+				header = request.headers.get(XSRF_HEADER_NAME);
 				return HttpResponse.json({ ok: true });
 			})
 		);
 		await http.post('/echo', {});
 		expect(header).toBe('abc123');
-		document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+		document.cookie = `${XSRF_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 	});
 
 	it('normalizes errors into ApiError with correlationId', async () => {
@@ -149,7 +150,7 @@ describe('http client', () => {
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
 
-	it.each(['/auth/login', '/auth/logout', '/auth/refresh'])(
+	it.each([AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout, AUTH_ENDPOINTS.refresh])(
 		'a 401 on %s triggers neither the refresh nor onUnauthorized',
 		async (path) => {
 			enableSessionRefresh(true);
@@ -158,12 +159,12 @@ describe('http client', () => {
 			let refreshCalls = 0;
 			server.use(
 				mswHttp.all(`/api${path}`, () => {
-					refreshCalls += path === '/auth/refresh' ? 1 : 0;
+					refreshCalls += path === AUTH_ENDPOINTS.refresh ? 1 : 0;
 					return HttpResponse.json({ code: 'UNAUTHENTICATED', message: 'Login' }, { status: 401 });
 				})
 			);
 			await expect(http.post(path)).rejects.toMatchObject({ status: 401 });
-			expect(refreshCalls).toBe(path === '/auth/refresh' ? 1 : 0);
+			expect(refreshCalls).toBe(path === AUTH_ENDPOINTS.refresh ? 1 : 0);
 			expect(handler).not.toHaveBeenCalled();
 		}
 	);

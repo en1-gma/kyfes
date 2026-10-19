@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY } from '$lib/shared/config/constants';
 import { getLocale } from './paraglide/runtime';
 
 /** Intl formatters bound to the current locale. Never format dates/numbers by hand. */
@@ -36,6 +37,6 @@ export function formatNumber(value: number, options: Intl.NumberFormatOptions = 
 	).format(value);
 }
 
-export function formatCurrency(value: number, currency = 'EUR'): string {
+export function formatCurrency(value: number, currency: string = DEFAULT_CURRENCY): string {
 	return formatNumber(value, { style: 'currency', currency });
 }
