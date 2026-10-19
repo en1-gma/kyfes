@@ -42,6 +42,23 @@ def new_findings(rel: str, op: hc.FileOp, cfg: dict) -> List[rules.Finding]:
     return out
 
 
+_TEXTS: dict = {}
+
+
+def project_texts(proj, cfg: dict) -> list:
+    """Sorgenti del progetto (una lettura per esecuzione dell'hook) per il registro delle costanti."""
+    key = str(proj)
+    if key not in _TEXTS:
+        files = []
+        for rel, path in rules.iter_project_files(proj, cfg):
+            try:
+                files.append((rel, path.read_text(encoding="utf-8", errors="replace")))
+            except OSError:
+                continue
+        _TEXTS[key] = files
+    return _TEXTS[key]
+
+
 def main() -> int:
     event = hc.read_event()
     hc.debug_dump(event, "pre")
@@ -60,6 +77,8 @@ def main() -> int:
             continue
         findings += rules.check_layout(rel, cfg)
         findings += new_findings(rel, op, cfg)
+        if op.after is not None:
+            findings += rules.literal_reuse_findings(rel, op.before, op.after, project_texts(proj, cfg), cfg)
     blocking = [f for f in findings if f.severity == "block"]
     if not blocking:
         return 0

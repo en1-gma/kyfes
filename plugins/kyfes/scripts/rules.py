@@ -74,6 +74,7 @@ DEFAULT_RULES: Dict[str, str] = {
     "dynamic-import": "block",
     "folder-layout": "block",
     "duplicates": "block",
+    "constant-reuse": "block",
     "hardcoded-text": "warn",
     "console": "warn",
     "explicit-any": "warn",
@@ -255,6 +256,8 @@ def normalize_config(raw: dict) -> dict:
                                                         "**/generated/**", "**/paraglide/**"]
     cfg["src_root"] = raw.get("src_root", "src")
     cfg["duplicates"] = {"min_lines": 8, **(raw.get("duplicates") or {})}
+    cfg["constant_reuse"] = {"max_duplicate_ratio": 0.10, "min_values": 20, "ignore_values": [],
+                             **(raw.get("constant_reuse") or {})}
     cfg["shared_dirs"] = list(raw.get("shared_dirs") or SHARED_DIRS)
     cfg["allowed_http_hosts"] = list(raw.get("allowed_http_hosts") or [])
     return cfg
@@ -897,3 +900,251 @@ def find_duplicates(files: List[Tuple[str, str]], min_lines: int) -> List[Tuple[
             else:
                 seen[h] = (rel, norm[k][0])
     return dups
+
+
+# ---------------------------------------------------------------- riuso delle costanti
+
+# Valori di dominio scritti come letterali: azioni e soggetti RBAC, campi, ruoli, namespace i18n, chiavi di query,
+# filtri, ordinamenti, colonne, rotte, mapping. Ognuno va definito una volta (costante, enum, mappa) e referenziato.
+def iter_string_literals(code: str) -> Iterable[Tuple[int, str]]:
+    """(posizione, valore) di ogni stringa del codice: '…', "…" e template senza `${}` come valore intero; dentro i
+    `${…}` dei template continua a cercare. Le regex literal vengono saltate."""
+    i, n = 0, len(code)
+    stack: List[int] = []  # profondità di graffe aperte dentro ogni `${` in corso
+    while i < n:
+        c = code[i]
+        if c in "'\"":
+            j = i + 1
+            while j < n and code[j] != c and code[j] != "\n":
+                j += 2 if code[j] == "\\" else 1
+            if j < n and code[j] == c:
+                yield i, code[i + 1:j]
+            i = j + 1
+            continue
+        if c == "`" or (c == "}" and stack and stack[-1] == 0):
+            if c == "}":
+                stack.pop()
+            start, j, parts = i, i + 1, []
+            while j < n and code[j] != "`":
+                if code[j] == "\\":
+                    j += 2
+                    continue
+                if code.startswith("${", j):
+                    stack.append(0)
+                    parts.append(None)
+                    j += 2
+                    break
+                j += 1
+            else:
+                if c == "`" and j < n:
+                    yield start, code[start + 1:j]
+                i = j + 1
+                continue
+            i = j
+            continue
+        if c == "{" and stack:
+            stack[-1] += 1
+        elif c == "}" and stack:
+            stack[-1] -= 1
+        elif c == "/" and _regex_can_start(code, i):
+            end = _regex_end(code, i)
+            if end:
+                i = end
+                continue
+        i += 1
+# Posizioni che non sono valori di dominio: testo tradotto, attributi di presentazione, vocabolario del linguaggio.
+I18N_CALL_BEFORE = re.compile(r"""(?:\b(?:t|\$t|translate|instant|selectTranslate)|\bi18n\s*\.\s*t|\bm\s*\.\s*\w+)\s*\(\s*$""")
+PRESENTATIONAL_BEFORE = re.compile(
+    r"""\b(?:className|class|type|role|variant|size|autoComplete|autocomplete|inputMode|inputmode|step|min|max|method|"""
+    r"""rel|target|loading|decoding|scope|lang|dir|htmlFor|for|id|key|tabIndex|tabindex|aria-[\w-]+|data-[\w-]+|xmlns|"""
+    r"""viewBox|fill|stroke|d|width|height|style|src|alt|providedIn)\s*[=:]\s*\{?\s*$""")
+TYPEOF_BEFORE = re.compile(r"""\btypeof\s+[\w$.?\[\]'"]+\s*[!=]==?\s*$""")
+DIRECTIVE = re.compile(r"""^\s*(['"])use (?:client|server|strict)\1""", re.M)
+DECLARE_MODULE_BEFORE = re.compile(r"""\bdeclare\s+module\s*$""")
+JS_TYPES = {"string", "number", "boolean", "object", "function", "undefined", "symbol", "bigint"}
+
+
+# Attributo legato a un'espressione nei template (Vue `:x` `v-if` `@click` `#slot`, Angular `[x]` `(click)`,
+# Svelte `bind:` `on:`): le virgolette delimitano codice, non una stringa.
+BOUND_ATTR = re.compile(r"""(\s(?::|v-[\w-]+|@|#|\[|\(|bind:|on:|class:|use:)[\w.:\-\[\]()]*\s*=\s*)(["'])(.*?)\2""", re.S)
+
+
+def _unquote_bound_attributes(code: str) -> str:
+    return BOUND_ATTR.sub(lambda m: f"{m.group(1)} {m.group(3)} ", code)
+
+
+def literal_values(rel: str, text: str) -> List[Tuple[str, int]]:
+    """(valore, riga) dei letterali di dominio di un file: esclusi import, testo tradotto, presentazione, `typeof`."""
+    code = strip_comments(text, markup=rel.endswith(MARKUP_EXT))
+    if rel.endswith((".vue", ".svelte", ".html")):
+        code = _unquote_bound_attributes(code)
+    skip = [(m.start(), m.end()) for m in IMPORT_RE.finditer(code)]
+    skip += [(m.start(), m.end()) for m in DIRECTIVE.finditer(code)]
+    out: List[Tuple[str, int]] = []
+    for start, val in iter_string_literals(code):
+        if any(a <= start < b for a, b in skip):
+            continue
+        # solo valori "identificatori": niente frasi, markup, numeri o punteggiatura
+        if val is None or len(val) < 2 or re.search(r"[\s<>]", val) or not re.search(r"[A-Za-z]", val):
+            continue
+        before = code[max(0, start - 80):start]
+        if I18N_CALL_BEFORE.search(before) or PRESENTATIONAL_BEFORE.search(before) or DECLARE_MODULE_BEFORE.search(before):
+            continue
+        if val in JS_TYPES and TYPEOF_BEFORE.search(before):
+            continue
+        out.append((val, code.count("\n", 0, start) + 1))
+    return out
+
+
+def counts_for_reuse(rel: str) -> bool:
+    return rel.endswith(CODE_EXT) and not is_test(rel) and not rel.endswith(".d.ts")
+
+
+def constant_reuse(files: List[Tuple[str, str]], cfg: dict) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
+    """({valore: [posizioni]}, {valore duplicato: [posizioni]}) sui file di codice non di test."""
+    ignore = set(cfg["constant_reuse"].get("ignore_values") or [])
+    occ: Dict[str, List[str]] = {}
+    for rel, text in files:
+        if not counts_for_reuse(rel):
+            continue
+        for val, line in literal_values(rel, text):
+            if val not in ignore:
+                occ.setdefault(val, []).append(f"{rel}:{line}")
+    dup = {v: locs for v, locs in occ.items() if len(locs) > 1}
+    return occ, dup
+
+
+def reuse_finding(occ: Dict[str, List[str]], dup: Dict[str, List[str]], cfg: dict, top: int = 15) -> Optional[Finding]:
+    """Finding bloccante se la quota di valori duplicati supera la soglia (`constant_reuse.max_duplicate_ratio`)."""
+    sev = cfg["rules"].get("constant-reuse", "block")
+    cr = cfg["constant_reuse"]
+    total = len(occ)
+    if sev == "off" or total < int(cr.get("min_values", 20)):
+        return None
+    ratio = len(dup) / total
+    limit = float(cr.get("max_duplicate_ratio", 0.10))
+    if ratio <= limit:
+        return None
+    worst = sorted(dup.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:top]
+    detail = "\n".join(f"    '{v}' ×{len(locs)}: {', '.join(locs[:4])}{' …' if len(locs) > 4 else ''}" for v, locs in worst)
+    msg = (f"{ratio:.1%} dei valori letterali di dominio è duplicato ({len(dup)} su {total}), soglia {limit:.0%}: "
+           f"definisci ogni valore una volta (costante, enum o mappa nel modulo che lo possiede: rbac, model, routes, "
+           f"i18n) e referenzialo. Più ripetuti:\n{detail}")
+    return Finding("constant-reuse", sev, cfg["src_root"], 0, msg)
+
+
+# ---------------------------------------------------------------- registro delle costanti (sviluppi futuri)
+
+EXPORT_CONST = re.compile(r"""\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*""")
+EXPORT_ENUM = re.compile(r"""\bexport\s+(?:const\s+)?enum\s+([A-Za-z_$][\w$]*)\s*\{""")
+OBJ_ENTRY = re.compile(r"""([A-Za-z_$][\w$]*|['"][^'"]+['"])\s*[:=]\s*(['"])([^'"\\\n]+)\2""")
+
+
+def _balanced(code: str, start: int, open_c: str, close_c: str) -> int:
+    """Indice dopo la parentesi che chiude quella aperta in `start` (stringhe ignorate in modo semplice)."""
+    depth, i, quote = 0, start, ""
+    while i < len(code):
+        c = code[i]
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                quote = ""
+        elif c in "'\"`":
+            quote = c
+        elif c == open_c:
+            depth += 1
+        elif c == close_c:
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return len(code)
+
+
+def constant_definitions(rel: str, text: str) -> List[Tuple[str, str, int]]:
+    """(valore, riferimento da usare, riga) delle costanti esportate: `export const X = 'v'`, oggetti e array
+    `as const` (`X.key`, `X[i]`) ed enum esportati."""
+    code = strip_comments(text, markup=rel.endswith(MARKUP_EXT))
+    out: List[Tuple[str, str, int]] = []
+    line_of = lambda pos: code.count("\n", 0, pos) + 1
+    for m in EXPORT_CONST.finditer(code):
+        name, j = m.group(1), m.end()
+        rest = code[j:j + 1]
+        if rest in ("'", '"', "`"):
+            lit = re.match(r"""(['"`])([^'"`\\\n$]*)\1""", code[j:])
+            if lit:
+                out.append((lit.group(2), name, line_of(j)))
+        elif rest in ("{", "["):
+            end = _balanced(code, j, rest, "}" if rest == "{" else "]")
+            body = code[j:end]
+            if rest == "{":
+                for e in OBJ_ENTRY.finditer(body):
+                    key = e.group(1).strip("'\"")
+                    ref = f"{name}.{key}" if re.fullmatch(r"[A-Za-z_$][\w$]*", key) else f"{name}['{key}']"
+                    out.append((e.group(3), ref, line_of(j + e.start(3))))
+            else:
+                for k, (pos, val) in enumerate(iter_string_literals(body)):
+                    out.append((val, f"{name}[{k}]", line_of(j + pos)))
+    for m in EXPORT_ENUM.finditer(code):
+        end = _balanced(code, m.end() - 1, "{", "}")
+        for e in OBJ_ENTRY.finditer(code[m.end():end]):
+            out.append((e.group(3), f"{m.group(1)}.{e.group(1)}", line_of(m.end() + e.start(3))))
+    return [d for d in out if len(d[0]) >= 2 and re.search(r"[A-Za-z]", d[0]) and not re.search(r"[\s<>]", d[0])]
+
+
+def constant_registry(files: List[Tuple[str, str]], cfg: dict) -> Dict[str, List[Tuple[str, str, int]]]:
+    """{valore: [(riferimento, file, riga)]} delle costanti esportate dal codice non di test."""
+    ignore = set(cfg["constant_reuse"].get("ignore_values") or [])
+    reg: Dict[str, List[Tuple[str, str, int]]] = {}
+    for rel, text in files:
+        if not counts_for_reuse(rel):
+            continue
+        for val, ref, line in constant_definitions(rel, text):
+            if val not in ignore:
+                reg.setdefault(val, []).append((ref, rel, line))
+    return reg
+
+
+def _can_reference(rel: str, def_rel: str, cfg: dict) -> bool:
+    """La costante definita in `def_rel` è importabile da `rel` rispettando i livelli? Shared: da tutti; una feature:
+    da sé stessa, dalle pagine e dall'app (tramite il suo index), mai da un'altra feature (omonimi, non riuso)."""
+    layer, sub, _ = layer_of(rel, cfg)
+    d_layer, d_sub, _ = layer_of(def_rel, cfg)
+    if d_layer == "shared":
+        return True
+    if d_layer == "features":
+        return layer in ("pages", "app") or (layer == "features" and sub == d_sub)
+    return d_layer == layer and layer is not None
+
+
+def literal_reuse_findings(rel: str, before: Optional[str], after: str, files: List[Tuple[str, str]],
+                           cfg: dict) -> List[Finding]:
+    """Letterali introdotti da una modifica che esistono già come costante esportata altrove: si importa la costante."""
+    sev = cfg["rules"].get("constant-reuse", "block")
+    if sev == "off" or not counts_for_reuse(rel):
+        return []
+    reg = constant_registry([(r, t) for r, t in files if r != rel] + [(rel, after)], cfg)
+    old = {}
+    for val, _ in literal_values(rel, before or ""):
+        old[val] = old.get(val, 0) + 1
+    out: List[Finding] = []
+    seen = set()
+    for val, line in literal_values(rel, after):
+        if old.get(val, 0) > 0:
+            old[val] -= 1  # già presente prima della modifica
+            continue
+        if val not in reg or val in seen:
+            continue
+        defs = [d for d in reg[val] if not (d[1] == rel and d[2] == line) and _can_reference(rel, d[1], cfg)]
+        if not defs:
+            continue
+        seen.add(val)
+        ref, frel, fline = defs[0]
+        out.append(Finding("constant-reuse", sev, rel, line,
+                           f"'{val}' esiste già come costante {ref} ({frel}:{fline}): importala invece di riscrivere il "
+                           "letterale. Se è un concetto diverso con lo stesso testo, chiedi all'utente di aggiungerlo a "
+                           "constant_reuse.ignore_values"))
+    return out
+
