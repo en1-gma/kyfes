@@ -1,0 +1,12 @@
+{
+  "framework": "__FRAMEWORK__",
+  "src_root": "src",
+  "rules": {},
+  "stop_gate": {
+    "enabled": true,
+    "only_if_changes": true,
+    "max_blocks": 3,
+    "commands": ["__PM__ run lint", "__PM__ run typecheck", "__PM__ run test"]
+  },
+  "duplicates": { "min_lines": 8 }
+}

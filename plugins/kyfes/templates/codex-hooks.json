@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch|Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/pre_write.py\"", "timeout": 30, "statusMessage": "kyfes: checking frontend rules" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/post_edit.py\"", "timeout": 60 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 -B \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/tools/kyfes/plugins/kyfes/scripts/stop_gate.py\"", "timeout": 900, "statusMessage": "kyfes: lint, typecheck, tests, architecture" }
+        ]
+      }
+    ]
+  }
+}

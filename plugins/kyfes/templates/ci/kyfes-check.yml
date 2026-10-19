@@ -1,0 +1,36 @@
+name: kyfes-check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: __PM__
+      - name: Regole kyfes (sicurezza, alberatura, confini delle librerie, duplicati)
+        run: python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py . --strict
+      - name: Dipendenze (lockfile obbligatorio)
+        run: __PM_CI__
+      - name: Audit delle dipendenze di produzione (finiscono nel bundle)
+        run: __PM_AUDIT__
+      - name: Lint
+        run: __PM__ run lint
+      - name: Typecheck
+        run: __PM__ run typecheck
+      - name: Test
+        run: __PM__ run test
+      - name: Build
+        run: __PM__ run build
