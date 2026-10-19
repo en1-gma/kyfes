@@ -43,6 +43,7 @@ Senza `.kyfes/config.json` ogni hook non fa nulla: il plugin si può tenere inst
 | `role-string-check` | block | `role === '…'` (anche invertito, `'admin' === role`), `roles.includes('…')`, `['admin'].includes(role)`, `switch (role)`, `role.startsWith(…)`, `isAdmin`, `hasRole()` | `can(azione, soggetto)` |
 | `folder-layout` | block | sottocartelle non previste in `shared` o nelle feature, nomi non kebab-case, feature senza `index.ts` | struttura canonica |
 | `duplicates` | block | blocchi di 8+ righe uguali | estrai in `api/`, `shared/lib`, `shared/ui` |
+| `constant-reuse` | block | più del 10% dei valori letterali di dominio scritto più di una volta (vedi [sotto](#riuso-delle-costanti)) | costante, enum o mappa nel modulo che possiede il valore, poi referenziata |
 | `hardcoded-text` | warn | testo visibile non tradotto | chiave i18n |
 | `console` | warn | `console.log/debug/trace` | rimuovi o usa un logger |
 | `explicit-any` | warn | `any` | `z.infer`, `unknown` + parse |
@@ -69,12 +70,55 @@ Prima che l'agente (o un sottoagente) chiuda il lavoro, `stop_gate.py` esegue `a
 - Con `only_if_changes` (default) non fa nulla solo se non c'è niente da controllare: `git status` pulito **e** `HEAD` uguale alla baseline registrata a inizio sessione. Senza baseline contano i commit non presenti su nessun remote. Committare quindi non spegne il gate. Fuori da un repository git controlla sempre.
 - Lanciato da una cartella che non è un progetto kyfes (radice di un monorepo), controlla i progetti kyfes sotto il cwd e riporta gli errori di ciascuno.
 
+## Riuso delle costanti
+
+Azioni e soggetti RBAC, nomi dei campi, namespace i18n, stati, filtri, ordinamenti, colonne, rotte, endpoint e mapping
+si definiscono **una volta** e si referenziano ovunque. La regola `constant-reuse` lo misura sul progetto intero
+(`arch_check`, quindi stop gate e CI):
+
+- **Valori contati**: i letterali stringa del codice non di test (`*.test.*`, `mocks/`, `e2e/`… esclusi) che hanno la
+  forma di un identificatore: almeno 2 caratteri, almeno una lettera, nessuno spazio, niente markup.
+- **Esclusi** perché non sono valori di dominio: specificatori di import/export, argomenti di `t()`/`$t()`/`translate`/
+  `m.*()`, attributi di presentazione (`className`, `class`, `type`, `variant`, `role`, `id`, `key`, `aria-*`,
+  `data-*`, `size`, `style`… e `providedIn`), i nomi di tipo dopo `typeof x ===`, le direttive `'use client'`/
+  `'use server'`, `declare module '…'`, i valori in `constant_reuse.ignore_values`.
+- **Duplicato**: un valore che compare come letterale più di una volta, nello stesso file o in file diversi.
+  Il conteggio usa uno scanner di stringhe che segue i template literal anche annidati (le stringhe dentro `${…}`
+  contano, il testo del template no) e salta le regex literal. Nei template `.vue`/`.svelte` il valore di un attributo
+  legato (`:x`, `v-if`, `v-model`, `@click`, `#slot`, `[x]`, `(click)`, `bind:`, `on:`) è un'espressione: contano solo
+  i letterali che contiene (`:kind="'currency'"` → `currency`), non il testo dell'attributo.
+- **Omonimi**: la metrica non distingue il significato, quindi lo stesso testo usato per due concetti indipendenti
+  (`'/orders'` come rotta UI e come endpoint, `'short'` in due opzioni `Intl`) conta come un duplicato. La soglia del
+  10% lascia margine per questi casi; se uno è davvero inevitabile, l'utente può aggiungerlo a `ignore_values`.
+- **Metrica**: `valori duplicati / valori distinti`. Oltre `constant_reuse.max_duplicate_ratio` (default `0.10`, la
+  soglia è inclusa) la regola blocca e riporta i valori più ripetuti con le posizioni. Sotto `constant_reuse.min_values`
+  valori distinti (default `20`) la metrica non è significativa e non viene applicata.
+
+**In scrittura (sviluppi futuri)**: `pre_write` costruisce il registro delle costanti esportate del progetto
+(`export const X = 'v'`, oggetti e array `as const` → `X.chiave`/`X[i]`, `export enum`) e rifiuta una modifica che
+introduce un letterale già definito come costante altrove, o una nuova costante con lo stesso valore, indicando quale
+importare (`'update' esiste già come costante ACTIONS.update (src/shared/rbac/ability.ts:12)`). Valgono solo le costanti che il file può importare
+rispettando i livelli: quelle di `shared` da ovunque, quelle di una feature dalla feature stessa e da pagine e app;
+la costante di un'altra feature è un omonimo (`'draft'` di due stati diversi), non un riuso, e resta conteggiata solo
+dalla metrica. Contano solo i letterali introdotti dalla modifica: quelli già presenti nel file non bloccano, i test e i mock sono esclusi, e
+`ignore_values` vale anche qui.
+
+`arch_check` stampa sempre la misura (`kyfes: riuso costanti — 4 valori duplicati su 98 (4.1%, soglia 10%)`), anche
+quando la soglia è rispettata; con `--json` la trovi in `metrics.constant_reuse`. Dopo ogni scrittura `post_edit`
+segnala all'agente i valori del file appena scritto che esistono già altrove, con le posizioni, prima che lo stop gate
+blocchi.
+
+Dove vivono le costanti: azioni in `shared/rbac`, soggetto e campi nel `permissions.ts` della feature, namespace in
+`shared/i18n` (`COMMON_NS`) e nella feature, stati/ordinamenti/filtri/colonne nel suo `model/`, percorsi UI in
+`routes.ts`, endpoint nel suo `api/`, query key nella key factory. Le mappe (stato → variante, colonna → etichetta)
+sono `Record<…>` tipizzati, non `switch` con letterali ripetuti.
+
 ## Da terminale
 
 ```bash
 python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py .            # bloccanti → exit 1
 python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py . --strict   # anche gli avvisi
-python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py . --json
+python3 -B tools/kyfes/plugins/kyfes/scripts/arch_check.py . --json     # {"findings": [...], "metrics": {"constant_reuse": {...}}}
 ```
 
 Con `KYFES_HOOK_DEBUG=1` gli hook salvano il payload ricevuto in `$TMPDIR/kyfes-hook-*.json`.

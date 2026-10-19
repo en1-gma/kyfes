@@ -9,6 +9,7 @@ Questo progetto segue la skill `kyfes-architecture` (framework: __FRAMEWORK__). 
 - **Dati**: client HTTP (axios / Angular `HttpClient`) solo in `shared/api`; letture e scritture con TanStack Query in `features/<f>/api`, chiavi dalla factory, risposte validate con Zod, liste a cursore `{items, nextCursor, limit}`, errori `ApiError {code, message, correlationId}`.
 - **RBAC**: permessi CASL dal server (`/api/auth/me`); ogni rotta, pulsante, colonna e campo CRUD condizionato da `can(azione, soggetto)`. Mai controlli sui nomi dei ruoli. Il server resta l'autorità.
 - **i18n**: ogni testo visibile tradotto (namespace = feature), formattazioni con `Intl`. **Grafici** solo tramite `shared/charts`, accessibili.
+- **Costanti, non letterali**: ogni valore di dominio (azioni e soggetti RBAC, campi, namespace i18n, stati, filtri, ordinamenti, colonne, rotte, endpoint, chiavi di query, mapping) è definito una volta nel modulo che lo possiede e referenziato ovunque (schema della sez. 9.1 della skill). Una scrittura che ripete un valore già definito come costante viene rifiutata; oltre il 10% di valori duplicati (`arch_check`, riuso costanti) lo stop gate blocca.
 - **Test**: Vitest + Testing Library + MSW, Playwright + axe; test RBAC per ogni feature.
 
 Modo di lavorare:

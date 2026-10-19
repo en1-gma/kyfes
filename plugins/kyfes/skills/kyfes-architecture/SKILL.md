@@ -123,6 +123,7 @@ Regole:
 ### 4.3 Errori e UX
 - Error boundary per rotta; stati `loading`/`error`/`empty` espliciti in ogni vista che legge dati.
 - Componenti standard di `shared/ui` (React/Next `.tsx`, Vue `.vue`, Svelte `.svelte`, Angular `*Component`): `QueryState` per caricamento → errore con "riprova" → vuoto → contenuto, `LoadMore` per il piè di pagina delle liste a cursore (conteggio + "carica altri"), `ConfirmDeleteDialog` per confermare l'eliminazione di un record. Ogni nuova feature li usa invece di riscrivere il markup: copiare quello di `orders` fa scattare `duplicates`.
+- Riuso delle costanti (regola `constant-reuse`, misurata da `arch_check`, bloccante oltre il 10% di valori duplicati): ogni valore di dominio è definito una volta e referenziato. Azioni RBAC dalle costanti di `shared/rbac`; soggetto e nomi dei campi nel `permissions.ts` della feature; namespace i18n come costanti (`COMMON_NS`, namespace della feature); stati, filtri, ordinamenti, colonne e default nel `model/`; percorsi UI in `routes.ts`, endpoint nell'`api/`; query key solo nella key factory; mapping come `Record<…>` tipizzati. Mai aggirare la metrica (stringhe costruite, `ignore_values` senza un vero falso positivo, codice spostato nei test).
 - 403 → messaggio "non autorizzato" (senza "riprova") e invalidazione di `sessionQuery` (i permessi potrebbero essere cambiati), senza ciclo se è `/auth/me` a rispondere 403; 404 → pagina non trovata; 5xx → messaggio generico + `correlationId`.
 
 ## 5. RBAC sul CRUD (CASL)
@@ -131,8 +132,9 @@ Regole:
 - Azioni: `create`, `read`, `update`, `delete` (+ `manage` = tutte). Soggetti: un sostantivo singolare PascalCase per feature (`Order`, `Customer`), dichiarato in `features/<f>/permissions.ts` e registrato nel tipo `Subjects` di `shared/rbac`.
 - Ogni elemento CRUD della UI è condizionato dal permesso:
   - rotte: `read` sul soggetto (guard di rotta / `meta.permission`); senza permesso → pagina 403, non un redirect silenzioso; la rotta di modifica controlla `update` anche sul record caricato, prima di mostrare il form;
-  - pulsanti "Nuovo", "Modifica", "Elimina": `can('create'|'update'|'delete', subject)`; per il record specifico `can('update', subject('Order', order))` (condizioni sul record);
-  - campi: permessi per campo (`can('update', order, 'status')`) → campo in sola lettura se negato e assente dal payload (create e `PATCH` inviano solo i campi scrivibili);
+  - pulsanti "Nuovo", "Modifica", "Elimina": `can(ACTIONS.create|update|delete, ORDER_SUBJECT)`; per il record specifico `can(ACTIONS.update, subject(ORDER_SUBJECT, order))` (condizioni sul record; nello scaffold l'helper `orderSubject(order)` della feature);
+  - campi: permessi per campo (`can(ACTIONS.update, orderSubject(order), ORDER_FIELDS.status)`) → campo in sola lettura se negato e assente dal payload (create e `PATCH` inviano solo i campi scrivibili);
+  - azioni, soggetti e campi sono sempre costanti (sez. 9.1), mai letterali: i nomi sopra sono generici, quelli esatti di ogni framework (es. `ACTION.update` in Next/Vue, `Action.Update` in Angular/SvelteKit, `ORDER_FIELD.status` in Next/Vue) sono nella sezione "Costanti e riuso" di `references/<framework>.md`;
   - colonne/azioni di tabella e voci di menu: nascoste se negate.
 - La UI nasconde, **il server decide**: ogni chiamata è comunque autorizzata dal backend; un 403 si gestisce come in 4.3. Mai fidarsi di flag di permesso salvati lato client.
 - Test obbligatori per ogni feature: la stessa vista renderizzata con ability diverse mostra/nasconde le azioni CRUD attese. I mock MSW applicano le stesse regole (condizioni sul record, permessi per campo → 403), come negli scaffold con i profili `manager`, `viewer` e `operator`.
@@ -168,9 +170,43 @@ Ogni piano di una funzionalità contiene:
 5. **Testi**: namespace e chiavi i18n nuove, in tutte le lingue.
 6. **Sicurezza**: input utente renderizzati, URL esterni, upload, redirect — e come sono neutralizzati.
 7. **Test**: unità, RBAC, errori, e2e/axe.
-8. **Violazioni e alternative**: se la richiesta viola una regola, l'alternativa conforme.
+8. **Costanti**: tabella `valore → costante → modulo proprietario → nuova/riusata` per ogni valore di dominio
+   introdotto o usato (azioni, soggetto, campi, namespace, stati, filtri, ordinamenti, colonne, rotte, endpoint,
+   chiavi di query, mapping). Ogni valore già esistente si riusa; quelli nuovi nascono nel modulo indicato nella
+   sez. 9.1. Nessun letterale ripetuto nel codice previsto.
+9. **Violazioni e alternative**: se la richiesta viola una regola, l'alternativa conforme.
 
 Chiudi con task piccoli e indipendenti, ciascuno con i file coinvolti.
+
+### 9.1 Nuova feature: dove nasce ogni costante
+
+Ogni feature futura segue lo stesso schema, così il riuso è garantito per costruzione e `constant-reuse` resta verde:
+
+| Valore | Costante | Dove |
+|---|---|---|
+| nome della feature | `<F>_FEATURE` (es. `CUSTOMERS_FEATURE = 'customers'`) | `model/` della feature; namespace i18n, segmento di rotta, endpoint e radice delle query key **derivano** da qui (template `` `/${CUSTOMERS_FEATURE}` ``), non si riscrivono |
+| soggetto CASL | `<F>_SUBJECT` | `permissions.ts` (registrato nel registro dei soggetti di `shared/rbac`) |
+| campi con permesso | `<F>_FIELDS` (mappa `campo → campo`, `satisfies` sulle chiavi del modello) | `permissions.ts` |
+| azioni | costanti delle azioni di `shared/rbac` (mai nuove stringhe `'update'`) | `shared/rbac` |
+| namespace i18n | `<F>_NS` derivato dal nome della feature | `locales/` o `model/` della feature |
+| stati, filtri, ordinamenti, colonne, default | mappe `as const` + tipi derivati (`<F>_STATUS`, `<F>_SORT`, `DEFAULT_<F>_SORT`, `<F>_COLUMNS`) | `model/<f>.schema.ts` o `model/<f>.constants.ts` |
+| percorsi UI | `<f>Paths` | `routes.ts` |
+| endpoint | `<F>_ENDPOINT` | `api/<f>.api.ts` |
+| query e mutation key | key factory `<f>Keys` | `api/<f>.queries.ts` |
+| mapping (stato → variante, colonna → etichetta) | `Record<Tipo, …>` tipizzato | componente o `model/` della feature |
+| valori trasversali (valuta, varianti dei pulsanti, tipi di grafico, flag di env, header) | costante esportata | modulo `shared/*` che li possiede |
+
+Regole operative:
+- Prima di scrivere un letterale di dominio, cerca se esiste già (`grep` sul valore): se esiste, importa la costante.
+  L'hook in scrittura rifiuta un letterale (o una nuova costante) uguale a una costante esportata che il file può
+  importare (di `shared`, della stessa feature, o di una feature se scrivi in pagine/app) e indica quale; lo stop
+  gate blocca se più del 10% dei valori del progetto è duplicato. Mai importare costanti di un'altra feature per
+  far tornare i conti: un valore comune a più feature va spostato in `shared`.
+- I test e i mock usano le stesse costanti (soprattutto per le regole RBAC dei mock), salvo i test che simulano
+  dati del server non ancora noti al client.
+- Due concetti diversi con lo stesso testo (`'/customers'` come rotta e come endpoint) si ottengono derivandoli dal
+  nome della feature, non scrivendo due letterali. Solo se è davvero impossibile, chiedi all'utente di aggiungere il
+  valore a `constant_reuse.ignore_values` (l'agente non può modificare `.kyfes/config.json`).
 
 ## 10. Checklist di revisione
 
@@ -182,4 +218,5 @@ Chiudi con task piccoli e indipendenti, ciascuno con i file coinvolti.
 - [ ] Ogni azione CRUD condizionata da `can()`; payload con i soli campi scrivibili; nessun controllo su nomi di ruolo; 403 gestito.
 - [ ] Ogni testo visibile tradotto, in tutte le lingue; formattazioni con `Intl`.
 - [ ] Stati loading/error/empty con `QueryState`, liste con `LoadMore`, eliminazioni con `ConfirmDeleteDialog`; error boundary; accessibilità.
+- [ ] Valori di dominio (azioni, soggetti, campi, namespace, stati, filtri, colonne, rotte, endpoint) definiti una volta e referenziati: `arch_check` riporta il riuso costanti sotto il 10%.
 - [ ] Test RBAC, errori e query presenti e verdi; `stop_gate.commands` verdi.

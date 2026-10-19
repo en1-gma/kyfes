@@ -37,7 +37,7 @@ export const orderKeys = {
 
 Regole:
 - `staleTime` > 0 di default; retry solo per `ApiError` con `status` 0 (rete/timeout) o >= 500, al massimo 2; mai su 4xx, su una risposta che non passa lo schema Zod o su errori di programmazione. Le mutation non ritentano.
-- Ogni mutation dichiara cosa invalida. Create e update inviano solo i campi che l'utente può scrivere (`can('update', record, campo)`); l'update è un `PATCH`.
+- Ogni mutation dichiara cosa invalida. Create e update inviano solo i campi che l'utente può scrivere (`can(ACTIONS.update, orderSubject(order), field)` per ogni campo di `ORDER_EDITABLE_FIELDS` nello scaffold React; negli altri framework le costanti equivalenti, vedi `references/<framework>.md`); l'update è un `PATCH`.
 - Le eliminazioni usano l'optimistic update, sicuro anche con più delete in volo: `mutationKey` condivisa, lo snapshot si ripristina in `onError` solo se è l'ultima delete in corso (altrimenti le liste sono marcate da rifare), il dettaglio si toglie dalla cache solo a eliminazione riuscita, liste e statistiche si invalidano quando finisce l'ultima.
 - Le liste usano la paginazione a cursore `{ items, nextCursor, limit }` (lo stesso contratto di kybes) con `useInfiniteQuery`; `limit`, `cursor` e `sort` fanno parte della chiave.
 - Lo stato del server non si copia negli store client (Zustand, Pinia, signals, rune): gli store tengono solo stato di UI.

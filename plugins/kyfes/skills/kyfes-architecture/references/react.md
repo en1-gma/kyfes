@@ -90,7 +90,8 @@ logout(qc)        // POST /auth/logout → qc.clear() → redirect
 ## RBAC (`shared/rbac`)
 
 ```ts
-export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage';
+export const ACTIONS = { create: 'create', read: 'read', update: 'update', delete: 'delete', manage: 'manage' } as const;
+export type Actions = (typeof ACTIONS)[keyof typeof ACTIONS];
 export interface SubjectRegistry {}               // registro aumentato dalle feature
 export type Subjects = 'all' | { [K in keyof SubjectRegistry]: K | (SubjectRegistry[K] & ForcedSubject<K>) }[keyof SubjectRegistry];
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
@@ -99,23 +100,28 @@ export const buildAbility = (rules) => createMongoAbility<AppAbility>(rules);
 
 - Registrazione del soggetto **senza** che `shared` importi da `features` (module augmentation in `features/orders/permissions.ts`):
   ```ts
+  export const ORDER_SUBJECT = 'Order' as const;
   declare module '@/shared/rbac/ability' { interface SubjectRegistry { Order: Order } }
-  export const orderSubject = (o: Order) => subject('Order', { ...o });  // copia: la cache resta intatta
+  export function orderSubject(order: Order) {
+    return subject(ORDER_SUBJECT, { ...order });  // copia: la cache resta intatta
+  }
+  export const ORDER_FIELDS = { customerName: 'customerName', status: 'status', total: 'total' } as const satisfies Record<string, keyof Order>;
   ```
 - `AbilityProvider` (in `app/providers.tsx`) costruisce l'Ability con `useMemo` sulle `rules` della sessione: quando `/auth/me` viene rifatta cambia l'istanza e tutto si ri-renderizza. Prop `ability` per i test.
-- `Can` è il `Can` di `@casl/react` tipizzato su `AppAbility` (`CanProps<AppAbility>`), legge il contesto: `<Can I="create" a="Order">`, `<Can I="update" this={orderSubject(order)}>`. `useCan()` restituisce `ability.can` legato: `can('update', orderSubject(order), 'status')`.
-- `<RequirePermission action="read" subject="Order" />` come `element` di una rotta: `<Outlet/>` oppure `ForbiddenState` (403 visibile, nessun redirect).
+- `Can` è il `Can` di `@casl/react` tipizzato su `AppAbility` (`CanProps<AppAbility>`), legge il contesto: `<Can I={ACTIONS.create} a={ORDER_SUBJECT}>`, `<Can I={ACTIONS.update} this={orderSubject(order)}>`. `useCan()` restituisce `ability.can` legato: `can(ACTIONS.update, orderSubject(order), ORDER_FIELDS.status)`.
+- `<RequirePermission action={ACTIONS.read} subject={ORDER_SUBJECT} />` come `element` di una rotta: `<Outlet/>` oppure `ForbiddenState` (403 visibile, nessun redirect).
 
 ## TanStack Query (`features/orders/api`)
 
 ```ts
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_FEATURE] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (f: OrderListFilters) => [...orderKeys.lists(), f] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  remove: () => [...orderKeys.all, 'remove'] as const,   // mutationKey condivisa dalle delete
 };
 infiniteQueryOptions({
   queryKey: orderKeys.list({ limit, sort, status }),
@@ -126,7 +132,7 @@ infiniteQueryOptions({
 ```
 
 - `orders.api.ts`: ogni endpoint fa `Schema.parse(data)`; `http.get<unknown>` (mai `any`).
-- `create(input: Partial<OrderInput>)` (POST) e `update` (PATCH) ricevono solo i campi scrivibili: `OrderForm` filtra `ORDER_EDITABLE_FIELDS` con `can('create', ORDER_SUBJECT, field)` o `can('update', orderSubject(order), field)`; i default dei campi omessi (es. `status`) li applica il server.
+- `create(input: Partial<OrderInput>)` (POST) e `update` (PATCH) ricevono solo i campi scrivibili: `OrderForm` filtra `ORDER_EDITABLE_FIELDS` con `can(ACTIONS.create, ORDER_SUBJECT, field)` o `can(ACTIONS.update, orderSubject(order), field)`; i default dei campi omessi (es. `status`) li applica il server.
 - Mutation: create/update → `setQueryData(detail)` + invalidazione di `lists()` e `stats()`. Delete ottimistico con `mutationKey: DELETE_ORDER_KEY` condivisa: `onMutate` (`cancelQueries`, `getQueriesData`, `setQueriesData` che filtra le pagine); `onError` ripristina lo snapshot solo se `isMutating({ mutationKey }) <= 1` (ultima delete in volo), altrimenti `invalidateQueries(lists, refetchType: 'none')`; `onSuccess` rimuove il dettaglio dalla cache; `onSettled` invalida liste e `stats()` solo dall'ultima delete in volo.
 - Zustand (`stores/orders-ui.store.ts`) tiene solo filtri/ordinamento, che entrano nella chiave della query.
 
@@ -134,10 +140,10 @@ infiniteQueryOptions({
 
 - Istanza `i18next.createInstance()` + backend custom (`type: 'backend'`) che carica in lazy con `import.meta.glob('./locales/*.json')` (namespace `common`) e `import.meta.glob('../../features/*/locales/*.json')` (namespace = nome cartella della feature). Ogni JSON è un chunk separato.
 - `initI18n()` in `main.tsx` prima del render; `react.useSuspense: true` → `<Suspense>` attorno al router e all'`<Outlet/>` del layout.
-- Nei componenti: `const { t } = useTranslation('orders')`; chiavi comuni con prefisso `t('common:actions.save')` (il fallback `common` non basta se la chiave esiste anche nel namespace della feature). Plurali i18next (`count_one`/`count_other`, `Intl.PluralRules`).
+- Nei componenti: `const { t } = useTranslation(ORDERS_NS)`; chiavi comuni con prefisso `t('common:actions.save')` (il fallback `common` non basta se la chiave esiste anche nel namespace della feature). Plurali i18next (`count_one`/`count_other`, `Intl.PluralRules`).
 - Lingua: browser → `VITE_DEFAULT_LOCALE`, poi `changeLocale(session.locale)`; `<html lang>` aggiornato sull'evento `languageChanged`.
-- Formatter: `formatDate`, `formatNumber`, `formatCurrency(value, 'EUR')`, `formatMonth('2026-03')`.
-- Messaggi Zod = chiavi i18n (`{ error: 'validation.required' }`), tradotte nel form con `t(\`common:${message}\`)`.
+- Formatter: `formatDate`, `formatNumber`, `formatCurrency(value)` (valuta `DEFAULT_CURRENCY`), `formatMonth('2026-03')`.
+- Messaggi Zod = chiavi i18n (`{ error: VALIDATION_KEYS.required }`, valore `'validation.required'`), tradotte nel form con `t(\`common:${message}\`)`.
 - Test di parità: `shared/i18n/locales.test.ts` confronta le chiavi di ogni namespace in tutte le lingue, ignorando i suffissi plurali (`_zero|_one|_two|_few|_many|_other`).
 
 ## Grafici (`shared/charts`)
@@ -157,12 +163,35 @@ infiniteQueryOptions({
 ## Test
 
 - `vite.config.ts` → `test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test/setup.ts'], fsModuleCache: false }` (la cache persistente delle trasformazioni conserva risultati vecchi di `import.meta.glob`: i locales di una nuova feature non verrebbero trovati).
-- `setup.ts`: `server.listen({ onUnhandledFrame: 'error' })`, `initI18n('it')` + `loadNamespaces(['common','orders'])`, `resetHandlers` + `db.reset()` dopo ogni test, stub di `ResizeObserver` per Recharts.
+- `setup.ts`: `server.listen({ onUnhandledFrame: 'error' })`, `initI18n('it')` + `i18n.loadNamespaces([COMMON_NS, ORDERS_NS])`, `resetHandlers` + `db.reset()` dopo ogni test, stub di `ResizeObserver` per Recharts.
 - `renderWithProviders(ui, { user: 'manager' | 'viewer' | 'operator' })`: QueryClient di test (`retry: false`, `staleTime: Infinity`) con la sessione già in cache, `AbilityProvider`, i18n, `createMemoryRouter`.
-- Mock: `apiError(status, code, message)` restituisce `{ code, message, correlationId }` + header; override per test con `server.use(http.get('/api/orders', () => apiError(500, …)))`. Gli handler POST/PATCH applicano le regole CASL dell'utente mock: tipo, record (condizioni) e ogni campo del body (`deniedFields` → 403); in create `status` ha default `'draft'`.
-- RBAC: la stessa vista con `manager` mostra Nuovo/Modifica/Elimina, con `viewer` no; `operator` verifica condizioni sul record (`status: 'draft'`), permessi per campo (stato in sola lettura) e che create/update non inviino mai `status`.
+- Mock: `apiError(status, code, message)` restituisce `{ code, message, correlationId }` + header; override per test con `server.use(http.get('/api/orders', () => apiError(500, …)))`. Gli handler POST/PATCH applicano le regole CASL dell'utente mock: tipo, record (condizioni) e ogni campo del body (`deniedFields` → 403); in create `status` ha default `DEFAULT_ORDER_STATUS`.
+- RBAC: la stessa vista con `manager` mostra Nuovo/Modifica/Elimina, con `viewer` no; `operator` verifica condizioni sul record (`{ [ORDER_FIELDS.status]: ORDER_STATUS.draft }`), permessi per campo (stato in sola lettura) e che create/update non inviino mai `status`.
 - Coperti anche: refresh 401 (richiesta lenta partita prima del refresh, `onUnauthorized` una volta, cancellazioni), `shouldRetry` su `ZodError`/`TypeError`, delete concorrenti con errore, `safeRedirect` su percorsi normalizzati.
 - e2e: `playwright.config.ts` avvia `npm run dev` con `VITE_API_MOCKS=true`; `AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'])`.
+
+## Costanti e riuso (`constant-reuse`)
+
+Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold:
+
+| Valore | Costante | File |
+|---|---|---|
+| azioni CASL | `ACTIONS` (`ACTIONS.update`, mai `'update'`) | `shared/rbac/ability.ts` |
+| registro soggetti | `interface SubjectRegistry` (module augmentation dalla feature) | `shared/rbac/ability.ts` |
+| soggetto e campi | `ORDER_SUBJECT`, `ORDER_FIELDS`, `ORDER_EDITABLE_FIELDS`, `orderSubject()` | `features/orders/permissions.ts` |
+| nome feature e namespace | `ORDERS_FEATURE = 'orders'`, `ORDERS_NS = ORDERS_FEATURE`; comune `COMMON_NS` | `model/orders.feature.ts`; `shared/i18n/i18n.ts` |
+| stati, ordinamenti, default | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT` | `model/orders.schema.ts` |
+| modalità del dettaglio | `ORDER_DETAIL_MODE` | `components/order-detail-mode.ts` |
+| percorsi UI | `orderRoutes` (relativi, per il router) e `orderPaths` (assoluti, per i link), derivati da `ORDERS_FEATURE` | `features/orders/routes.ts` |
+| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`, `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME` | `api/orders.api.ts`; `shared/api/http.ts` |
+| query/mutation key | `orderKeys` (radice `[ORDERS_FEATURE]`, `remove()` per `DELETE_ORDER_KEY`) | `api/orders.queries.ts` |
+| trasversali | `BUTTON_VARIANT` (`shared/ui/button-variant.ts`), `CHART_VARIANT`/`CHART_DATUM_KEY` (`shared/charts/types.ts`), `DEFAULT_CURRENCY` (`shared/i18n/formatters.ts`), `VALIDATION_KEYS` (`shared/i18n/validation.ts`), `SUPPORTED_LOCALES` (`shared/config/env.ts`), `DEFAULT_PAGE_SIZE` (`shared/api/pagination.ts`) | `shared/*` |
+
+Uso tipico: `<Can I={ACTIONS.update} this={orderSubject(order)}>`, `<RequirePermission action={ACTIONS.read} subject={ORDER_SUBJECT} />` in `app/router.tsx` con `path: orderRoutes.section`, `<NavLink to={orderPaths.list}>`, `useTranslation(ORDERS_NS)`, `can(ACTIONS.update, orderSubject(order), field)` su `ORDER_EDITABLE_FIELDS`. App e pagine importano tutto dal barrel `features/orders/index.ts`; i mock (`mocks/data.ts`) costruiscono le regole con `ACTIONS.*` e `ORDER_SUBJECT`. Il flag di env `'true'` è la costante privata `FLAG_ON` di `shared/config/env.ts`.
+
+Nuova feature (`customers`): `model/customers.feature.ts` con `CUSTOMERS_FEATURE` e `CUSTOMERS_NS`; `permissions.ts` con `CUSTOMER_SUBJECT = 'Customer' as const`, augmentation di `SubjectRegistry` e `CUSTOMER_FIELDS`; stati/ordinamenti in `model/customers.schema.ts`; `routes.ts` con `customerRoutes`/`customerPaths` derivati da `CUSTOMERS_FEATURE`; `CUSTOMERS_ENDPOINT` in `api/customers.api.ts`; `customerKeys` con radice `[CUSTOMERS_FEATURE]`; tutto riesportato da `index.ts`.
+
+Eccezioni note: `'short'` compare due volte come opzione `Intl` (`timeStyle` in `OrderDetail.tsx`, `month` in `shared/i18n/formatters.ts`), valore di libreria e non di dominio. Metrica attuale dello scaffold (`arch_check.py`): **1 valore duplicato su 100 (1,0%)**, soglia 10%.
 
 ## Trappole
 

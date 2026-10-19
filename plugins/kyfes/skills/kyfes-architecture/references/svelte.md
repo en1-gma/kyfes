@@ -122,21 +122,24 @@ await requireAuth(queryClient, url) // nei load: sessione o login (promise che n
 ```ts
 type AppAbility = MongoAbility<[Actions, Subjects], MongoQuery>;
 buildAbility(rules)                       // createMongoAbility<AppAbility>(rules)
-SUBJECT_TYPES = ['Order'] as const        // registro: ogni feature aggiunge qui il suo soggetto
+Action = { Create: 'create', Read: 'read', Update: 'update', Delete: 'delete', Manage: 'manage' } as const
+Subject = { Order: 'Order' } as const     // registro (subjects.ts): ogni feature aggiunge qui il suo soggetto
+SUBJECT_TYPES = Object.values(Subject)
 class AbilityState { can(...) / cannot(...) / update(rules) }  // $state "version" bump su ability.on('updated')
 ```
 
 - `AbilityProvider.svelte` legge `useSession()` e in `$effect.pre` chiama `update(session.data?.rules ?? [])`. `update` usa `untrack`: senza, l'effetto legge e scrive la versione → `effect_update_depth_exceeded`.
-- Componenti: `const ability = useAbility(); ability.can('update', asOrderSubject(order), 'status')`; markup: `<Can I="create" a={ORDER_SUBJECT}>…</Can>` (props `I`, `a`, `field`, `not`).
-- `asOrderSubject(order)` = `subject('Order', { ...order })`: **sempre su copia**, CASL definisce una proprietà sull'oggetto e i dati in cache/proxy `$state` non vanno mutati.
-- Guard: `await requirePermission(queryClient, 'read', 'Order')` → `error(403, 'Forbidden', { code: 'FORBIDDEN' })` (firma Kit 3: messaggio + proprietà) → `+error.svelte` mostra `ForbiddenPage`. Legge la sessione con `fetchQuery`, non `ensureQueryData`: dopo un 403 la sessione invalidata va riletta, non presa dalla cache.
-- Il guard conosce solo il tipo. `orders/[id]/edit/+page.ts` controlla `update Order`; la condizione sul record la verifica `OrderEditor` dopo il caricamento (`ability.can('update', asOrderSubject(order))`, altrimenti `<ErrorState forbidden />` e nessun form), e poi il server.
+- Componenti: `const ability = useAbility(); ability.can(Action.Update, asOrderSubject(order), ORDER_FIELDS.status)`; markup: `<Can I={Action.Create} a={ORDER_SUBJECT}>…</Can>` (props `I`, `a`, `field`, `not`).
+- `ORDER_SUBJECT = Subject.Order`; `asOrderSubject(order)` = `subject(ORDER_SUBJECT, { ...order })`: **sempre su copia**, CASL definisce una proprietà sull'oggetto e i dati in cache/proxy `$state` non vanno mutati.
+- Guard: `await requirePermission(queryClient, Action.Read, ORDER_SUBJECT)` → `error(403, 'Forbidden', { code: 'FORBIDDEN' })` (firma Kit 3: messaggio + proprietà) → `+error.svelte` mostra `ForbiddenPage`. Legge la sessione con `fetchQuery`, non `ensureQueryData`: dopo un 403 la sessione invalidata va riletta, non presa dalla cache.
+- Il guard conosce solo il tipo. `orders/[id]/edit/+page.ts` controlla `requirePermission(queryClient, Action.Update, ORDER_SUBJECT)`; la condizione sul record la verifica `OrderEditor` dopo il caricamento (`ability.can(Action.Update, asOrderSubject(order))`, altrimenti `<ErrorState forbidden />` e nessun form), e poi il server.
 - Permessi per campo: `canWriteOrderField(ability, field, order?)` (`create Order <field>` per un nuovo ordine, `update <record> <field>` per uno esistente); `OrderForm` disabilita i campi non scrivibili e `pickWritableFields` li toglie dal payload (`OrderPayloadSchema = OrderInputSchema.partial()`), sia in POST sia in PATCH.
 
 ## TanStack Svelte Query (feature `orders`)
 
 ```ts
-export const orderKeys = { all: ['orders'] as const, lists: () => [...], list: (f) => [...], details, detail: (id) => [...], stats };
+export const orderKeys = { all: ['orders'] as const, lists: () => [...], list: (f) => [...], details, detail: (id) => [...], stats,
+  deletes: () => [...orderKeys.all, 'delete'] as const };   // deletes(): mutationKey condivisa dalle delete
 export function ordersInfiniteQueryOptions(filters = {}) {
   return infiniteQueryOptions({ queryKey: orderKeys.list(normalized),
     queryFn: ({ pageParam }) => ordersApi.list({ ...normalized, cursor: pageParam }),
@@ -189,6 +192,29 @@ export const useCreateOrder = () => createMutation(() => createOrderMutationOpti
 - `locales.test.ts`: stesse chiavi tra le lingue e prefisso del namespace; i suffissi plurali (`_one`, `_few`, `_other`, …) sono ignorati nel confronto.
 - Query/mutation fuori dai componenti: `client.fetchInfiniteQuery(options)`, `new InfiniteQueryObserver(client, options).fetchNextPage()`, `new MutationObserver(client, createOrderMutationOptions).mutate(input)`.
 - E2E: `playwright.config.ts` avvia `vite dev` con `PUBLIC_API_MOCKS=true`; `e2e/orders.spec.ts` usa `?mockUser=viewer` (disponibili `manager` default, `viewer`, `operator`, `anonymous`) e `new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag22aa'])`.
+
+## Costanti e riuso (`constant-reuse`)
+
+Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold (percorsi sotto `src/lib/`):
+
+| Valore | Costante | File |
+|---|---|---|
+| azioni CASL | `Action` (`Action.Update`, mai `'update'`), `ACTIONS` | `shared/rbac/subjects.ts` |
+| registro soggetti | `Subject = { Order: 'Order' }`, `SUBJECT_TYPES` | `shared/rbac/subjects.ts` |
+| soggetto e campi | `ORDER_SUBJECT = Subject.Order`, `asOrderSubject()`, `ORDER_FIELDS`/`ORDER_FIELD_NAMES` | `features/orders/permissions.ts` |
+| namespace i18n | nessuna stringa: Paraglide compila una funzione per messaggio, il namespace è il prefisso (`m.orders_status_draft()`, `m.common_back_home()`) | `features/orders/locales/*.json`, `shared/i18n/locales/*.json` |
+| stati, ordinamenti, default, validazione | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS`, `ORDER_SORT`, `DEFAULT_ORDER_SORT`, `ORDER_VALIDATION` | `model/orders.schema.ts` |
+| mapping stato → etichetta | `Record<OrderStatus, () => string>` | `components/order-status.ts` |
+| percorsi UI | `orderPaths` (route id SvelteKit: `'/orders/[id]'`) | `features/orders/routes.ts` |
+| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS`; `XSRF_COOKIE_NAME`/`XSRF_HEADER_NAME` | `api/orders.api.ts`; `shared/api/endpoints.ts`; `shared/api/http.ts` |
+| query/mutation key | `orderKeys` (`deletes()` per le delete) | `api/orders.queries.ts` |
+| trasversali | `BUTTON_VARIANT` (`shared/ui/button.ts`), `CHART_KIND` (`shared/charts/options.ts`), `env` (`shared/config/env.ts`, flag privato `FLAG_ON` in `env.schema.ts`), `DEFAULT_PAGE_SIZE` | `shared/*` |
+
+Uso tipico: link con `resolve(orderPaths.detail, { id: order.id })` e `resolve(orderPaths.edit, { id })` da `$app/paths` (mai URL a mano); `<Can I={Action.Create} a={ORDER_SUBJECT}>`; guard nei `load` (`routes/orders/+layout.ts`: `requirePermission(queryClient, Action.Read, ORDER_SUBJECT)`); `canWriteOrderField(ability, field, order)` su `ORDER_FIELD_NAMES`; mock (`src/mocks/data.ts`) con `Action.*`, `ORDER_SUBJECT`, `ORDER_STATUS`.
+
+Nuova feature (`customers`): `Customer: 'Customer'` in `Subject` di `shared/rbac/subjects.ts` e `CUSTOMER_SUBJECT`/`CUSTOMER_FIELDS` in `permissions.ts`; `CUSTOMERS_FEATURE`, stati e ordinamenti in `model/customers.schema.ts`; `customerKeys` con radice `[CUSTOMERS_FEATURE]` e `CUSTOMERS_ENDPOINT` (`` `/${CUSTOMERS_FEATURE}` ``) in `api/`; `customerPaths` con i route id di `src/routes/customers/…` (servono a `resolve()`); messaggi con prefisso `customers_` in `features/customers/locales/*.json`; tutto riesportato da `index.ts`.
+
+Eccezioni note: `'/orders'` compare come route id (`orderPaths.list`) e come `ORDERS_ENDPOINT`, omonimi di concetti diversi; `'short'` è un'opzione `Intl` (`OrderDetail.svelte`, `toMonthlyTotals` in `orders.queries.ts`); `'delete'` è sia `Action.Delete` sia il segmento di `orderKeys.deletes()`; `'updated'` è il nome di eventi di libreria (CASL `ability.on('updated')` in `shared/rbac/ability-state.svelte.ts`, evento della query cache in `shared/auth/auth.ts`). Metrica attuale dello scaffold (`arch_check.py`): **4 valori duplicati su 111 (3,6%)**, soglia 10%.
 
 ## Trappole
 

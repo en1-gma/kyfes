@@ -22,7 +22,7 @@ kyfes/
 ## Verifica
 
 ```bash
-bash tests/run.sh                         # hook, regole, installer (42 test, solo libreria standard)
+bash tests/run.sh                         # hook, regole, installer (48 test, solo libreria standard)
 bash tests/run.sh --scaffolds             # + ogni scaffold: install, lint, typecheck, test, build, arch_check --strict
 bash tests/run.sh --scaffolds "react vue" # solo alcuni framework
 ```

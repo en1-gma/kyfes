@@ -30,7 +30,7 @@ next.config.ts            header di sicurezza, rewrites /api → API_ORIGIN, pow
 src/proxy.ts              CSP con nonce per richiesta (buildCsp esportata e testata)
 src/app/layout.tsx        root layout (server): <html lang>, NextIntlClientProvider (common), Providers, AppShell
 src/app/providers.tsx     QueryClient, AbilityProvider, 401/403 → invalidazione sessione, sync locale, MSW gate
-src/app/AppShell.tsx      nav filtrata con can('read'), selettore lingua, logout, skip link
+src/app/AppShell.tsx      nav filtrata con ability.can(ACTION.read, …), selettore lingua, logout, skip link
 src/app/error.tsx, orders/error.tsx, RouteError.tsx    error boundary per rotta
 src/app/global-error.tsx  boundary di ultima istanza (errori nel root layout): <html>/<body> propri, testo tradotto,
                           riferimento = correlationId o digest, pulsante retry (reset)
@@ -101,7 +101,9 @@ logout(queryClient)    // POST /auth/logout → queryClient.clear() → navigazi
 ## CASL (`shared/rbac`)
 
 ```ts
-export const SUBJECTS = ['Order'] as const;              // registro dei soggetti delle feature
+export const ACTION = { create: 'create', read: 'read', update: 'update', delete: 'delete', manage: 'manage' } as const;
+export const SUBJECT = { Order: 'Order' } as const;      // registro dei soggetti delle feature
+export const SUBJECTS: readonly SubjectName[] = Object.values(SUBJECT);
 export type Subjects = SubjectName | ForcedSubject<SubjectName> | 'all';
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
 export const buildAbility = (rules) => createMongoAbility<AppAbility>(rules);
@@ -109,12 +111,12 @@ export const buildAbility = (rules) => createMongoAbility<AppAbility>(rules);
 // AbilityProvider: useMemo(() => buildAbility(session?.rules ?? []), [rules]) → <CaslAbilityProvider value={ability}>
 export const Can = CaslCan as (props: CanProps<AppAbility>) => ReactNode; // Can di @casl/react 7 non è generico
 export const useAbility = () => useCaslAbility<AppAbility>();
-<RequirePermission action="read" subject="Order">…</RequirePermission> // altrimenti <ForbiddenPage/>
+<RequirePermission action={ACTION.update} subject={ORDER_SUBJECT}>…</RequirePermission> // altrimenti <ForbiddenPage/>
 ```
 
-Nella feature: `orderSubject(order) = subject('Order', { ...order })`, `canEditOrder(ability, order)`, `canEditOrderStatus(ability, order)` (= `can('update', orderSubject(order), 'status')`), `writableOrderFields(ability, order?)` (`Set` dei campi di `ORDER_FIELDS` con `create` sul tipo o `update` sul record) e `pickWritable(values, writable)`. `<Can I="create" a={ORDER_SUBJECT}>` per il pulsante "Nuovo".
+Nella feature (`permissions.ts`): `ORDER_SUBJECT = SUBJECT.Order`, `orderSubject(order) = subject(ORDER_SUBJECT, { ...order })`, `canEditOrder(ability, order)` (= `ability.can(ACTION.update, orderSubject(order))`), `canDeleteOrder(ability, order)`, `canEditOrderStatus(ability, order)` (= `ability.can(ACTION.update, orderSubject(order), ORDER_FIELD.status)`), `writableOrderFields(ability, order?)` (`Set` dei campi di `ORDER_FIELDS` con `create` sul tipo o `update` sul record) e `pickWritable(values, writable)`. `<Can I={ACTION.create} a={ORDER_SUBJECT}>` per il pulsante "Nuovo".
 
-- `OrderForm` passa a `onSubmit` solo i campi scrivibili (`OrderWrite = Partial<OrderInput>`): create (POST) e update (PATCH); gli altri sono `readOnly` e mai inviati, il server applica i default (es. `status = draft`). I `fieldErrors` di un 422 finiscono sui campi; un messaggio che non è una chiave i18n diventa `validation.invalid`.
+- `OrderForm` passa a `onSubmit` solo i campi scrivibili (`OrderWrite = Partial<OrderInput>`): create (POST) e update (PATCH); gli altri sono `readOnly` e mai inviati, il server applica i default (es. `status = DEFAULT_ORDER_STATUS`). I `fieldErrors` di un 422 finiscono sui campi; un messaggio che non è una chiave i18n diventa `validation.invalid`.
 - `EditOrder` carica il record e verifica `canEditOrder`: se negato mostra `ForbiddenPage` (la guardia di rotta conosce solo il tipo).
 - `ErrorState` su un 403 mostra "non autorizzato" (`errors.forbiddenTitle`/`errors.forbidden`) senza pulsante di retry.
 
@@ -122,12 +124,13 @@ Nella feature: `orderSubject(order) = subject('Order', { ...order })`, `canEditO
 
 ```ts
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_ENDPOINT] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (f: OrderListFilters & { limit: number }) => [...orderKeys.lists(), f] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  remove: () => [...orderKeys.all, 'remove'] as const,   // mutationKey condivisa dalle delete
 };
 infiniteQueryOptions({
   queryKey: orderKeys.list({ ...filters, limit }),
@@ -139,15 +142,15 @@ infiniteQueryOptions({
 
 `GET /orders/stats` restituisce `{ months: [{ month: 'YYYY-MM', total, count }] }` (`OrderStatsSchema`).
 
-Mutation: create/update → `setQueryData(detail)` + `invalidateQueries(lists)` e `stats`. Delete ottimistico con `mutationKey: deleteOrderMutationKey` condivisa: `onMutate` (`cancelQueries`, snapshot con `getQueriesData`, `setQueriesData` che filtra la riga); `onError` ripristina lo snapshot solo se nessun'altra delete è in volo (`isMutating({ mutationKey }) > 1` → solo `invalidateQueries(lists, refetchType: 'none')`); `onSuccess` rimuove il dettaglio dalla cache; `onSettled` invalida liste e `stats` solo dall'ultima delete in volo. Il filtro di stato vive nello store Zustand `stores/orders-ui.store.ts` ed entra nella chiave.
+Mutation: create/update → `setQueryData(detail)` + `invalidateQueries(lists)` e `stats`. Delete ottimistico con `mutationKey: orderKeys.remove()` condivisa: `onMutate` (`cancelQueries`, snapshot con `getQueriesData`, `setQueriesData` che filtra la riga); `onError` ripristina lo snapshot solo se nessun'altra delete è in volo (`isMutating({ mutationKey }) > 1` → solo `invalidateQueries(lists, refetchType: 'none')`); `onSuccess` rimuove il dettaglio dalla cache; `onSettled` invalida liste e `stats` solo dall'ultima delete in volo. Il filtro di stato vive nello store Zustand `stores/orders-ui.store.ts` ed entra nella chiave.
 
 ## i18n (next-intl senza routing)
 
 - `next.config.ts`: `createNextIntlPlugin('./src/shared/i18n/request.ts')`.
-- `request.ts`: locale = cookie `NEXT_LOCALE` → `Accept-Language` → `NEXT_PUBLIC_DEFAULT_LOCALE`; `timeZone: 'Europe/Rome'`; messaggi globali = solo `{ common }`.
+- `request.ts`: locale = cookie `NEXT_LOCALE` → `Accept-Language` → `NEXT_PUBLIC_DEFAULT_LOCALE`; `timeZone: TIME_ZONE` (`shared/i18n/config.ts`); messaggi globali = solo `{ [COMMON_NS]: common }`.
 - Namespace lazy per rotta: la feature esporta `ordersMessages: NamespaceLoader` (`import('./locales/it.json')`); `src/app/orders/layout.tsx` usa `<I18nNamespaces loaders={[ordersMessages]}>` (da `@/shared/i18n/server`), che annida un `NextIntlClientProvider` con `common` + `orders`. Solo le rotte orders scaricano quelle stringhe.
 - Cambio lingua: server action `setLocaleAction` (cookie HttpOnly, controllo Origin di Next) + `router.refresh()` in `useSwitchLocale()`; `useHtmlLang()` aggiorna `<html lang>`. Lingua della sessione applicata da `LocaleSync` in `providers.tsx` se l'utente non ha già un cookie.
-- Componenti: `useTranslations('orders')`, `useFormatters()` → `formatDate/formatNumber/formatCurrency` legati al locale (funzioni pure in `format.ts`).
+- Componenti: `useTranslations(ORDERS_NS)`, `useFormatters()` → `formatDate/formatNumber/formatCurrency` legati al locale (funzioni pure in `format.ts`).
 - Due entry: `@/shared/i18n` (client-safe) e `@/shared/i18n/server` (`import 'server-only'`, `getTranslations`, `I18nNamespaces`).
 
 ## Grafici (`shared/charts`)
@@ -166,9 +169,33 @@ Mutation: create/update → `setQueryData(detail)` + `invalidateQueries(lists)` 
 - `vitest.config.mts`: `@vitejs/plugin-react`, alias `@` → `src`, `environment: 'jsdom'`, `setupFiles: ['./src/test/setup.ts']`, `fsModuleCache: false` (nessuna cache persistente dei moduli su disco), `server.deps.inline: ['next-intl']`.
 - `src/test/setup.ts`: `server.listen({ onUnhandledFrame: 'error' })`, reset di handler, db mock e utente.
 - `renderWithProviders(ui, { user: 'manager' | 'operator' | 'viewer', rules? })`: QueryClient senza retry, `NextIntlClientProvider` (it, common+orders), `StaticAbilityProvider`.
-- Mock: `operator` crea/aggiorna solo `customerName` e `total`, aggiorna solo le bozze (`conditions: { status: 'draft' }`). Gli handler applicano le stesse regole CASL di `/auth/me` (tipo, record, ogni campo del body → 403) e rispondono 422 con `fieldErrors: Record<string, string[]>`.
+- Mock: `operator` crea/aggiorna solo `customerName` e `total`, aggiorna solo le bozze (`conditions: { [ORDER_FIELD.status]: ORDER_STATUS.draft }`). Gli handler applicano le stesse regole CASL di `/auth/me` (tipo, record, ogni campo del body → 403) e rispondono 422 con `fieldErrors: Record<string, string[]>`.
 - Copertura: `shared/lib` (anche `safeRedirect` su percorsi normalizzati), `env.test.ts` (`API_BASE_URL`), `http.test.ts` (config XSRF, ApiError, `fieldErrors` array, 401, refresh single-flight, richiesta lenta partita prima del refresh, `onUnauthorized` una volta, refresh di `/auth/me` senza loop, cancellazioni), `query-client.test.ts`, `session.test.tsx` (403 su `/auth/me` senza loop, schema tollerante), `ErrorState.test.tsx` (403), RBAC su `OrdersTable` e `OrdersPage` (manager/viewer/condizioni sul record), `OrderForm` (Zod, campo `status` in sola lettura), `OrderEditor.test.tsx` (operator: campi scrivibili in create/update, record non modificabile, `fieldErrors` sui campi), query/mutation con MSW (paginazione, create invalida, delete con rollback, delete concorrenti, dettaglio rimosso solo su successo), parità chiavi it/en (suffissi plurali ignorati), CSP e matcher del proxy.
 - E2E: `npm run test:e2e` avvia `next dev` con `NEXT_PUBLIC_API_MOCKS=true`; `AxeBuilder({ page }).withTags([...]).analyze()` e verifica dell'header CSP.
+
+## Costanti e riuso (`constant-reuse`)
+
+Ogni valore di dominio è scritto una volta e importato (schema generale in `SKILL.md` sez. 9.1). Dove vive nello scaffold:
+
+| Valore | Costante | File |
+|---|---|---|
+| azioni CASL | `ACTION` (`ACTION.update`, mai `'update'`) | `shared/rbac/ability.ts` |
+| registro soggetti | `SUBJECT = { Order: 'Order' }`, `SUBJECTS` | `shared/rbac/ability.ts` |
+| soggetto e campi | `ORDER_SUBJECT = SUBJECT.Order`, `orderSubject()`; campi `ORDER_FIELD`/`ORDER_FIELDS` | `features/orders/permissions.ts`; `model/orders.schema.ts` |
+| namespace i18n | `ORDERS_NS` + loader `ordersMessages`; comune `COMMON_NS` | `features/orders/locales/namespace.ts`; `shared/i18n/config.ts` |
+| stati e default | `ORDER_STATUS`, `ORDER_STATUSES`, `DEFAULT_ORDER_STATUS` (nessun ordinamento predefinito nello scaffold: se serve, `ORDER_SORT` qui) | `model/orders.schema.ts` |
+| percorsi UI | `orderPaths` (radice privata `ORDERS_ROOT`) | `features/orders/routes.ts` |
+| endpoint | `ORDERS_ENDPOINT = '/orders'`; `AUTH_ENDPOINTS` | `api/orders.api.ts`; `shared/api/http.ts` |
+| query/mutation key | `orderKeys` (radice `[ORDERS_ENDPOINT]`, `remove()` per le delete) | `api/orders.queries.ts` |
+| trasversali | `BUTTON_VARIANT` (`shared/ui/Button.tsx`), `CHART_KIND` (`shared/charts/types.ts`), `DATE_FORMAT` (`shared/i18n/format.ts`), `LOCALE_COOKIE`/`TIME_ZONE`/`DEFAULT_LOCALE` (`shared/i18n/config.ts`), `LOCALES` (`shared/config/env.ts`), `IS_DEV` (`shared/config/runtime.ts`), `CSP_HEADER`/`NONCE_HEADER` (`shared/config/csp.ts`), `DEFAULT_PAGE_SIZE` | `shared/*` |
+
+Uso tipico: `<Can I={ACTION.create} a={ORDER_SUBJECT}>` + `<Link href={orderPaths.new} className={buttonClassName(BUTTON_VARIANT.primary)}>` in `app/orders/page.tsx`, `useTranslations(ORDERS_NS)`, `formatDate(value, DATE_FORMAT.dateTime)`, `ability.can(ACTION.update, orderSubject(order), ORDER_FIELD.status)`.
+
+**Server Component**: le costanti che un Server Component o `proxy.ts` deve leggere come valore stanno in moduli **senza** `'use client'` (`routes.ts`, `model/`, `locales/namespace.ts`, `shared/rbac/ability.ts`, `shared/i18n/config.ts`, `shared/config/*`, `shared/ui/Button.tsx`): da un modulo client arriverebbe un riferimento client, non il valore. Esempi: `redirect(orderPaths.list)` in `app/page.tsx`, `getTranslations(COMMON_NS)` da `@/shared/i18n/server` in `app/layout.tsx` e `app/orders/layout.tsx`, `IS_DEV`/`CSP_HEADER` in `proxy.ts`.
+
+Nuova feature (`customers`): `Customer: 'Customer'` in `SUBJECT` di `shared/rbac/ability.ts` e `CUSTOMER_SUBJECT = SUBJECT.Customer` in `permissions.ts`; `CUSTOMER_FIELD`/`CUSTOMER_FIELDS`, stati e ordinamenti in `model/customers.schema.ts`; `CUSTOMERS_NS` e `customersMessages` in `locales/namespace.ts`; `CUSTOMERS_ENDPOINT` in `api/customers.api.ts` e `customerKeys` con radice `[CUSTOMERS_ENDPOINT]`; `customerPaths` in `routes.ts`, che deve seguire le cartelle `src/app/customers/…`; tutto riesportato da `index.ts`, nessun `'use client'` in questi moduli.
+
+Eccezioni note: `'/orders'` compare come radice di `orderPaths` (`routes.ts`) e come `ORDERS_ENDPOINT` (`api/orders.api.ts`), omonimi di concetti diversi (percorso dell'App Router e risorsa REST); in una nuova feature si derivano entrambi da un `<F>_FEATURE` (sez. 9.1). `'short'` compare due volte in `DATE_FORMAT` (`timeStyle` e `month`, opzioni `Intl`). Metrica attuale dello scaffold (`arch_check.py`): **2 valori duplicati su 110 (1,8%)**, soglia 10%.
 
 ## Trappole
 

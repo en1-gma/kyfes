@@ -40,7 +40,7 @@ flowchart LR
     subgraph Browser["Browser — no tokens, ever"]
         C["Component<br/>features/orders/components"] --> Q["TanStack Query<br/>features/orders/api"]
         Q --> H["HTTP client<br/>shared/api · withCredentials · X-XSRF-TOKEN"]
-        C -. "can('delete', order)" .-> R["CASL ability<br/>shared/rbac"]
+        C -. "can(ACTIONS.delete, order)" .-> R["CASL ability<br/>shared/rbac"]
     end
     H -- "same origin /api<br/>cookie __Host-session" --> B["BFF / API gateway<br/>OIDC code + PKCE, server side"]
     B -- "GET /api/auth/me<br/>{ user, rules, locale }" --> R
@@ -64,7 +64,7 @@ sequenceDiagram
     H-->>I: ✗ denied — HTTP only through shared/api + TanStack Query
     I->>H: write localStorage.setItem('token', …)
     H-->>I: ✗ denied — the session lives in an HttpOnly cookie
-    I->>H: write useInvoicesQuery() + <Can I="delete" this={invoice}>
+    I->>H: write useInvoicesQuery() + <Can I={ACTIONS.delete} this={invoice}>
     H-->>I: ✓ allowed
     I->>R: done
     R-->>Dev: independent review against the checklist
@@ -115,29 +115,37 @@ Each framework ships a **reference scaffold** with a complete `orders` CRUD feat
 
 ```tsx
 // features/orders/components/OrdersTable.tsx — excerpt from the React scaffold
-const { t } = useTranslation('orders')            // from shared/i18n
-const can = useCan()                              // from shared/rbac (CASL)
-const query = useOrdersInfinite({ status, sort }) // features/orders/api — TanStack Query, cursor pages
-const remove = useDeleteOrder()                   // optimistic delete with rollback
+const { t } = useTranslation(ORDERS_NS);            // shared/i18n; ORDERS_NS from model/orders.feature.ts
+const can = useCan();                               // shared/rbac (CASL); ACTIONS from shared/rbac
+const query = useOrdersInfinite({ status, sort });  // features/orders/api — TanStack Query, cursor pages
+const remove = useDeleteOrder();                    // optimistic delete with rollback
 
-const orders = query.data?.pages.flatMap((page) => page.items) ?? []
+// The actions column exists only if the user may act on at least some orders.
+const showActions = can(ACTIONS.update, ORDER_SUBJECT) || can(ACTIONS.delete, ORDER_SUBJECT);
+const orders = query.data?.pages.flatMap((page) => page.items) ?? [];
 // ...
 {orders.map((order) => {
-  const record = orderSubject(order)              // subject('Order', order): conditions on the record
+  const record = orderSubject(order);               // subject(ORDER_SUBJECT, { ...order }): conditions on the record
   return (
     <tr key={order.id}>
-      <td>{order.number}</td>
+      <td><Link to={orderPaths.detail(order.id)}>{order.number}</Link></td>
       <td className="num">{formatCurrency(order.total)}</td>
-      <td>
-        {can('update', record) && <Link to={orderPaths.edit(order.id)}>{t('common:actions.edit')}</Link>}
-        {can('delete', record) && <Button onClick={() => setToDelete(order)}>{t('common:actions.delete')}</Button>}
-      </td>
+      {showActions && (
+        <td className="row-actions">
+          {can(ACTIONS.update, record) && (
+            <Link className="btn btn--ghost" to={orderPaths.edit(order.id)}>{t('common:actions.edit')}</Link>
+          )}
+          {can(ACTIONS.delete, record) && (
+            <Button variant="ghost" onClick={() => { setToDelete(order); }}>{t('common:actions.delete')}</Button>
+          )}
+        </td>
+      )}
     </tr>
-  )
+  );
 })}
 ```
 
-Vue uses `<Can>`/`useAbility()` from `@casl/vue`, Angular the `@casl/angular` signal service, SvelteKit a `Can.svelte` component — always behind `shared/rbac`. Permissions come from `GET /api/auth/me` as CASL rules, are rebuilt when the session changes, and protect routes (`read`), buttons (`create`/`update`/`delete`, with conditions on the record) and single fields. The UI hides — **the server decides**: a 403 refreshes the session and shows a clear message.
+Vue uses `<Can>`/`useAbility()` from `@casl/vue`, Angular the `@casl/angular` signal service, SvelteKit a `Can.svelte` component — always behind `shared/rbac`. Actions, subjects and fields are always constants, never string literals: `ACTIONS.update` in React, `ACTION.update` in Next.js and Vue, `Action.Update` in Angular and SvelteKit. Permissions come from `GET /api/auth/me` as CASL rules, are rebuilt when the session changes, and protect routes (`read`), buttons (`create`/`update`/`delete`, with conditions on the record) and single fields. The UI hides — **the server decides**: a 403 refreshes the session and shows a clear message.
 
 ## Guardrails
 
@@ -153,6 +161,8 @@ Vue uses `<Can>`/`useAbility()` from `@casl/vue`, Angular the `@casl/angular` si
 | before every shell command | writes through the shell into source files, `.env` or protected files (`>`, `tee`, `sed -i`, `cp`/`mv`, `curl -o`, inline scripts), `git apply`/`patch`, `disableAllHooks` | block |
 | after every write | untranslated visible text, `console.log`, `any`, `@ts-ignore` | warn |
 | before finishing (main agent and every subagent) | `arch_check` (incl. duplicated blocks of 8+ lines) + your lint, typecheck and test commands | block |
+| before every write | **constant reuse**: a literal (or a new constant) equal to a constant already exported in the project is denied, with the constant to import | block |
+| before finishing, measured | **constant reuse**: at most 10% of the domain literals (RBAC actions and subjects, fields, i18n namespaces, statuses, filters, sort keys, columns, routes, endpoints, mappings) may be written more than once — everything else is a referenced constant; `arch_check` prints the ratio every run | block |
 | in CI | the same checks with `--strict`, `npm audit`, build | fail build |
 
 Every rule can be set to `block`, `warn` or `off` in `.kyfes/config.json` — a file the agent is not allowed to modify. The same Python hooks (standard library only) run in **Claude Code** (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`, `Bash`) and **Codex** (`apply_patch`, shell). Write hooks evaluate the file as it will be after the change, not just the written fragment, and find the project from the file being written, so they also work in a monorepo opened at its root. Committing does not switch the stop gate off: it also compares `HEAD` with the commit recorded when the session started.
