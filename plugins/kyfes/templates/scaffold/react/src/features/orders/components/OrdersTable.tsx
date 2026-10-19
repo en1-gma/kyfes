@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { useCan } from '@/shared/rbac';
+import { ACTIONS, useCan } from '@/shared/rbac';
 import { formatCurrency, formatDate, useTranslation } from '@/shared/i18n';
 import { Button, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '@/shared/ui';
 import { useDeleteOrder } from '../api/orders.mutations';
 import { useOrdersInfinite } from '../api/orders.queries';
+import { ORDERS_NS } from '../model/orders.feature';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '../model/orders.schema';
 import { ORDER_SUBJECT, orderSubject } from '../permissions';
 import { orderPaths } from '../routes';
@@ -12,7 +13,7 @@ import { useOrdersUiStore } from '../stores/orders-ui.store';
 import { OrderStatusBadge } from './OrderStatusBadge';
 
 export function OrdersTable() {
-  const { t } = useTranslation('orders');
+  const { t } = useTranslation(ORDERS_NS);
   const can = useCan();
   const status = useOrdersUiStore((s) => s.status);
   const sort = useOrdersUiStore((s) => s.sort);
@@ -22,7 +23,7 @@ export function OrdersTable() {
   const [toDelete, setToDelete] = useState<Order | null>(null);
 
   // The actions column exists only if the user may act on at least some orders.
-  const showActions = can('update', ORDER_SUBJECT) || can('delete', ORDER_SUBJECT);
+  const showActions = can(ACTIONS.update, ORDER_SUBJECT) || can(ACTIONS.delete, ORDER_SUBJECT);
   const orders = query.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
@@ -85,7 +86,7 @@ export function OrdersTable() {
                       <td>{formatDate(order.createdAt)}</td>
                       {showActions && (
                         <td className="row-actions">
-                          {can('update', record) && (
+                          {can(ACTIONS.update, record) && (
                             <Link
                               className="btn btn--ghost"
                               to={orderPaths.edit(order.id)}
@@ -94,7 +95,7 @@ export function OrdersTable() {
                               {t('common:actions.edit')}
                             </Link>
                           )}
-                          {can('delete', record) && (
+                          {can(ACTIONS.delete, record) && (
                             <Button
                               variant="ghost"
                               aria-label={t('actions.delete', { number: order.number })}

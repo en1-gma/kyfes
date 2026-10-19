@@ -1,6 +1,6 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { env } from '@/shared/config';
-import { http } from '@/shared/api';
+import { AUTH_ENDPOINTS, http } from '@/shared/api';
 import { safeRedirect } from '@/shared/lib';
 import { SessionSchema, type Session } from './session.schema';
 
@@ -13,7 +13,7 @@ export const sessionKeys = {
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionKeys.me(),
   queryFn: async ({ signal }): Promise<Session> => {
-    const { data } = await http.get<unknown>('/auth/me', { signal });
+    const { data } = await http.get<unknown>(AUTH_ENDPOINTS.me, { signal });
     return SessionSchema.parse(data);
   },
   staleTime: 5 * 60_000,
@@ -31,7 +31,7 @@ export function useCurrentSession(): Session | undefined {
 
 /** URL of the BFF login: the server runs OIDC (Authorization Code + PKCE) and sets the cookie. */
 export function loginUrl(returnTo: string): string {
-  return `${env.API_BASE_URL}/auth/login?returnTo=${encodeURIComponent(safeRedirect(returnTo))}`;
+  return `${env.API_BASE_URL}${AUTH_ENDPOINTS.login}?returnTo=${encodeURIComponent(safeRedirect(returnTo))}`;
 }
 
 /** Full-page navigation to the BFF login (never an XHR: the IdP needs a top-level redirect). */
@@ -46,7 +46,7 @@ export function currentPath(): string {
 /** `POST /auth/logout` (XSRF header added by the client), wipe every cached query, go home. */
 export async function logout(queryClient: QueryClient, redirectTo = '/'): Promise<void> {
   try {
-    await http.post('/auth/logout');
+    await http.post(AUTH_ENDPOINTS.logout);
   } finally {
     queryClient.clear();
     window.location.assign(safeRedirect(redirectTo));

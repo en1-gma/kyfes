@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router';
 import { ORDER_SUBJECT, orderPaths } from '@/features/orders';
 import { useCurrentSession, useLogout } from '@/shared/auth';
 import { useLocale, useTranslation } from '@/shared/i18n';
-import { Can } from '@/shared/rbac';
+import { ACTIONS, Can } from '@/shared/rbac';
 import { Button, Spinner } from '@/shared/ui';
 
 export function AppLayout() {
@@ -21,7 +21,7 @@ export function AppLayout() {
         <span className="layout__brand">{t('app.name')}</span>
         <nav aria-label={t('nav.main')}>
           <ul className="nav">
-            <Can I="read" a={ORDER_SUBJECT}>
+            <Can I={ACTIONS.read} a={ORDER_SUBJECT}>
               <li>
                 <NavLink to={orderPaths.list}>{t('nav.orders')}</NavLink>
               </li>

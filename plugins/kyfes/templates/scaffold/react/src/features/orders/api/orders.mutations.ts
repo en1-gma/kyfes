@@ -36,7 +36,7 @@ export function useUpdateOrder(id: string) {
 type OrderLists = InfiniteData<OrderPage, string | undefined>;
 
 /** Shared by every delete: lets a failing delete know whether others are still in flight. */
-const DELETE_ORDER_KEY = [...orderKeys.all, 'delete'] as const;
+const DELETE_ORDER_KEY = orderKeys.remove();
 
 /** Delete with optimistic update on every cached list, rollback on error (kyfes §4.2). */
 export function useDeleteOrder() {

@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { delay, http, HttpResponse } from 'msw';
-import { OrderInputSchema, type Order } from '@/features/orders';
-import { buildAbility, subject } from '@/shared/rbac';
+import {
+  DEFAULT_ORDER_STATUS,
+  ORDER_SORT,
+  ORDER_SUBJECT,
+  ORDERS_ENDPOINT,
+  OrderInputSchema,
+  type Order,
+} from '@/features/orders';
+import { AUTH_ENDPOINTS } from '@/shared/api';
+import { ACTIONS, buildAbility, subject } from '@/shared/rbac';
 import { db, mockSessions } from './data';
 
 export const API = '/api';
@@ -40,9 +48,9 @@ const decodeCursor = (cursor: string | null) => {
 function sortOrders(orders: Order[], sort: string | null): Order[] {
   const copy = [...orders];
   switch (sort) {
-    case 'createdAt:asc':
+    case ORDER_SORT.createdAtAsc:
       return copy.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    case 'total:desc':
+    case ORDER_SORT.totalDesc:
       return copy.sort((a, b) => b.total - a.total);
     default:
       return copy.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -51,12 +59,12 @@ function sortOrders(orders: Order[], sort: string | null): Order[] {
 
 export const handlers = [
   // ---------------------------------------------------------------- auth (BFF)
-  http.get(`${API}/auth/me`, () => HttpResponse.json(mockSessions[db.user])),
-  http.post(`${API}/auth/refresh`, () => new HttpResponse(null, { status: 204 })),
-  http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${API}${AUTH_ENDPOINTS.me}`, () => HttpResponse.json(mockSessions[db.user])),
+  http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
 
   // ---------------------------------------------------------------- orders
-  http.get(`${API}/orders/stats`, async () => {
+  http.get(`${API}${ORDERS_ENDPOINT}/stats`, async () => {
     await delay();
     const byMonth = new Map<string, { total: number; count: number }>();
     for (const o of db.orders) {
@@ -71,7 +79,7 @@ export const handlers = [
     return HttpResponse.json({ months });
   }),
 
-  http.get(`${API}/orders`, async ({ request }) => {
+  http.get(`${API}${ORDERS_ENDPOINT}`, async ({ request }) => {
     await delay();
     const url = new URL(request.url);
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 20) || 20, 1), 100);
@@ -85,21 +93,21 @@ export const handlers = [
     return HttpResponse.json({ items, nextCursor: next, limit });
   }),
 
-  http.get(`${API}/orders/:id`, async ({ params }) => {
+  http.get(`${API}${ORDERS_ENDPOINT}/:id`, async ({ params }) => {
     await delay();
     const order = db.orders.find((o) => o.id === params.id);
     return order ? HttpResponse.json(order) : apiError(404, 'NOT_FOUND', 'Order not found');
   }),
 
-  http.post(`${API}/orders`, async ({ request }) => {
+  http.post(`${API}${ORDERS_ENDPOINT}`, async ({ request }) => {
     await delay();
-    if (ability().cannot('create', 'Order')) return apiError(403, 'FORBIDDEN', 'Not allowed');
+    if (ability().cannot(ACTIONS.create, ORDER_SUBJECT)) return apiError(403, 'FORBIDDEN', 'Not allowed');
     const body = await request.json();
     // Field-level check, as a real backend does (permittedFieldsOf): every field sent must be writable.
-    if (deniedFields(body, (field) => ability().cannot('create', 'Order', field)))
+    if (deniedFields(body, (field) => ability().cannot(ACTIONS.create, ORDER_SUBJECT, field)))
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     // The server owns the defaults of the fields the client may not send.
-    const parsed = OrderInputSchema.safeParse({ status: 'draft', ...(body as object) });
+    const parsed = OrderInputSchema.safeParse({ status: DEFAULT_ORDER_STATUS, ...(body as object) });
     if (!parsed.success) {
       return apiError(422, 'VALIDATION_ERROR', 'Invalid order', z.flattenError(parsed.error).fieldErrors);
     }
@@ -113,14 +121,14 @@ export const handlers = [
     return HttpResponse.json(order, { status: 201 });
   }),
 
-  http.patch(`${API}/orders/:id`, async ({ params, request }) => {
+  http.patch(`${API}${ORDERS_ENDPOINT}/:id`, async ({ params, request }) => {
     await delay();
     const current = db.orders.find((o) => o.id === params.id);
     if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-    const record = subject('Order', { ...current });
-    if (ability().cannot('update', record)) return apiError(403, 'FORBIDDEN', 'Not allowed');
+    const record = subject(ORDER_SUBJECT, { ...current });
+    if (ability().cannot(ACTIONS.update, record)) return apiError(403, 'FORBIDDEN', 'Not allowed');
     const body = await request.json();
-    if (deniedFields(body, (field) => ability().cannot('update', record, field)))
+    if (deniedFields(body, (field) => ability().cannot(ACTIONS.update, record, field)))
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     const parsed = OrderInputSchema.partial().safeParse(body);
     if (!parsed.success) return apiError(422, 'VALIDATION_ERROR', 'Invalid order');
@@ -129,11 +137,11 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
-  http.delete(`${API}/orders/:id`, async ({ params }) => {
+  http.delete(`${API}${ORDERS_ENDPOINT}/:id`, async ({ params }) => {
     await delay();
     const current = db.orders.find((o) => o.id === params.id);
     if (!current) return apiError(404, 'NOT_FOUND', 'Order not found');
-    if (ability().cannot('delete', subject('Order', { ...current })))
+    if (ability().cannot(ACTIONS.delete, subject(ORDER_SUBJECT, { ...current })))
       return apiError(403, 'FORBIDDEN', 'Not allowed');
     db.orders = db.orders.filter((o) => o.id !== current.id);
     return new HttpResponse(null, { status: 204 });

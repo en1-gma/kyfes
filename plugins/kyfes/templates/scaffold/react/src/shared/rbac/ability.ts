@@ -7,7 +7,15 @@ import {
 } from '@casl/ability';
 import type { RawRule } from '@/shared/auth';
 
-export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage';
+/** CASL actions, written once: guards, `can()`, `<Can>` and mock rules reference these. */
+export const ACTIONS = {
+  create: 'create',
+  read: 'read',
+  update: 'update',
+  delete: 'delete',
+  manage: 'manage',
+} as const;
+export type Actions = (typeof ACTIONS)[keyof typeof ACTIONS];
 
 /**
  * Registry of the CASL subjects of the features. Each feature registers its subject in its

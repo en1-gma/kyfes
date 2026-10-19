@@ -1,22 +1,25 @@
 import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { DEFAULT_PAGE_SIZE, getNextCursor } from '@/shared/api';
-import type { OrderListFilters } from '../model/orders.schema';
+import { ORDERS_FEATURE } from '../model/orders.feature';
+import { DEFAULT_ORDER_SORT, type OrderListFilters } from '../model/orders.schema';
 import { ordersApi } from './orders.api';
 
 /** Key factory: the only place where the keys of the feature are written (kyfes §4.2). */
 export const orderKeys = {
-  all: ['orders'] as const,
+  all: [ORDERS_FEATURE] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (filters: OrderListFilters) => [...orderKeys.lists(), filters] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   stats: () => [...orderKeys.all, 'stats'] as const,
+  /** Mutation key shared by every delete (`ordersApi.remove`). */
+  remove: () => [...orderKeys.all, 'remove'] as const,
 };
 
 export function ordersInfiniteQueryOptions(filters: OrderListFilters = {}) {
   const normalized: OrderListFilters = {
     limit: filters.limit ?? DEFAULT_PAGE_SIZE,
-    sort: filters.sort ?? 'createdAt:desc',
+    sort: filters.sort ?? DEFAULT_ORDER_SORT,
     status: filters.status,
   };
   return infiniteQueryOptions({

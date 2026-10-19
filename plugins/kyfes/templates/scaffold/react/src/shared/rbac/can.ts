@@ -2,7 +2,7 @@ import { Can as CaslCan, useAbility as useCaslAbility, type CanProps } from '@ca
 import type { ReactNode } from 'react';
 import type { AppAbility } from './ability';
 
-/** `<Can I="update" this={subject('Order', order)} field="status">…</Can>` typed on AppAbility. */
+/** `<Can I={ACTIONS.update} this={orderSubject(order)} field={ORDER_FIELDS.status}>…</Can>` typed on AppAbility. */
 export const Can = CaslCan as (props: CanProps<AppAbility>) => ReactNode;
 
 /** Current Ability (re-renders when rules change). */
@@ -10,7 +10,7 @@ export function useAbility(): AppAbility {
   return useCaslAbility<AppAbility>();
 }
 
-/** Shortcut: `const can = useCan(); can('delete', subject('Order', order))`. */
+/** Shortcut: `const can = useCan(); can(ACTIONS.delete, orderSubject(order))`. */
 export function useCan(): AppAbility['can'] {
   const ability = useAbility();
   return ability.can.bind(ability);

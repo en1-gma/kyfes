@@ -6,8 +6,16 @@ export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
 const CORRELATION_HEADER = 'x-correlation-id';
 
+/** Endpoints of the BFF session (relative to the API base URL). */
+export const AUTH_ENDPOINTS = {
+  me: '/auth/me',
+  login: '/auth/login',
+  logout: '/auth/logout',
+  refresh: '/auth/refresh',
+} as const;
+
 /** Auth endpoints never trigger the refresh/retry logic (avoids loops). */
-const AUTH_ENDPOINTS = ['/auth/refresh', '/auth/login', '/auth/logout'];
+const NO_REFRESH_ENDPOINTS = [AUTH_ENDPOINTS.refresh, AUTH_ENDPOINTS.login, AUTH_ENDPOINTS.logout];
 
 /**
  * XSRF header only towards the API origin (kyfes §3.2): the token is never leaked to third parties,
@@ -101,7 +109,7 @@ let unauthorizedNotified = false;
 
 function refreshSession(): Promise<void> {
   refreshInFlight ??= http
-    .post('/auth/refresh')
+    .post(AUTH_ENDPOINTS.refresh)
     .then(() => {
       sessionGeneration += 1;
       unauthorizedNotified = false;
@@ -120,7 +128,7 @@ function notifyUnauthorized(): void {
 
 function isAuthEndpoint(url: string | undefined): boolean {
   const path = url?.split(/[?#]/)[0];
-  return !!path && AUTH_ENDPOINTS.some((p) => path.endsWith(p));
+  return !!path && NO_REFRESH_ENDPOINTS.some((p) => path.endsWith(p));
 }
 
 http.interceptors.request.use((config: RetriableConfig) => {

@@ -2,7 +2,8 @@ import i18next, { type BackendModule, type ResourceKey } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { env, SUPPORTED_LOCALES, type Locale } from '@/shared/config';
 
-export const DEFAULT_NS = 'common';
+/** Namespace of the shared texts (`shared/i18n/locales`): default and fallback of every `t()`. */
+export const COMMON_NS = 'common';
 
 type JsonModule = { default: ResourceKey };
 
@@ -13,13 +14,13 @@ const commonLoaders = import.meta.glob<JsonModule>('./locales/*.json');
 const featureLoaders = import.meta.glob<JsonModule>('../../features/*/locales/*.json');
 
 function loaderFor(lng: string, ns: string): (() => Promise<JsonModule>) | undefined {
-  if (ns === DEFAULT_NS) return commonLoaders[`./locales/${lng}.json`];
+  if (ns === COMMON_NS) return commonLoaders[`./locales/${lng}.json`];
   return featureLoaders[`../../features/${ns}/locales/${lng}.json`];
 }
 
 /** Namespaces available on disk (used by the key-parity test). */
 export const availableNamespaces: readonly string[] = [
-  DEFAULT_NS,
+  COMMON_NS,
   ...new Set(
     Object.keys(featureLoaders)
       .map((path) => path.split('/').at(-3) ?? '')
@@ -80,9 +81,9 @@ export function initI18n(lng: Locale = initialLocale()): Promise<unknown> {
       fallbackLng: env.DEFAULT_LOCALE,
       supportedLngs: [...SUPPORTED_LOCALES],
       load: 'languageOnly',
-      ns: [DEFAULT_NS],
-      defaultNS: DEFAULT_NS,
-      fallbackNS: DEFAULT_NS,
+      ns: [COMMON_NS],
+      defaultNS: COMMON_NS,
+      fallbackNS: COMMON_NS,
       // React escapes on render: double escaping would show entities.
       interpolation: { escapeValue: false },
       returnNull: false,

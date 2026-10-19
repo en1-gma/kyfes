@@ -1,9 +1,13 @@
 import { Bar, CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatNumber } from '@/shared/i18n';
 import { ChartFigure } from './ChartFigure';
-import { CHART_COLORS, type ChartProps } from './types';
-
-export type CartesianVariant = 'bar' | 'line';
+import {
+  CHART_COLORS,
+  CHART_DATUM_KEY,
+  CHART_VARIANT,
+  type CartesianVariant,
+  type ChartProps,
+} from './types';
 
 /** Single Recharts implementation behind BarChart and LineChart (same axes, grid, tooltip). */
 export default function CartesianChart({ variant, ...props }: ChartProps & { variant: CartesianVariant }) {
@@ -17,15 +21,20 @@ export default function CartesianChart({ variant, ...props }: ChartProps & { var
         accessibilityLayer={false}
       >
         <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-        <XAxis dataKey="label" stroke="var(--color-text-muted)" tickLine={false} />
+        <XAxis dataKey={CHART_DATUM_KEY.label} stroke="var(--color-text-muted)" tickLine={false} />
         <YAxis stroke="var(--color-text-muted)" tickFormatter={format} width={88} />
         <Tooltip formatter={(value) => [format(Number(value)), props.seriesLabel]} />
-        {variant === 'bar' ? (
-          <Bar dataKey="value" name={props.seriesLabel} fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
+        {variant === CHART_VARIANT.bar ? (
+          <Bar
+            dataKey={CHART_DATUM_KEY.value}
+            name={props.seriesLabel}
+            fill={CHART_COLORS[0]}
+            radius={[4, 4, 0, 0]}
+          />
         ) : (
           <Line
             type="monotone"
-            dataKey="value"
+            dataKey={CHART_DATUM_KEY.value}
             name={props.seriesLabel}
             stroke={CHART_COLORS[1]}
             strokeWidth={2}

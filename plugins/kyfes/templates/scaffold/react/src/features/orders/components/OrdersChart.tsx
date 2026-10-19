@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { BarChart } from '@/shared/charts';
-import { formatCurrency, formatMonth, useTranslation } from '@/shared/i18n';
+import { DEFAULT_CURRENCY, formatCurrency, formatMonth, useTranslation } from '@/shared/i18n';
 import { QueryState } from '@/shared/ui';
 import { useOrderStats } from '../api/orders.queries';
+import { ORDERS_NS } from '../model/orders.feature';
 
 /** Order totals per month (data aggregated by the backend, `/orders/stats`). */
 export function OrdersChart() {
-  const { t, i18n } = useTranslation('orders');
+  const { t, i18n } = useTranslation(ORDERS_NS);
   const query = useOrderStats();
   const { data } = query;
   const locale = i18n.resolvedLanguage;
@@ -23,7 +24,7 @@ export function OrdersChart() {
         description={t('chart.description', { count: points.length })}
         seriesLabel={t('chart.series')}
         data={points}
-        formatValue={(v) => formatCurrency(v, 'EUR', { maximumFractionDigits: 0 })}
+        formatValue={(v) => formatCurrency(v, DEFAULT_CURRENCY, { maximumFractionDigits: 0 })}
       />
     </QueryState>
   );

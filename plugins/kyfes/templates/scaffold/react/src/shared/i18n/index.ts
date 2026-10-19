@@ -6,7 +6,8 @@ export {
   currentLocale,
   toSupportedLocale,
   availableNamespaces,
-  DEFAULT_NS,
+  COMMON_NS,
 } from './i18n';
-export { formatDate, formatNumber, formatCurrency, formatMonth } from './formatters';
+export { formatDate, formatNumber, formatCurrency, formatMonth, DEFAULT_CURRENCY } from './formatters';
+export { VALIDATION_KEYS } from './validation';
 export { useLocale } from './use-locale';

@@ -1,3 +1,16 @@
+/** Fields of a datum, as Recharts `dataKey`s. */
+export const CHART_DATUM_KEY = {
+  label: 'label',
+  value: 'value',
+} as const satisfies Record<keyof ChartDatum, keyof ChartDatum>;
+
+/** Kinds of series drawn by the cartesian chart. */
+export const CHART_VARIANT = {
+  bar: 'bar',
+  line: 'line',
+} as const;
+export type CartesianVariant = (typeof CHART_VARIANT)[keyof typeof CHART_VARIANT];
+
 export interface ChartDatum {
   /** Already formatted category label (e.g. "mar 2026"). */
   label: string;

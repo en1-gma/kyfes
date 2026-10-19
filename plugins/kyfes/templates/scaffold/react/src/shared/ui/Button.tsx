@@ -1,14 +1,13 @@
 import type { ButtonHTMLAttributes } from 'react';
-
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
+import { BUTTON_VARIANT, type ButtonVariant } from './button-variant';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
+  variant?: ButtonVariant;
   busy?: boolean;
 }
 
 export function Button({
-  variant = 'secondary',
+  variant = BUTTON_VARIANT.secondary,
   busy = false,
   className,
   type = 'button',

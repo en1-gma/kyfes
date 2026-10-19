@@ -1,16 +1,16 @@
 import { create } from 'zustand';
-import type { OrderListFilters, OrderStatus } from '../model/orders.schema';
+import { DEFAULT_ORDER_SORT, type OrderSort, type OrderStatus } from '../model/orders.schema';
 
 /** UI-only state of the orders list (filters): never copies of server data (kyfes §4.2). */
 interface OrdersUiState {
   status: OrderStatus | undefined;
-  sort: NonNullable<OrderListFilters['sort']>;
+  sort: OrderSort;
   setStatus: (status: OrderStatus | undefined) => void;
-  setSort: (sort: NonNullable<OrderListFilters['sort']>) => void;
+  setSort: (sort: OrderSort) => void;
   reset: () => void;
 }
 
-const initial = { status: undefined, sort: 'createdAt:desc' } as const;
+const initial = { status: undefined, sort: DEFAULT_ORDER_SORT };
 
 export const useOrdersUiStore = create<OrdersUiState>()((set) => ({
   ...initial,

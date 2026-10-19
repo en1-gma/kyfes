@@ -1,9 +1,9 @@
 import { Link, useParams } from 'react-router';
-import { OrderDetail, orderPaths } from '@/features/orders';
+import { ORDERS_NS, OrderDetail, orderPaths } from '@/features/orders';
 import { useTranslation } from '@/shared/i18n';
 
 export default function OrderDetailPage() {
-  const { t } = useTranslation('orders');
+  const { t } = useTranslation(ORDERS_NS);
   const { orderId = '' } = useParams();
   return (
     <div className="page stack">

@@ -2,6 +2,9 @@ import { currentLocale } from './i18n';
 
 /** Date, number and currency formatting only through Intl (kyfes §6). */
 
+/** ISO 4217 currency of the amounts when the caller does not pass one. */
+export const DEFAULT_CURRENCY = 'EUR';
+
 export function formatDate(
   value: Date | string | number,
   options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' },
@@ -22,7 +25,7 @@ export function formatNumber(
 
 export function formatCurrency(
   value: number,
-  currency = 'EUR',
+  currency: string = DEFAULT_CURRENCY,
   options: Intl.NumberFormatOptions = {},
   locale: string = currentLocale(),
 ): string {

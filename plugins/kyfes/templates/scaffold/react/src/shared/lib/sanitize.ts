@@ -1,5 +1,9 @@
 import DOMPurify from 'dompurify';
 
+/** Both the `<style>` tag and the `style` attribute: no inline CSS in user HTML. */
+const STYLE = 'style';
+const TARGET_ATTR = 'target';
+
 /**
  * The only way to render HTML coming from users or the backend (kyfes §3.3).
  * Profile: HTML only (no SVG/MathML), no inline styles, no forms; links get rel/target forced below.
@@ -7,17 +11,17 @@ import DOMPurify from 'dompurify';
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     USE_PROFILES: { html: true },
-    FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select'],
-    FORBID_ATTR: ['style'],
+    FORBID_TAGS: [STYLE, 'form', 'input', 'button', 'textarea', 'select'],
+    FORBID_ATTR: [STYLE],
     ALLOW_DATA_ATTR: false,
     // kept only to be normalised by the hook below (rel=noopener noreferrer)
-    ADD_ATTR: ['target'],
+    ADD_ATTR: [TARGET_ATTR],
   });
 }
 
 // Every link that survives sanitisation opens safely.
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-  if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+  if (node.tagName === 'A' && node.getAttribute(TARGET_ATTR) === '_blank') {
     node.setAttribute('rel', 'noopener noreferrer');
   }
 });

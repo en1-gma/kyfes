@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
-import { ORDER_SUBJECT, orderPaths } from '@/features/orders';
+import { ORDER_SUBJECT, orderPaths, orderRoutes } from '@/features/orders';
 import { RequireAuth } from '@/shared/auth';
-import { RequirePermission } from '@/shared/rbac';
+import { ACTIONS, RequirePermission } from '@/shared/rbac';
 import { Spinner } from '@/shared/ui';
 import NotFoundPage from '@/pages/NotFoundPage';
 import { AppLayout } from './AppLayout';
@@ -22,22 +22,22 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Navigate to={orderPaths.list} replace /> },
           {
-            path: 'orders',
+            path: orderRoutes.section,
             // read Order for the whole section; missing permission → 403 page, not a redirect.
-            element: <RequirePermission action="read" subject={ORDER_SUBJECT} />,
+            element: <RequirePermission action={ACTIONS.read} subject={ORDER_SUBJECT} />,
             errorElement: <RouteErrorBoundary />,
             children: [
               { index: true, lazy: page(() => import('@/pages/OrdersPage')) },
               {
-                path: 'new',
-                element: <RequirePermission action="create" subject={ORDER_SUBJECT} />,
+                path: orderRoutes.new,
+                element: <RequirePermission action={ACTIONS.create} subject={ORDER_SUBJECT} />,
                 children: [{ index: true, lazy: page(() => import('@/pages/NewOrderPage')) }],
               },
-              { path: ':orderId', lazy: page(() => import('@/pages/OrderDetailPage')) },
+              { path: orderRoutes.detail, lazy: page(() => import('@/pages/OrderDetailPage')) },
               {
-                path: ':orderId/edit',
+                path: orderRoutes.edit,
                 // Type-level check here, record-level check (conditions) inside OrderDetail.
-                element: <RequirePermission action="update" subject={ORDER_SUBJECT} />,
+                element: <RequirePermission action={ACTIONS.update} subject={ORDER_SUBJECT} />,
                 children: [{ index: true, lazy: page(() => import('@/pages/OrderEditPage')) }],
               },
             ],

@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import { Button } from './Button';
+import { BUTTON_VARIANT } from './button-variant';
+
+/** Attribute set on the `<dialog>` when `showModal()`/`close()` are missing (old engines, jsdom). */
+const OPEN_ATTR = 'open';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -34,10 +38,10 @@ export function ConfirmDialog({
     if (!dialog) return;
     if (open && !dialog.open) {
       if (typeof dialog.showModal === 'function') dialog.showModal();
-      else dialog.setAttribute('open', '');
+      else dialog.setAttribute(OPEN_ATTR, '');
     } else if (!open && dialog.open) {
       if (typeof dialog.close === 'function') dialog.close();
-      else dialog.removeAttribute('open');
+      else dialog.removeAttribute(OPEN_ATTR);
     }
   }, [open]);
 
@@ -62,7 +66,11 @@ export function ConfirmDialog({
             <Button onClick={onCancel} autoFocus>
               {t('actions.cancel')}
             </Button>
-            <Button variant={danger ? 'danger' : 'primary'} busy={busy} onClick={onConfirm}>
+            <Button
+              variant={danger ? BUTTON_VARIANT.danger : BUTTON_VARIANT.primary}
+              busy={busy}
+              onClick={onConfirm}
+            >
               {confirmLabel ?? t('actions.confirm')}
             </Button>
           </div>

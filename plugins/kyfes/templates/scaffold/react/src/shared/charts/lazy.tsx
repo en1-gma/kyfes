@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Spinner } from '@/shared/ui';
-import type { ChartProps } from './types';
+import { CHART_VARIANT, type ChartProps } from './types';
 
 // Recharts is loaded only when a chart is rendered (separate chunk, kyfes §7).
 const LazyCartesian = lazy(() => import('./CartesianChart'));
@@ -8,7 +8,7 @@ const LazyCartesian = lazy(() => import('./CartesianChart'));
 export function BarChart(props: ChartProps) {
   return (
     <Suspense fallback={<Spinner />}>
-      <LazyCartesian variant="bar" {...props} />
+      <LazyCartesian variant={CHART_VARIANT.bar} {...props} />
     </Suspense>
   );
 }
@@ -16,7 +16,7 @@ export function BarChart(props: ChartProps) {
 export function LineChart(props: ChartProps) {
   return (
     <Suspense fallback={<Spinner />}>
-      <LazyCartesian variant="line" {...props} />
+      <LazyCartesian variant={CHART_VARIANT.line} {...props} />
     </Suspense>
   );
 }
