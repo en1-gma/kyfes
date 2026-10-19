@@ -88,4 +88,39 @@ describe('orders mutations', () => {
     expect(await pending).toMatchObject({ status: 403 })
     expect(ids()).toContain(shipped?.id)
   })
+
+  it('concurrent deletes: the first one failing does not bring back the second row', async () => {
+    const db = createDb()
+    server.use(...createHandlers('manager', db))
+    const queryClient = createTestQueryClient()
+    const options = ordersInfiniteQueryOptions()
+    await queryClient.fetchInfiniteQuery(options)
+    const [first, second] = queryClient.getQueryData(options.queryKey)?.pages[0]?.items ?? []
+    const { result: deleteA } = await withSetup(() => useDeleteOrder(), { queryClient })
+    const { result: deleteB } = await withSetup(() => useDeleteOrder(), { queryClient })
+
+    const ids = () =>
+      queryClient.getQueryData(options.queryKey)?.pages.flatMap((p) => p.items.map((o) => o.id))
+    const gates = new Map<string, () => void>()
+    server.use(
+      http.delete('/api/orders/:id', async ({ params }) => {
+        await new Promise<void>((resolve) => gates.set(String(params.id), resolve))
+        return params.id === first?.id ? errorBody(500) : new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const pendingA = deleteA.mutateAsync(first?.id ?? '').catch((e: unknown) => e)
+    const pendingB = deleteB.mutateAsync(second?.id ?? '')
+    await waitFor(() => expect(gates.size).toBe(2))
+    expect(ids()).not.toContain(first?.id)
+    expect(ids()).not.toContain(second?.id)
+
+    gates.get(first?.id ?? '')?.()
+    expect(await pendingA).toMatchObject({ status: 500 })
+    expect(ids()).not.toContain(second?.id)
+    expect(queryClient.getQueryState(options.queryKey)?.isInvalidated).toBe(true)
+
+    gates.get(second?.id ?? '')?.()
+    await pendingB
+    expect(ids()).not.toContain(second?.id)
+  })
 })

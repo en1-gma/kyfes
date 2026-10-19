@@ -9,10 +9,14 @@ export const CORRELATION_HEADER = 'x-correlation-id'
 const REFRESH_URL = '/auth/refresh'
 const AUTH_URLS = ['/auth/refresh', '/auth/login', '/auth/logout']
 
-type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean }
+type RetriableConfig = InternalAxiosRequestConfig & {
+  _retried?: boolean
+  /** Session generation when the request was sent (see `sessionGeneration`). */
+  _generation?: number
+}
 
 type HttpOptions = {
-  /** Called once when the session is gone (401 and, if enabled, the refresh failed). */
+  /** Called when the session is gone (401 and, if enabled, the refresh failed: once per failed refresh). */
   onUnauthorized?: () => void
   /** Enable single-flight `POST /auth/refresh` before giving up on a 401. */
   refresh?: boolean
@@ -49,13 +53,27 @@ export const http: AxiosInstance = axios.create({
   headers: { Accept: 'application/json' },
 })
 
-let refreshInFlight: Promise<void> | null = null
+let refreshInFlight: Promise<boolean> | null = null
+/**
+ * Logical clock of successful refreshes: every request records it when it starts. A 401 on a request
+ * sent before the last successful refresh carried the old cookie, so it is repeated without refreshing.
+ */
+let sessionGeneration = 0
 
-/** Single-flight: concurrent 401s share the same refresh request. */
-function refreshSession(): Promise<void> {
+/** Single-flight: concurrent 401s share the same refresh; a failure notifies `onUnauthorized` once. */
+function refreshSession(): Promise<boolean> {
   refreshInFlight ??= http
     .post(REFRESH_URL)
-    .then(() => undefined)
+    .then(
+      () => {
+        sessionGeneration += 1
+        return true
+      },
+      () => {
+        options.onUnauthorized?.()
+        return false
+      },
+    )
     .finally(() => {
       refreshInFlight = null
     })
@@ -63,26 +81,33 @@ function refreshSession(): Promise<void> {
 }
 
 function normalize(error: unknown): unknown {
+  // Cancellations (AbortSignal from TanStack Query) are not network errors: rethrown untouched.
   if (axios.isCancel(error) || !(error instanceof AxiosError)) return error
   const response = error.response
   const header = response?.headers?.[CORRELATION_HEADER]
   return toApiError(response?.status ?? 0, response?.data, typeof header === 'string' ? header : undefined)
 }
 
+http.interceptors.request.use((config: RetriableConfig) => {
+  config._generation = sessionGeneration
+  return config
+})
+
 http.interceptors.response.use(undefined, async (error: unknown) => {
   if (error instanceof AxiosError && error.response?.status === 401 && error.config) {
     const config = error.config as RetriableConfig
+    // Auth endpoints never trigger a refresh nor the unauthorized callback.
     const isAuthCall = AUTH_URLS.some((u) => config.url?.startsWith(u))
-    if (options.refresh && !config._retried && !isAuthCall) {
+    if (isAuthCall) throw normalize(error)
+    if (options.refresh && !config._retried) {
       config._retried = true
-      const refreshed = await refreshSession().then(
-        () => true,
-        () => false,
-      )
+      // Sent before the last successful refresh: repeat it with the new cookie.
+      if ((config._generation ?? sessionGeneration) < sessionGeneration) return http.request(config)
       // A 401 on the repeated request goes through this interceptor again (no second refresh).
-      if (refreshed) return http.request(config)
+      if (await refreshSession()) return http.request(config)
+      throw normalize(error)
     }
-    if (!isAuthCall) options.onUnauthorized?.()
+    options.onUnauthorized?.()
   }
   throw normalize(error)
 })

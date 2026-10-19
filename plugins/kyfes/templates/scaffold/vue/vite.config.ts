@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/mocks/vitest.setup.ts'],
       include: ['src/**/*.test.ts'],
       css: false,
+      // No persistent module cache: every run transforms from source (no stale results across branches).
+      fsModuleCache: false,
     },
   }
 })

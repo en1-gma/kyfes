@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useT } from '@/shared/i18n'
-import { ErrorState, LoadingState } from '@/shared/ui'
-import { OrderForm, useOrder, type Order } from '@/features/orders'
+import { useAbility } from '@/shared/rbac'
+import { ForbiddenState, QueryState } from '@/shared/ui'
+import { OrderForm, orderSubject, useOrder, type Order } from '@/features/orders'
 import { ROUTES } from './route-names'
 
 const props = defineProps<{ id: string }>()
 const { t } = useT()
 const router = useRouter()
-const { data: order, isPending, isError, error } = useOrder(() => props.id)
+const ability = useAbility()
+const { data: order, isPending, error, refetch } = useOrder(() => props.id)
+
+/** The route checks only the type (`update Order`); here the loaded record is checked (e.g. shipped orders). */
+const canUpdate = computed(() => !!order.value && ability.can('update', orderSubject(order.value)))
 
 const toDetail = (saved?: Order) =>
   router.push({ name: ROUTES.orderDetail, params: { id: saved?.id ?? props.id } })
@@ -16,11 +22,18 @@ const toDetail = (saved?: Order) =>
 
 <template>
   <div class="page">
-    <LoadingState v-if="isPending" />
-    <ErrorState v-else-if="isError" :error="error" />
-    <template v-else-if="order">
-      <h1>{{ t('orders.form.editTitle', { number: order.number }) }}</h1>
-      <OrderForm :key="order.id" :order="order" @saved="toDetail" @cancel="toDetail()" />
-    </template>
+    <QueryState :pending="isPending" :error="error" @retry="refetch()">
+      <template v-if="order">
+        <template v-if="canUpdate">
+          <h1>{{ t('orders.form.editTitle', { number: order.number }) }}</h1>
+          <OrderForm :key="order.id" :order="order" @saved="toDetail" @cancel="toDetail()" />
+        </template>
+        <ForbiddenState v-else>
+          <RouterLink :to="{ name: ROUTES.orderDetail, params: { id: order.id } }">
+            {{ t('common.actions.back') }}
+          </RouterLink>
+        </ForbiddenState>
+      </template>
+    </QueryState>
   </div>
 </template>

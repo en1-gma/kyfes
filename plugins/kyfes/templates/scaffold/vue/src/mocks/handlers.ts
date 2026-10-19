@@ -26,7 +26,13 @@ export function sessionHandler(user: MockUser | null) {
   return http.get(`${API}/auth/me`, () => (user ? HttpResponse.json(sessions[user]) : errorBody(401)))
 }
 
-/** Full mock API. `user` picks the session (manager: manage Order, viewer: read Order). */
+/** Status is optional on create (operator cannot write it): drafts by default. */
+const CreateBodySchema = OrderInputSchema.partial({ status: true })
+
+/**
+ * Full mock API. `user` picks the session (manager: manage Order, operator: customer/total only and
+ * drafts only, viewer: read Order). Like a real server, it rejects writes outside the permissions.
+ */
 export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb()) {
   const find = (id: string | readonly string[] | undefined) => db.orders.find((o) => o.id === id)
 
@@ -68,11 +74,13 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
     }),
 
     http.post(`${API}/orders`, async ({ request }) => {
-      if (user !== 'manager') return errorBody(403)
-      const parsed = OrderInputSchema.safeParse(await request.json())
+      if (user === 'viewer') return errorBody(403)
+      const parsed = CreateBodySchema.safeParse(await request.json())
       if (!parsed.success) return errorBody(400)
+      if (user === 'operator' && parsed.data.status !== undefined) return errorBody(403)
       const order: Order = {
         ...parsed.data,
+        status: parsed.data.status ?? 'draft',
         id: crypto.randomUUID(),
         number: `ORD-${1000 + db.orders.length}`,
         createdAt: new Date().toISOString(),
@@ -84,9 +92,12 @@ export function createHandlers(user: MockUser = 'manager', db: MockDb = createDb
     http.patch(`${API}/orders/:id`, async ({ params, request }) => {
       const order = find(params.id)
       if (!order) return errorBody(404)
-      if (user !== 'manager' || order.status === 'shipped') return errorBody(403)
+      if (user === 'viewer' || order.status === 'shipped') return errorBody(403)
       const parsed = OrderInputSchema.partial().safeParse(await request.json())
       if (!parsed.success) return errorBody(400)
+      if (user === 'operator' && (order.status !== 'draft' || parsed.data.status !== undefined)) {
+        return errorBody(403)
+      }
       Object.assign(order, parsed.data)
       return HttpResponse.json(order)
     }),

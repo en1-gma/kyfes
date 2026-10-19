@@ -20,7 +20,7 @@
     "empty": "Nessun ordine trovato.",
     "actions": "Azioni",
     "count": "nessun ordine | 1 ordine | {count} ordini",
-    "sortByDate": "Ordina per data di creazione",
+    "sortByDate": "{label}, ordina per data di creazione",
     "filterStatus": "Filtra per stato",
     "allStatuses": "Tutti gli stati",
     "editOrder": "Modifica l'ordine {number}",
@@ -35,6 +35,7 @@
     "newTitle": "Nuovo ordine",
     "editTitle": "Modifica ordine {number}",
     "statusReadOnly": "Non hai i permessi per modificare lo stato.",
+    "fieldReadOnly": "I campi in sola lettura non possono essere modificati con i tuoi permessi.",
     "saved": "Ordine salvato."
   },
   "delete": {

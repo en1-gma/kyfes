@@ -8,13 +8,14 @@ const props = defineProps<{ error: unknown; retry?: boolean }>()
 defineEmits<{ retry: [] }>()
 const { t } = useT()
 
-/** Generic message only: backend details never reach the user, the correlationId does. */
+/** Generic message only: backend details never reach the user, the correlationId does. 403 says "not authorized". */
 const correlationId = computed(() => (isApiError(props.error) ? props.error.correlationId : undefined))
+const forbidden = computed(() => isApiError(props.error) && props.error.status === 403)
 </script>
 
 <template>
   <div class="error" role="alert">
-    <p>{{ t('common.state.error') }}</p>
+    <p>{{ forbidden ? t('common.state.forbidden') : t('common.state.error') }}</p>
     <p v-if="correlationId" class="error__ref">
       {{ t('common.state.correlationId', { id: correlationId }) }}
     </p>

@@ -37,6 +37,7 @@ export const routes: RouteRecordRaw[] = [
         name: ROUTES.orderEdit,
         component: () => import('@/pages/OrderEditPage.vue'),
         props: true,
+        // Type-level check only: OrderEditPage checks the loaded record (conditions, e.g. status).
         meta: { ...ordersMeta, permission: { action: 'update', subject: ORDER_SUBJECT } },
       },
       // 404 is matched by URL; the 403 route has the same pattern but is reached only by name

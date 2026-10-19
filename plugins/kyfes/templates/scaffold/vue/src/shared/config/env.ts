@@ -8,7 +8,12 @@ const EnvSchema = z.object({
   API_BASE_URL: z
     .string()
     .default('/api')
-    .refine((v) => v.startsWith('/') || v.startsWith('https://'), 'API_BASE_URL must be relative or https'),
+    // Same-origin path only: the CSP (deploy/security-headers.conf) allows `connect-src 'self'` and the
+    // session cookie is first-party. Cross-origin APIs go behind the reverse proxy, never in the bundle.
+    .refine(
+      (v) => v.startsWith('/') && !v.startsWith('//') && !v.includes('\\'),
+      'API_BASE_URL must be a same-origin path starting with "/" (e.g. /api)',
+    ),
   DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default('it'),
   API_MOCKS: z
     .enum(['true', 'false'])

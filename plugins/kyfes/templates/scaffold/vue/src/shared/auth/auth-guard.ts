@@ -1,4 +1,4 @@
-import type { QueryClient } from '@tanstack/vue-query'
+import { isCancelledError, type QueryClient } from '@tanstack/vue-query'
 import type { NavigationGuard } from 'vue-router'
 import { isApiError } from '@/shared/api'
 import { ensureSession, login } from './session'
@@ -19,9 +19,12 @@ export function createAuthGuard(queryClient: QueryClient): NavigationGuard {
       return true
     } catch (error) {
       if (isApiError(error) && error.status === 401) {
+        // Usually a no-op: the http 401 handler has already started the login with this same target.
         login(to.fullPath)
         return false
       }
+      // The 401 handler cleared the cache (cancelling this fetch) while the login redirect starts.
+      if (isCancelledError(error)) return false
       throw error
     }
   }

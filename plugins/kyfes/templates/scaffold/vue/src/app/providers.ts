@@ -2,10 +2,11 @@ import { VueQueryPlugin, type QueryClient } from '@tanstack/vue-query'
 import { createPinia } from 'pinia'
 import type { App } from 'vue'
 import { createQueryClient, isApiError } from '@/shared/api'
-import { sessionKeys } from '@/shared/auth'
+import { login, sessionKeys } from '@/shared/auth'
 import { i18n, registerNamespace } from '@/shared/i18n'
 import { createRbacPlugin } from '@/shared/rbac'
 import { ORDERS_NAMESPACE, ordersLocales } from '@/features/orders'
+import { navigationTarget } from './router/navigation-state'
 
 /** Lazy i18n namespaces of every feature. */
 export function registerFeatureNamespaces(): void {
@@ -23,6 +24,17 @@ export function createAppQueryClient(): QueryClient {
     },
   })
   return queryClient
+}
+
+/**
+ * Session gone (401, refresh failed): wipe the cache and start the BFF login once. `returnTo` is the
+ * navigation in progress, if any, not the page being left (the auth guard's own login is then a no-op).
+ */
+export function createUnauthorizedHandler(queryClient: QueryClient): () => void {
+  return () => {
+    queryClient.clear()
+    login(navigationTarget())
+  }
 }
 
 /** Installs Pinia, TanStack Query, vue-i18n and the CASL ability (synced with the session). */

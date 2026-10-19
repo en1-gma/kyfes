@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, type Router } from 'vue-router'
 import { createAuthGuard } from '@/shared/auth'
 import { i18n, loadNamespaces } from '@/shared/i18n'
 import { createPermissionGuard } from '@/shared/rbac'
+import { trackNavigation } from './navigation-state'
 import { routes } from './routes'
 
 declare module 'vue-router' {
@@ -19,6 +20,7 @@ export function createAppRouter(queryClient: QueryClient): Router {
     scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },
   })
 
+  trackNavigation(router)
   router.beforeEach(createAuthGuard(queryClient))
   router.beforeEach(createPermissionGuard(queryClient))
   router.beforeResolve(async (to) => {

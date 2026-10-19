@@ -29,6 +29,16 @@ describe('route guards (meta.permission)', () => {
     expect(router.currentRoute.value.name).toBe('order-new')
   })
 
+  it('after a 403 invalidates the session, the guard decides on fresh permissions', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(sessionKeys.me(), sessions.viewer)
+    await queryClient.invalidateQueries({ queryKey: sessionKeys.all })
+    // The server now grants more (default mock user: manager).
+    const router = createAppRouter(queryClient)
+    await router.push('/orders/new')
+    expect(router.currentRoute.value.name).toBe('order-new')
+  })
+
   it('without a session the auth guard starts the BFF login with returnTo', async () => {
     server.use(sessionHandler(null))
     const assign = vi.fn()

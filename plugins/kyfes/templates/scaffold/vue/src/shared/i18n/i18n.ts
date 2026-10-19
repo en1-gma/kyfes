@@ -70,8 +70,8 @@ export function resolveInitialLocale(sessionLocale?: string | null): Locale {
   return isLocale(browser) ? browser : env.DEFAULT_LOCALE
 }
 
-/** Translation for components: `const { t } = useT()` then `t('orders.list.title')`. */
+/** Translation for components: `const { t } = useT()` then `t('orders.list.title')`. `te` = key exists. */
 export function useT() {
-  const { t, locale } = useI18n()
-  return { t, locale }
+  const { t, te, locale } = useI18n()
+  return { t, te, locale }
 }

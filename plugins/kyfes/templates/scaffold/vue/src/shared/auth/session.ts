@@ -26,9 +26,12 @@ export function useSession() {
   return { ...query, user }
 }
 
-/** Loads (or reads from cache) the session outside components, e.g. in route guards. */
+/**
+ * Loads the session outside components, e.g. in route guards. Cached data is reused only while fresh:
+ * an invalidated session (403 → permissions may have changed) is fetched again before deciding.
+ */
 export function ensureSession(queryClient: QueryClient): Promise<Session> {
-  return queryClient.ensureQueryData(sessionQueryOptions())
+  return queryClient.fetchQuery(sessionQueryOptions())
 }
 
 let redirecting = false

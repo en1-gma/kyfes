@@ -1,9 +1,13 @@
 import { createApp } from 'vue'
 import { configureHttp } from '@/shared/api'
-import { login } from '@/shared/auth'
 import { env } from '@/shared/config/env'
 import App from './App.vue'
-import { createAppQueryClient, installProviders, registerFeatureNamespaces } from './providers'
+import {
+  createAppQueryClient,
+  createUnauthorizedHandler,
+  installProviders,
+  registerFeatureNamespaces,
+} from './providers'
 import { createAppRouter } from './router'
 import './styles.css'
 
@@ -20,10 +24,7 @@ async function bootstrap(): Promise<void> {
   configureHttp({
     // Single-flight POST /auth/refresh before giving up (disable if the BFF has no refresh endpoint).
     refresh: true,
-    onUnauthorized: () => {
-      queryClient.clear()
-      login(`${window.location.pathname}${window.location.search}${window.location.hash}`)
-    },
+    onUnauthorized: createUnauthorizedHandler(queryClient),
   })
   registerFeatureNamespaces()
 
@@ -32,7 +33,9 @@ async function bootstrap(): Promise<void> {
   installProviders(app, queryClient)
   app.use(router)
   app.config.errorHandler = (error) => console.error(error)
-  await router.isReady()
+  // A failed first navigation (e.g. /auth/me 5xx) must not leave a blank page: App renders the error
+  // with "Retry" (failedNavigation), so mount anyway.
+  await router.isReady().catch(() => undefined)
   app.mount('#app')
 }
 

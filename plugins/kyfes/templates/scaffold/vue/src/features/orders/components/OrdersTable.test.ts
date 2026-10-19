@@ -34,3 +34,18 @@ describe('OrdersTable RBAC', () => {
     expect(screen.queryByRole('button', { name: /Elimina/ })).toBeNull()
   })
 })
+
+describe('OrdersTable accessibility', () => {
+  it('the sort button accessible name contains its visible text (WCAG 2.5.3)', async () => {
+    await renderWithProviders(OrdersTable, { session: sessions.viewer, props })
+    await rows()
+    const sort = screen.getByRole('button', { name: /^Creato il/ })
+    expect(sort).toHaveTextContent('Creato il')
+  })
+
+  it('announces the loaded count', async () => {
+    await renderWithProviders(OrdersTable, { session: sessions.viewer, props })
+    await rows()
+    expect(screen.getByText('20 ordini')).toHaveAttribute('aria-live', 'polite')
+  })
+})

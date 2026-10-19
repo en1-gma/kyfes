@@ -27,6 +27,7 @@
     "loading": "Loading…",
     "empty": "Nothing to show.",
     "error": "Something went wrong. Please try again later.",
+    "forbidden": "You are not authorized to perform this operation.",
     "correlationId": "Reference code: {id}"
   },
   "errors": {

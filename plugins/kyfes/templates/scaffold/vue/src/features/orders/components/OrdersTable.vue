@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import { formatCurrency, formatDate, useT } from '@/shared/i18n'
 import { useAbility } from '@/shared/rbac'
-import { AppButton, ConfirmDialog, EmptyState, ErrorState, LoadingState } from '@/shared/ui'
+import { AppButton, ConfirmDeleteDialog, ErrorState, LoadMore, QueryState } from '@/shared/ui'
 import { useDeleteOrder } from '../api/orders.mutations'
 import { useOrdersInfinite } from '../api/orders.queries'
 import { ORDER_STATUSES, type Order } from '../model/orders.schema'
@@ -21,7 +21,7 @@ const ability = useAbility()
 const ui = useOrdersUiStore()
 const { sort, status } = storeToRefs(ui)
 
-const { orders, isPending, isError, error, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
+const { orders, isPending, error, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
   useOrdersInfinite(() => ({ sort: sort.value, status: status.value }))
 const deleteOrder = useDeleteOrder()
 
@@ -33,11 +33,11 @@ const canEdit = (order: Order) => ability.can('update', orderSubject(order))
 const canDelete = (order: Order) => ability.can('delete', orderSubject(order))
 
 const pendingDelete = ref<Order | null>(null)
-function confirmDelete() {
-  const order = pendingDelete.value
-  pendingDelete.value = null
-  if (order) deleteOrder.mutate(order.id)
-}
+const deleteLabels = computed(() => ({
+  title: t('orders.delete.title'),
+  message: t('orders.delete.message', { number: pendingDelete.value?.number ?? '' }),
+  confirm: t('orders.delete.confirm'),
+}))
 </script>
 
 <template>
@@ -52,18 +52,18 @@ function confirmDelete() {
       </label>
     </div>
 
-    <LoadingState v-if="isPending" />
-    <ErrorState v-else-if="isError" :error="error" retry @retry="refetch()" />
-    <EmptyState v-else-if="orders.length === 0" :message="t('orders.list.empty')" />
-    <template v-else>
+    <QueryState
+      :pending="isPending"
+      :error="error"
+      :empty="orders.length === 0"
+      :empty-message="t('orders.list.empty')"
+      @retry="refetch()"
+    >
       <table>
         <caption>
           {{
             t('orders.list.caption')
           }}
-          ({{
-            t('orders.list.count', orders.length)
-          }})
         </caption>
         <thead>
           <tr>
@@ -72,7 +72,12 @@ function confirmDelete() {
             <th scope="col">{{ t('orders.fields.status') }}</th>
             <th scope="col" class="num">{{ t('orders.fields.total') }}</th>
             <th scope="col" :aria-sort="sort === 'createdAt' ? 'ascending' : 'descending'">
-              <AppButton variant="link" :aria-label="t('orders.list.sortByDate')" @click="ui.toggleSort()">
+              <!-- The accessible name starts with the visible text (WCAG 2.5.3 label in name). -->
+              <AppButton
+                variant="link"
+                :aria-label="t('orders.list.sortByDate', { label: t('orders.fields.createdAt') })"
+                @click="ui.toggleSort()"
+              >
                 {{ t('orders.fields.createdAt') }}
               </AppButton>
             </th>
@@ -108,19 +113,20 @@ function confirmDelete() {
           </tr>
         </tbody>
       </table>
-      <AppButton v-if="hasNextPage" :loading="isFetchingNextPage" @click="fetchNextPage()">
-        {{ t('common.actions.loadMore') }}
-      </AppButton>
-    </template>
+      <LoadMore
+        :summary="t('orders.list.count', orders.length)"
+        :has-next-page="hasNextPage"
+        :loading="isFetchingNextPage"
+        @more="fetchNextPage()"
+      />
+    </QueryState>
     <ErrorState v-if="deleteOrder.isError.value" :error="deleteOrder.error.value" />
 
-    <ConfirmDialog
-      :open="pendingDelete !== null"
-      :title="t('orders.delete.title')"
-      :message="t('orders.delete.message', { number: pendingDelete?.number ?? '' })"
-      :confirm-label="t('orders.delete.confirm')"
-      @confirm="confirmDelete"
-      @cancel="pendingDelete = null"
+    <ConfirmDeleteDialog
+      :item="pendingDelete"
+      :labels="deleteLabels"
+      @confirm="(order) => deleteOrder.mutate(order.id)"
+      @close="pendingDelete = null"
     />
   </section>
 </template>

@@ -1,7 +1,7 @@
 import type { Session } from '@/shared/auth'
 import type { Order, OrderStatus } from '@/features/orders'
 
-export type MockUser = 'manager' | 'viewer'
+export type MockUser = 'manager' | 'operator' | 'viewer'
 
 /** CASL rules per mock user: what /api/auth/me returns. */
 export const sessions: Record<MockUser, Session> = {
@@ -18,6 +18,21 @@ export const sessions: Record<MockUser, Session> = {
         fields: ['status'],
         conditions: { status: 'cancelled' },
         inverted: true,
+      },
+    ],
+  },
+  // Field-level rules: may write customer and total (never the status), and edit only drafts.
+  operator: {
+    user: { id: 'u-operator', name: 'Giulia Verdi', email: 'giulia.verdi@example.com' },
+    locale: 'it',
+    rules: [
+      { action: 'read', subject: 'Order' },
+      { action: 'create', subject: 'Order', fields: ['customerName', 'total'] },
+      {
+        action: 'update',
+        subject: 'Order',
+        fields: ['customerName', 'total'],
+        conditions: { status: 'draft' },
       },
     ],
   },

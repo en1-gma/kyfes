@@ -13,7 +13,7 @@ npm run dev                  # http://localhost:5173
 ```
 
 Without mocks, `/api` is proxied by Vite to `API_ORIGIN` (the BFF). Mock user:
-`VITE_MOCK_USER=manager` (manage Order) or `viewer` (read Order only).
+`VITE_MOCK_USER=manager` (manage Order), `operator` (customer and total only, drafts only) or `viewer` (read Order only).
 
 ## Scripts
 

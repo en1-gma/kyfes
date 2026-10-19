@@ -27,6 +27,7 @@
     "loading": "Caricamento in corso…",
     "empty": "Nessun elemento da mostrare.",
     "error": "Si è verificato un errore. Riprova più tardi.",
+    "forbidden": "Non hai i permessi per questa operazione.",
     "correlationId": "Codice di riferimento: {id}"
   },
   "errors": {

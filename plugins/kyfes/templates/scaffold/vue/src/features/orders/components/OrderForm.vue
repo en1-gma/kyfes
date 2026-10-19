@@ -8,23 +8,37 @@ import { useAbility } from '@/shared/rbac'
 import { AppButton, ErrorState } from '@/shared/ui'
 import { useCreateOrder, useUpdateOrder } from '../api/orders.mutations'
 import { ORDER_STATUSES, OrderInputSchema, type Order, type OrderInput } from '../model/orders.schema'
-import { ORDER_SUBJECT, orderSubject } from '../permissions'
+import { ORDER_FIELDS, ORDER_SUBJECT, orderSubject, type OrderField } from '../permissions'
 
 const props = defineProps<{ order?: Order }>()
 const emit = defineEmits<{ saved: [order: Order]; cancel: [] }>()
 
-const { t } = useT()
+const { t, te } = useT()
 const ability = useAbility()
 const createOrder = useCreateOrder()
 const updateOrder = useUpdateOrder()
-const ids = { customerName: useId(), status: useId(), total: useId(), statusHint: useId() }
+const ids = {
+  customerName: useId(),
+  status: useId(),
+  total: useId(),
+  statusHint: useId(),
+  readOnlyHint: useId(),
+}
 
-/** Field-level permission: without it the status is read-only (the server enforces it anyway). */
-const statusReadOnly = computed(() =>
-  props.order
-    ? !ability.can('update', orderSubject(props.order), 'status')
-    : !ability.can('create', ORDER_SUBJECT, 'status'),
-)
+/** Field-level permission: a field the user cannot write is read-only and never sent (the server enforces it anyway). */
+const writable = computed(() => {
+  const order = props.order
+  const can = (field: OrderField) =>
+    order ? ability.can('update', orderSubject(order), field) : ability.can('create', ORDER_SUBJECT, field)
+  return new Set(ORDER_FIELDS.filter(can))
+})
+const readOnly = (field: OrderField) => !writable.value.has(field)
+const statusReadOnly = computed(() => readOnly('status'))
+
+/** Payload with only the writable fields (create and PATCH alike). */
+function writablePayload(values: OrderInput): Partial<OrderInput> {
+  return Object.fromEntries(Object.entries(values).filter(([k]) => writable.value.has(k as OrderField)))
+}
 
 const { defineField, handleSubmit, errors, setErrors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(OrderInputSchema),
@@ -38,24 +52,32 @@ const [customerName, customerNameAttrs] = defineField('customerName')
 const [status, statusAttrs] = defineField('status')
 const [total, totalAttrs] = defineField('total')
 
+const isFormField = (key: string): key is OrderField => (ORDER_FIELDS as readonly string[]).includes(key)
+
+/** Client messages are i18n keys; server messages are already text: never use them as keys. */
+const message = (text: string) => (te(text) ? t(text) : text)
+
 const mutationError = computed(() => createOrder.error.value ?? updateOrder.error.value)
-/** Field errors are shown next to the fields; anything else as a generic error. */
-const showMutationError = computed(
-  () => !!mutationError.value && !(isApiError(mutationError.value) && mutationError.value.fieldErrors),
-)
+/** Field errors are shown next to the fields; anything else (or errors on unknown fields) as a generic error. */
+const showMutationError = computed(() => {
+  const error = mutationError.value
+  if (!error) return false
+  if (!isApiError(error) || !error.fieldErrors) return true
+  const keys = Object.keys(error.fieldErrors)
+  return keys.length === 0 || !keys.every(isFormField)
+})
 
 const onSubmit = handleSubmit(async (values: OrderInput) => {
   try {
+    const input = writablePayload(values)
     const saved = props.order
-      ? await updateOrder.mutateAsync({
-          id: props.order.id,
-          input: statusReadOnly.value ? { customerName: values.customerName, total: values.total } : values,
-        })
-      : await createOrder.mutateAsync(values)
+      ? await updateOrder.mutateAsync({ id: props.order.id, input })
+      : await createOrder.mutateAsync(input)
     emit('saved', saved)
   } catch (error) {
     if (isApiError(error) && error.fieldErrors) {
-      setErrors(Object.fromEntries(Object.entries(error.fieldErrors).map(([k, v]) => [k, v[0] ?? ''])))
+      const known = Object.entries(error.fieldErrors).filter(([k]) => isFormField(k))
+      setErrors(Object.fromEntries(known.map(([k, v]) => [k, v[0] ?? ''])))
     }
   }
 })
@@ -71,11 +93,18 @@ const onSubmit = handleSubmit(async (values: OrderInput) => {
         v-bind="customerNameAttrs"
         type="text"
         autocomplete="off"
+        :readonly="readOnly('customerName')"
         :aria-invalid="!!errors.customerName"
-        :aria-describedby="errors.customerName ? `${ids.customerName}-error` : undefined"
+        :aria-describedby="
+          errors.customerName
+            ? `${ids.customerName}-error`
+            : readOnly('customerName')
+              ? ids.readOnlyHint
+              : undefined
+        "
       />
       <p v-if="errors.customerName" :id="`${ids.customerName}-error`" class="field__error">
-        {{ t(errors.customerName) }}
+        {{ message(errors.customerName) }}
       </p>
     </div>
 
@@ -86,10 +115,16 @@ const onSubmit = handleSubmit(async (values: OrderInput) => {
         v-model="status"
         v-bind="statusAttrs"
         :disabled="statusReadOnly"
-        :aria-describedby="statusReadOnly ? ids.statusHint : undefined"
+        :aria-invalid="!!errors.status"
+        :aria-describedby="
+          errors.status ? `${ids.status}-error` : statusReadOnly ? ids.statusHint : undefined
+        "
       >
         <option v-for="s in ORDER_STATUSES" :key="s" :value="s">{{ t(`orders.status.${s}`) }}</option>
       </select>
+      <p v-if="errors.status" :id="`${ids.status}-error`" class="field__error">
+        {{ message(errors.status) }}
+      </p>
       <p v-if="statusReadOnly" :id="ids.statusHint" class="field__hint">
         {{ t('orders.form.statusReadOnly') }}
       </p>
@@ -105,11 +140,18 @@ const onSubmit = handleSubmit(async (values: OrderInput) => {
         min="0"
         step="0.01"
         inputmode="decimal"
+        :readonly="readOnly('total')"
         :aria-invalid="!!errors.total"
-        :aria-describedby="errors.total ? `${ids.total}-error` : undefined"
+        :aria-describedby="
+          errors.total ? `${ids.total}-error` : readOnly('total') ? ids.readOnlyHint : undefined
+        "
       />
-      <p v-if="errors.total" :id="`${ids.total}-error`" class="field__error">{{ t(errors.total) }}</p>
+      <p v-if="errors.total" :id="`${ids.total}-error`" class="field__error">{{ message(errors.total) }}</p>
     </div>
+
+    <p v-if="readOnly('customerName') || readOnly('total')" :id="ids.readOnlyHint" class="field__hint">
+      {{ t('orders.form.fieldReadOnly') }}
+    </p>
 
     <ErrorState v-if="showMutationError" :error="mutationError" />
 

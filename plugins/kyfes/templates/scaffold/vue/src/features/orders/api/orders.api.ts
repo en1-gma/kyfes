@@ -20,7 +20,8 @@ export const ordersApi = {
   get(id: string, signal?: AbortSignal): Promise<Order> {
     return getParsed(`${BASE}/${encodeURIComponent(id)}`, OrderSchema, { signal })
   },
-  create(input: OrderInput): Promise<Order> {
+  /** Only the fields the user may write (field-level permissions): the server fills the rest. */
+  create(input: Partial<OrderInput>): Promise<Order> {
     return sendParsed('post', BASE, input, OrderSchema)
   },
   update(id: string, input: Partial<OrderInput>): Promise<Order> {

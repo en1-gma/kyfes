@@ -20,7 +20,7 @@
     "empty": "No orders found.",
     "actions": "Actions",
     "count": "no orders | 1 order | {count} orders",
-    "sortByDate": "Sort by creation date",
+    "sortByDate": "{label}, sort by creation date",
     "filterStatus": "Filter by status",
     "allStatuses": "All statuses",
     "editOrder": "Edit order {number}",
@@ -35,6 +35,7 @@
     "newTitle": "New order",
     "editTitle": "Edit order {number}",
     "statusReadOnly": "You are not allowed to change the status.",
+    "fieldReadOnly": "Read-only fields cannot be changed with your permissions.",
     "saved": "Order saved."
   },
   "delete": {

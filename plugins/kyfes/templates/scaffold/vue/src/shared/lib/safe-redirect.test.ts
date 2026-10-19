@@ -22,6 +22,21 @@ describe('safeRedirect', () => {
     expect(safeRedirect(target)).toBe('/')
   })
 
+  it.each([
+    '/.//evil.example',
+    '/a/..//evil.example',
+    '/%2e%2e//evil.example',
+    '/..//evil.example',
+    '/./%2F/evil.example',
+    '/%5Cevil.example',
+  ])('rejects %s once normalized', (target) => {
+    expect(safeRedirect(target)).toBe('/')
+  })
+
+  it('keeps paths that stay same-origin after normalization', () => {
+    expect(safeRedirect('/a/../orders')).toBe('/orders')
+  })
+
   it('uses the given fallback', () => {
     expect(safeRedirect('//x', '/home')).toBe('/home')
   })
