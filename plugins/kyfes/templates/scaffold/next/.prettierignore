@@ -1,0 +1,8 @@
+.next
+node_modules
+coverage
+playwright-report
+test-results
+public/mockServiceWorker.js
+package-lock.json
+next-env.d.ts

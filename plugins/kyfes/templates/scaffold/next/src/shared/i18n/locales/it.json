@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "Gestionale",
+    "skipToContent": "Vai al contenuto"
+  },
+  "nav": {
+    "main": "Navigazione principale",
+    "orders": "Ordini",
+    "language": "Lingua",
+    "logout": "Esci"
+  },
+  "locales": {
+    "it": "Italiano",
+    "en": "English"
+  },
+  "actions": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "new": "Nuovo",
+    "retry": "Riprova",
+    "back": "Indietro",
+    "loadMore": "Carica altri",
+    "goHome": "Torna alla home"
+  },
+  "states": {
+    "loading": "Caricamento in corso…",
+    "empty": "Nessun elemento da mostrare",
+    "redirecting": "Reindirizzamento all'accesso…"
+  },
+  "errors": {
+    "title": "Si è verificato un errore",
+    "generic": "Non è stato possibile completare l'operazione. Riprova tra poco.",
+    "correlation": "Codice di riferimento: {id}",
+    "forbiddenTitle": "Accesso non autorizzato",
+    "forbiddenDescription": "Non hai i permessi per visualizzare questa pagina.",
+    "notFoundTitle": "Pagina non trovata",
+    "notFoundDescription": "La pagina richiesta non esiste o è stata spostata."
+  },
+  "charts": {
+    "showData": "Mostra i dati del grafico",
+    "label": "Etichetta",
+    "value": "Valore"
+  }
+}

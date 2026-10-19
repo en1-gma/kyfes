@@ -1,0 +1,62 @@
+{
+  "list": {
+    "title": "Ordini",
+    "caption": "Elenco degli ordini",
+    "empty": "Non ci sono ordini.",
+    "new": "Nuovo ordine"
+  },
+  "filters": {
+    "status": "Filtra per stato",
+    "all": "Tutti"
+  },
+  "columns": {
+    "number": "Numero",
+    "customer": "Cliente",
+    "status": "Stato",
+    "total": "Totale",
+    "createdAt": "Data",
+    "actions": "Azioni"
+  },
+  "status": {
+    "draft": "Bozza",
+    "confirmed": "Confermato",
+    "shipped": "Spedito",
+    "cancelled": "Annullato"
+  },
+  "actions": {
+    "edit": "Modifica",
+    "editLabel": "Modifica l'ordine {number}",
+    "delete": "Elimina",
+    "deleteLabel": "Elimina l'ordine {number}",
+    "view": "Dettaglio dell'ordine {number}"
+  },
+  "delete": {
+    "title": "Eliminare l'ordine?",
+    "message": "L'ordine {number} verrà eliminato definitivamente."
+  },
+  "form": {
+    "newTitle": "Nuovo ordine",
+    "editTitle": "Modifica ordine {number}",
+    "customerName": "Cliente",
+    "customerPlaceholder": "Nome del cliente",
+    "status": "Stato",
+    "statusReadOnly": "Non hai i permessi per modificare lo stato.",
+    "total": "Totale (EUR)",
+    "submit": "Salva ordine",
+    "saving": "Salvataggio…"
+  },
+  "validation": {
+    "customerRequired": "Il cliente è obbligatorio.",
+    "tooLong": "Il testo è troppo lungo.",
+    "totalInvalid": "Inserisci un importo valido, maggiore o uguale a zero."
+  },
+  "detail": {
+    "title": "Ordine {number}",
+    "back": "Torna agli ordini"
+  },
+  "chart": {
+    "title": "Totale ordini per mese",
+    "summary": "{count, plural, =0 {Nessun mese con ordini} one {Un mese con ordini} other {# mesi con ordini}}",
+    "series": "Totale"
+  }
+}

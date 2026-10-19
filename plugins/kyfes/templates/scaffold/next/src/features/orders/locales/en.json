@@ -1,0 +1,62 @@
+{
+  "list": {
+    "title": "Orders",
+    "caption": "List of orders",
+    "empty": "There are no orders.",
+    "new": "New order"
+  },
+  "filters": {
+    "status": "Filter by status",
+    "all": "All"
+  },
+  "columns": {
+    "number": "Number",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "createdAt": "Date",
+    "actions": "Actions"
+  },
+  "status": {
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "cancelled": "Cancelled"
+  },
+  "actions": {
+    "edit": "Edit",
+    "editLabel": "Edit order {number}",
+    "delete": "Delete",
+    "deleteLabel": "Delete order {number}",
+    "view": "Order {number} details"
+  },
+  "delete": {
+    "title": "Delete order?",
+    "message": "Order {number} will be permanently deleted."
+  },
+  "form": {
+    "newTitle": "New order",
+    "editTitle": "Edit order {number}",
+    "customerName": "Customer",
+    "customerPlaceholder": "Customer name",
+    "status": "Status",
+    "statusReadOnly": "You don't have permission to change the status.",
+    "total": "Total (EUR)",
+    "submit": "Save order",
+    "saving": "Saving…"
+  },
+  "validation": {
+    "customerRequired": "Customer is required.",
+    "tooLong": "The text is too long.",
+    "totalInvalid": "Enter a valid amount, zero or greater."
+  },
+  "detail": {
+    "title": "Order {number}",
+    "back": "Back to orders"
+  },
+  "chart": {
+    "title": "Order totals by month",
+    "summary": "{count, plural, =0 {No months with orders} one {One month with orders} other {# months with orders}}",
+    "series": "Total"
+  }
+}

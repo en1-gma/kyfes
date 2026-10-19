@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "Back office",
+    "skipToContent": "Skip to content"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "orders": "Orders",
+    "language": "Language",
+    "logout": "Log out"
+  },
+  "locales": {
+    "it": "Italiano",
+    "en": "English"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "new": "New",
+    "retry": "Retry",
+    "back": "Back",
+    "loadMore": "Load more",
+    "goHome": "Back to home"
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing to show",
+    "redirecting": "Redirecting to sign in…"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "generic": "The operation could not be completed. Please try again shortly.",
+    "correlation": "Reference code: {id}",
+    "forbiddenTitle": "Not authorized",
+    "forbiddenDescription": "You don't have permission to view this page.",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The requested page doesn't exist or has been moved."
+  },
+  "charts": {
+    "showData": "Show chart data",
+    "label": "Label",
+    "value": "Value"
+  }
+}
