@@ -1,0 +1,12 @@
+{
+  "name": "kyfes",
+  "version": "0.1.0",
+  "description": "Know Your Frontend: secure, predictable frontends generated with Claude Code. One src/ layout for React, Next.js, Vue, Angular and SvelteKit; HttpOnly/Secure cookie sessions via BFF, CSRF, CSP and XSS guards; axios/HttpClient behind a single client; TanStack Query; CASL RBAC on every CRUD action; i18n; accessible charts; guardrail hooks, a stop gate and dedicated agents.",
+  "author": {
+    "name": "Vincenzo Chiavetta"
+  },
+  "license": "MIT",
+  "keywords": ["frontend", "react", "nextjs", "vue", "angular", "svelte", "security", "rbac", "casl", "tanstack-query", "axios", "i18n", "recharts", "guardrails", "hooks"],
+  "homepage": "https://github.com/en1-gma/kyfes",
+  "repository": "https://github.com/en1-gma/kyfes"
+}

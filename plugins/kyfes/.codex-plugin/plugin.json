@@ -1,0 +1,42 @@
+{
+  "name": "kyfes",
+  "version": "0.1.0",
+  "description": "Know Your Frontend: secure, predictable frontends for React, Next.js, Vue, Angular and SvelteKit — cookie sessions via BFF, CSRF/CSP/XSS guards, TanStack Query, CASL RBAC, i18n, charts, a fixed src/ layout and guardrail hooks.",
+  "author": {
+    "name": "Vincenzo Chiavetta"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/en1-gma/kyfes",
+  "repository": "https://github.com/en1-gma/kyfes",
+  "keywords": [
+    "frontend",
+    "react",
+    "nextjs",
+    "vue",
+    "angular",
+    "svelte",
+    "security",
+    "rbac",
+    "tanstack-query",
+    "i18n"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "kyfes — Know Your Frontend",
+    "shortDescription": "Secure, predictable frontends: one layout, one HTTP client, RBAC, i18n, guardrails.",
+    "developerName": "Vincenzo Chiavetta",
+    "category": "Coding",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Set up kyfes in this project",
+      "Plan a new feature with kyfes",
+      "Review my frontend changes with kyfes"
+    ],
+    "brandColor": "#14B8A6",
+    "websiteUrl": "https://github.com/en1-gma/kyfes"
+  }
+}

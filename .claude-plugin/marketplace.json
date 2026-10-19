@@ -1,0 +1,14 @@
+{
+  "name": "kyfes",
+  "owner": {
+    "name": "Vincenzo Chiavetta"
+  },
+  "description": "Know Your Frontend: secure, predictable frontends for Claude Code and Codex.",
+  "plugins": [
+    {
+      "name": "kyfes",
+      "source": "./plugins/kyfes",
+      "description": "Enforces frontend best practices for React, Next.js, Vue, Angular and SvelteKit: cookie-based HttpOnly sessions (BFF), CSRF, CSP and XSS guards, one HTTP client, TanStack Query, CASL RBAC on CRUD, i18n, charts, a fixed src/ layout, guardrail hooks and planner/implementer/reviewer agents."
+    }
+  ]
+}
