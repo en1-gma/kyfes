@@ -6,7 +6,7 @@ import {
   queryOptions,
 } from '@tanstack/angular-query-experimental';
 import { DEFAULT_PAGE_SIZE } from '@shared/api';
-import { DEFAULT_ORDER_SORT, ORDERS_FEATURE } from '../model/orders.constants';
+import { DEFAULT_ORDER_SORT, ORDERS_FEATURE } from '../constants';
 import type { OrderListFilters, OrderStats } from '../model/orders.schema';
 import { OrdersApi } from './orders.api';
 

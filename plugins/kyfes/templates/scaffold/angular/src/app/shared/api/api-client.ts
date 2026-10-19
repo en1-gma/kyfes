@@ -2,8 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { type Observable, firstValueFrom } from 'rxjs';
 import type * as z from 'zod';
+import { ABORT_EVENT, TEXT_RESPONSE } from '@shared/config/constants';
 import { ApiError } from './api-error';
-import { API_OPTIONS, TEXT_RESPONSE } from './http';
+import { API_OPTIONS } from './http';
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
@@ -31,8 +32,6 @@ export interface RequestOptions {
  * (la fetch viene interrotta), quindi su `abort` ci si disiscrive e si rigetta con `signal.reason`
  * così com'è, mai con un ApiError `NETWORK_ERROR`. TanStack Query la riconosce come CancelledError.
  */
-const ABORT_EVENT = 'abort';
-
 function toPromise<T>(source: Observable<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return firstValueFrom(source);
   return new Promise<T>((resolve, reject) => {

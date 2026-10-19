@@ -2,6 +2,7 @@ import { HttpResponse, http } from 'msw';
 import * as z from 'zod';
 import {
   ORDERS_ENDPOINT,
+  ORDER_STATS_ENDPOINT,
   ORDER_SUBJECT,
   type Order,
   OrderCreateSchema,
@@ -62,7 +63,7 @@ export const handlers = [
   http.post(`${API}${AUTH_ENDPOINTS.logout}`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${API}${AUTH_ENDPOINTS.refresh}`, () => new HttpResponse(null, { status: 204 })),
 
-  http.get(`${API}${ORDERS_ENDPOINT}/stats`, () => {
+  http.get(`${API}${ORDER_STATS_ENDPOINT}`, () => {
     const byMonth = new Map<string, number>();
     for (const order of orders) {
       const month = order.createdAt.slice(0, 7);

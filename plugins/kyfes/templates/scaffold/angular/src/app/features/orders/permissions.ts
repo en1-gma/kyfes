@@ -1,17 +1,14 @@
-import { Subject, subject } from '@shared/rbac';
+import { subject } from '@shared/rbac';
+import { ORDER_FIELDS, ORDER_SUBJECT } from './constants';
 import type { Order, OrderInput } from './model/orders.schema';
 
-/** Soggetto CASL della feature (registrato in shared/rbac/subjects.ts). */
-export const ORDER_SUBJECT = Subject.Order;
+export { ORDER_FIELDS, ORDER_SUBJECT } from './constants';
 
-/** Campi del form (e del corpo) soggetti ai permessi per campo CASL: `ORDER_FIELDS.status`. */
-export const ORDER_FIELDS = {
-  customerName: 'customerName',
-  total: 'total',
-  status: 'status',
-} as const satisfies { [K in keyof OrderInput]: K };
 export type OrderInputField = (typeof ORDER_FIELDS)[keyof typeof ORDER_FIELDS];
-export const ORDER_INPUT_FIELDS: readonly OrderInputField[] = Object.values(ORDER_FIELDS);
+/** Tutti i campi del form; `satisfies` garantisce che `ORDER_FIELDS` copra esattamente `OrderInput`. */
+export const ORDER_INPUT_FIELDS: readonly OrderInputField[] = Object.values(
+  ORDER_FIELDS satisfies { [K in keyof OrderInput]: K },
+);
 
 /** Soggetto per il record specifico: abilita le condizioni CASL (es. `{ status: 'shipped' }`). */
 export function orderSubject(order: Order) {

@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { DEFAULT_ORDER_STATUS, ORDER_STATUS } from './orders.constants';
+import { DEFAULT_ORDER_STATUS, ORDER_FORM_ERROR, ORDER_STATUS } from '../constants';
 
 export const OrderStatusSchema = z.enum(ORDER_STATUS);
 export const ORDER_STATUSES = OrderStatusSchema.options;
@@ -18,12 +18,12 @@ export const OrderInputSchema = z.object({
   customerName: z
     .string()
     .trim()
-    .min(1, { error: 'orders.form.errors.customerRequired' })
-    .max(120, { error: 'orders.form.errors.customerTooLong' }),
+    .min(1, { error: ORDER_FORM_ERROR.customerRequired })
+    .max(120, { error: ORDER_FORM_ERROR.customerTooLong }),
   status: OrderStatusSchema,
   total: z
-    .number({ error: 'orders.form.errors.totalInvalid' })
-    .nonnegative({ error: 'orders.form.errors.totalNegative' }),
+    .number({ error: ORDER_FORM_ERROR.totalInvalid })
+    .nonnegative({ error: ORDER_FORM_ERROR.totalNegative }),
 });
 
 /** Create: solo i campi scrivibili; senza permesso su `status` il server usa `draft`. */

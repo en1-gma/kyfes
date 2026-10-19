@@ -1,10 +1,11 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, RedirectCommand, Router } from '@angular/router';
 import { AuthService } from '@shared/auth';
+import { FORBIDDEN_PATH } from '@shared/config/constants';
 import { buildAbility } from './ability';
 import type { Actions, SubjectName } from './subjects';
 
-export const FORBIDDEN_PATH = '/forbidden';
+export { FORBIDDEN_PATH } from '@shared/config/constants';
 
 /**
  * Richiede `can(action, subject)`. Senza permesso mostra la pagina 403 mantenendo l'URL

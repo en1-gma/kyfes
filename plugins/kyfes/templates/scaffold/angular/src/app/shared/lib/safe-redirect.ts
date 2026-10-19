@@ -1,6 +1,7 @@
+import { REDIRECT_PLACEHOLDER_ORIGIN } from '@shared/config/constants';
+
 // eslint-disable-next-line no-control-regex -- si cercano proprio i caratteri di controllo
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
-const PLACEHOLDER_ORIGIN = 'https://redirect.invalid';
 
 /** `//host` o backslash: il browser li tratterebbe come un'altra origine. */
 function isProtocolRelative(path: string): boolean {
@@ -20,8 +21,8 @@ export function safeRedirect(target: unknown, fallback = '/'): string {
   if (!target.startsWith('/') || target.startsWith('//')) return fallback;
   if (target.includes('\\') || CONTROL_CHARS.test(target)) return fallback;
   try {
-    const url = new URL(target, PLACEHOLDER_ORIGIN);
-    if (url.origin !== PLACEHOLDER_ORIGIN) return fallback;
+    const url = new URL(target, REDIRECT_PLACEHOLDER_ORIGIN);
+    if (url.origin !== REDIRECT_PLACEHOLDER_ORIGIN) return fallback;
     const normalized = `${url.pathname}${url.search}${url.hash}`;
     if (isProtocolRelative(normalized) || isProtocolRelative(decodeURIComponent(url.pathname))) {
       return fallback;

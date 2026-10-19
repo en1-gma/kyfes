@@ -1,5 +1,8 @@
 import { type HttpErrorResponse } from '@angular/common/http';
 import * as z from 'zod';
+import { API_ERROR_CODE, CORRELATION_ID_HEADER } from '@shared/config/constants';
+
+export { API_ERROR_CODE } from '@shared/config/constants';
 
 /** Formato degli errori del backend (compatibile con kybes). */
 const ErrorBodySchema = z.object({
@@ -10,12 +13,6 @@ const ErrorBodySchema = z.object({
 });
 
 export type FieldErrors = Record<string, string[]>;
-
-/** Codici di errore generati dal client (gli altri arrivano dal backend o sono `HTTP_<status>`). */
-export const API_ERROR_CODE = {
-  network: 'NETWORK_ERROR',
-  invalidResponse: 'INVALID_RESPONSE',
-} as const;
 
 /** Unico tipo di errore che i componenti vedono: mai `HttpErrorResponse`. */
 export class ApiError extends Error {
@@ -37,7 +34,7 @@ export class ApiError extends Error {
 
   static fromHttpError(error: HttpErrorResponse): ApiError {
     const parsed = ErrorBodySchema.safeParse(error.error);
-    const headerId = error.headers?.get('X-Correlation-Id') ?? null;
+    const headerId = error.headers?.get(CORRELATION_ID_HEADER) ?? null;
     if (parsed.success) {
       const body = parsed.data;
       return new ApiError(

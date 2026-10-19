@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { SUPPORTED_LOCALES } from '@shared/config/env';
+import { SUPPORTED_LOCALES } from '@shared/config/constants';
 
 const StringOrList = z.union([z.string(), z.array(z.string())]);
 

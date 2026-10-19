@@ -12,7 +12,8 @@ import {
 import { injectDeleteOrder } from '../../api/orders.mutations';
 import { injectOrdersList } from '../../api/orders.queries';
 import type { Order } from '../../model/orders.schema';
-import { ORDER_SUBJECT, orderSubject } from '../../permissions';
+import { ORDER_SUBJECT } from '../../constants';
+import { orderSubject } from '../../permissions';
 import { orderPaths } from '../../routes';
 
 @Component({

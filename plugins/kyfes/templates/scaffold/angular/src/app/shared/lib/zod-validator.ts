@@ -1,10 +1,10 @@
 import type { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import type * as z from 'zod';
+import { GENERIC_FIELD_ERROR } from '@shared/config/constants';
+
+export { GENERIC_FIELD_ERROR } from '@shared/config/constants';
 
 const I18N_KEY = /^[a-z][\w-]*\.[\w.-]+$/;
-
-/** Chiave i18n dell'errore di campo generico (messaggio non traducibile o non riconosciuto). */
-export const GENERIC_FIELD_ERROR = 'common.validation.invalid';
 
 /**
  * Validator di Reactive Forms basato su uno schema Zod.

@@ -1,11 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { BUTTON_VARIANT } from '@shared/config/constants';
 
-export const BUTTON_VARIANT = {
-  primary: 'primary',
-  secondary: 'secondary',
-  danger: 'danger',
-  ghost: 'ghost',
-} as const;
+export { BUTTON_VARIANT } from '@shared/config/constants';
 export type ButtonVariant = (typeof BUTTON_VARIANT)[keyof typeof BUTTON_VARIANT];
 
 /** `<button appButton variant="primary">` / `<a appButton routerLink="…">`: solo stile, nessuna logica. */

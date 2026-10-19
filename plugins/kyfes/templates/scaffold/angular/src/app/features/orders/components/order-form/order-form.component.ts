@@ -16,7 +16,7 @@ import { Action, injectCan } from '@shared/rbac';
 import { ButtonComponent, ErrorStateComponent, ForbiddenStateComponent, SpinnerComponent } from '@shared/ui';
 import { injectCreateOrder, injectUpdateOrder } from '../../api/orders.mutations';
 import { injectOrder } from '../../api/orders.queries';
-import { DEFAULT_ORDER_STATUS } from '../../model/orders.constants';
+import { DEFAULT_ORDER_STATUS, ORDER_FIELDS, ORDER_FORM_ERROR_PREFIX, ORDER_SUBJECT } from '../../constants';
 import {
   ORDER_STATUSES,
   type Order,
@@ -25,18 +25,9 @@ import {
   type OrderPatch,
   type OrderStatus,
 } from '../../model/orders.schema';
-import {
-  ORDER_FIELDS,
-  ORDER_INPUT_FIELDS,
-  ORDER_SUBJECT,
-  type OrderInputField,
-  orderSubject,
-} from '../../permissions';
+import { ORDER_INPUT_FIELDS, type OrderInputField, orderSubject } from '../../permissions';
 
 type WritableFields = Record<OrderInputField, boolean>;
-
-/** I messaggi di campo del backend sono chiavi i18n della feature; gli altri diventano generici. */
-const SERVER_FIELD_ERROR_PREFIX = 'orders.form.errors.';
 
 function isOrderInputField(field: string): field is OrderInputField {
   return (ORDER_INPUT_FIELDS as readonly string[]).includes(field);
@@ -166,7 +157,8 @@ export class OrderFormComponent {
       if (control.disabled) continue;
       const message = messages[0] ?? '';
       control.setErrors({
-        server: message.startsWith(SERVER_FIELD_ERROR_PREFIX) ? message : GENERIC_FIELD_ERROR,
+        // I messaggi di campo del backend sono chiavi i18n della feature; gli altri diventano generici.
+        server: message.startsWith(ORDER_FORM_ERROR_PREFIX) ? message : GENERIC_FIELD_ERROR,
       });
       control.markAsTouched();
     }

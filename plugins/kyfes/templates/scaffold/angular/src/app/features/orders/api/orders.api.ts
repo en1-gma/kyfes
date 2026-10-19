@@ -7,11 +7,10 @@ import {
   OrderSchema,
   OrderStatsSchema,
 } from '../model/orders.schema';
+import { ORDERS_ENDPOINT, ORDER_STATS_ENDPOINT } from '../constants';
 
 const OrderPageSchema = pageSchema(OrderSchema);
 
-/** Risorsa REST della feature (relativa a `API_BASE_URL`). */
-export const ORDERS_ENDPOINT = '/orders';
 const orderEndpoint = (id: string) => `${ORDERS_ENDPOINT}/${encodeURIComponent(id)}`;
 
 export interface OrderListParams extends PageParams {
@@ -46,6 +45,6 @@ export class OrdersApi {
   }
 
   stats(options?: RequestOptions) {
-    return this.api.get(`${ORDERS_ENDPOINT}/stats`, OrderStatsSchema, undefined, options);
+    return this.api.get(ORDER_STATS_ENDPOINT, OrderStatsSchema, undefined, options);
   }
 }

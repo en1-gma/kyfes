@@ -17,24 +17,14 @@ import {
   makeEnvironmentProviders,
 } from '@angular/core';
 import { type Observable, catchError, defer, finalize, map, shareReplay, switchMap, throwError } from 'rxjs';
+import { AUTH_ENDPOINTS, TEXT_RESPONSE, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from '@shared/config/constants';
 import { env } from '@shared/config/env';
 import { ApiError } from './api-error';
 import { ApiEvents } from './api-events';
 
-export const XSRF_COOKIE_NAME = 'XSRF-TOKEN';
-export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN';
+export { AUTH_ENDPOINTS, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from '@shared/config/constants';
+
 export const DEFAULT_TIMEOUT_MS = 15_000;
-
-/** Endpoint di sessione del BFF (relativi a `API_BASE_URL`). */
-export const AUTH_ENDPOINTS = {
-  me: '/auth/me',
-  login: '/auth/login',
-  logout: '/auth/logout',
-  refresh: '/auth/refresh',
-} as const;
-
-/** Opzioni per le risposte senza corpo JSON significativo (204, logout, refresh). */
-export const TEXT_RESPONSE = { responseType: 'text' } as const;
 
 export interface ApiOptions {
   /** Base delle chiamate (default da env: "/api", stessa origine). */

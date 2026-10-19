@@ -1,5 +1,6 @@
 import { provideI18nNamespace } from '@shared/i18n';
-import { ORDERS_LOCALE_LOADERS, ORDERS_NS } from './locales';
+import { ORDERS_NS } from './constants';
+import { ORDERS_LOCALE_LOADERS } from './locales';
 
 /** API pubblica della feature `orders`: unico punto importabile da pages/app. */
 export { OrderDetailComponent } from './components/order-detail/order-detail.component';
@@ -16,18 +17,11 @@ export {
   orderStatsQueryOptions,
   ordersInfiniteQueryOptions,
 } from './api/orders.queries';
-export { ORDERS_ENDPOINT, OrdersApi } from './api/orders.api';
-export * from './model/orders.constants';
+export { OrdersApi } from './api/orders.api';
+export * from './constants';
 export * from './model/orders.schema';
-export { ORDERS_NS } from './locales';
-export {
-  ORDER_FIELDS,
-  ORDER_INPUT_FIELDS,
-  ORDER_SUBJECT,
-  orderSubject,
-  type OrderInputField,
-} from './permissions';
-export { ORDER_ROUTE_PATHS, orderPaths } from './routes';
+export { ORDER_INPUT_FIELDS, orderSubject, type OrderInputField } from './permissions';
+export { orderPaths } from './routes';
 
 /** Namespace i18n `orders` caricato in lazy: da mettere nei `providers` della rotta. */
 export function provideOrdersI18n() {

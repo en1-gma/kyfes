@@ -1,4 +1,7 @@
 import * as z from 'zod';
+import { FALLBACK_LOCALE, FLAG, SUPPORTED_LOCALES } from './constants';
+
+export { FLAG, LOCALE, SUPPORTED_LOCALES } from './constants';
 
 /**
  * Variabili pubbliche (finiscono nel bundle: mai segreti).
@@ -9,12 +12,7 @@ declare const NG_APP_API_BASE_URL: string | undefined;
 declare const NG_APP_DEFAULT_LOCALE: string | undefined;
 declare const NG_APP_API_MOCKS: string | undefined;
 
-export const LOCALE = { it: 'it', en: 'en' } as const;
-export const SUPPORTED_LOCALES = [LOCALE.it, LOCALE.en] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
-
-/** Valori ammessi per i flag booleani passati come stringa (`define` di angular.json). */
-export const FLAG = { on: 'true', off: 'false' } as const;
 
 const EnvSchema = z.object({
   API_BASE_URL: z
@@ -23,7 +21,7 @@ const EnvSchema = z.object({
       message: 'API_BASE_URL deve essere un percorso relativo o un URL https',
     })
     .default('/api'),
-  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default(LOCALE.it),
+  DEFAULT_LOCALE: z.enum(SUPPORTED_LOCALES).default(FALLBACK_LOCALE),
   API_MOCKS: z
     .enum(FLAG)
     .default(FLAG.off)

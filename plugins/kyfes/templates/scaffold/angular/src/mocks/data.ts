@@ -7,7 +7,7 @@ import {
   type Order,
 } from '@features/orders';
 import type { Session } from '@shared/auth';
-import { LOCALE } from '@shared/config/env';
+import { LOCALE } from '@shared/config/constants';
 import { Action } from '@shared/rbac';
 
 type MockSession = Session;

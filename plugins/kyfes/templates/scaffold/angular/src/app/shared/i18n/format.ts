@@ -1,10 +1,10 @@
 import { Pipe, type PipeTransform, inject } from '@angular/core';
+import { DEFAULT_CURRENCY } from '@shared/config/constants';
 import { I18nService } from './i18n';
 
-export type DateInput = string | number | Date;
+export { DEFAULT_CURRENCY } from '@shared/config/constants';
 
-/** Valuta di default degli importi (ISO 4217). */
-export const DEFAULT_CURRENCY = 'EUR';
+export type DateInput = string | number | Date;
 
 /** Formattazioni solo con Intl e la lingua corrente: mai a mano. */
 export function formatDate(
